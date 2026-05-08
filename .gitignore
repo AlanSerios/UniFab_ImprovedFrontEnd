@@ -1,0 +1,21 @@
+# IDE and System Files
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+dist/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Project specific
+backend/node_modules/
+frontend/node_modules/
+frontend/.env
+backend/storage/
+backend/temp/
+backend/db/backups/
