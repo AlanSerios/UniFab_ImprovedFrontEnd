@@ -1153,7 +1153,7 @@ const publishMyDesign = asyncHandler(async (req, res) => {
         moderationFlags: moderation.flags,
         moderationSummary: moderation.summary,
         moderationFeedback: moderation.feedback,
-        moderationDecisionSource: moderation.decisionSOurce,
+        moderationDecisionSource: moderation.decisionSource,
         publishedAt: new Date(),
         reviewedAt:
           moderation.status === "needs_admin_review" ? null : new Date(),

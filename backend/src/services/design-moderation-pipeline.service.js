@@ -1,12 +1,17 @@
 import { runDesignRulesModeration } from "./design-moderation.service.js";
 import { runDesignAiModeration } from "./design-ai-moderation.service.js";
+import { runDesignImageModeration } from "./design-image-moderation.service.js";
 
 function mergeFlags(...flagGroups) {
   return flagGroups.flat().filter(Boolean);
 }
 
-function buildFinalDecision({ rulesResult, aiResult }) {
-  const flags = mergeFlags(rulesResult.flags, aiResult.flags);
+function buildFinalDecision({ rulesResult, aiResult, imageResult }) {
+  const flags = mergeFlags(
+    rulesResult.flags,
+    aiResult.flags,
+    imageResult.flags,
+  );
 
   if (rulesResult.status === "auto_rejected") {
     return {
@@ -41,11 +46,23 @@ function buildFinalDecision({ rulesResult, aiResult }) {
     };
   }
 
+  if (imageResult.status === "needs_admin_review") {
+    return {
+      status: "needs_admin_review",
+      isActive: false,
+      decisionSource: "ai",
+      summary: imageResult.summary,
+      feedback: imageResult.feedback,
+      flags,
+    };
+  }
+
   return {
     status: "auto_approved",
     isActive: true,
     decisionSource: "ai",
-    summary: "Rules and AI moderation found no obvious text policy concerns.",
+    summary:
+      "Rules, AI text moderation, and thumbnail image moderation found no obvious policy concerns.",
     feedback: null,
     flags,
   };
@@ -66,10 +83,12 @@ async function runDesignModerationPipeline(design) {
   }
 
   const aiResult = await runDesignAiModeration(design);
+  const imageResult = await runDesignImageModeration(design);
 
   return buildFinalDecision({
     rulesResult,
     aiResult,
+    imageResult,
   });
 }
 
