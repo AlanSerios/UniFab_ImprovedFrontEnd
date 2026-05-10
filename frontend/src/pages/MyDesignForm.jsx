@@ -17,6 +17,12 @@ import {
   TextInput,
 } from "../components/ui/Form";
 import { PageHeader, PageShell, Panel } from "../components/ui/Page";
+import {
+  getModerationStatusLabel,
+  getModerationStatusTone,
+  getOwnerModerationMessage,
+  getPublishResultMessage,
+} from "../utils/moderation-display";
 
 const PUBLISHABLE_STATUSES = new Set([
   "draft",
@@ -46,10 +52,6 @@ function buildFormData({ form, designFile, thumbnailImage }) {
   }
 
   return formData;
-}
-
-function formatStatus(status) {
-  return String(status || "draft").replaceAll("_", " ");
 }
 
 function toFormState(design) {
@@ -183,8 +185,7 @@ export default function MyDesignForm() {
 
   const canPublish = useMemo(() => {
     return (
-      currentDesign &&
-      PUBLISHABLE_STATUSES.has(currentDesign.moderationStatus)
+      currentDesign && PUBLISHABLE_STATUSES.has(currentDesign.moderationStatus)
     );
   }, [currentDesign]);
 
@@ -244,9 +245,12 @@ export default function MyDesignForm() {
       setError("");
       setSuccessMessage("");
 
-      await publishMyDesign(currentDesign.id);
+      const data = await publishMyDesign(currentDesign.id);
+      const payload = data.data || data;
+      const updatedDesign = payload.localDesign || payload.design;
+
       await loadDesign();
-      setSuccessMessage("Design submitted for FabLab review.");
+      setSuccessMessage(getPublishResultMessage(updatedDesign));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -267,16 +271,16 @@ export default function MyDesignForm() {
           }
           meta={
             currentDesign ? (
-              <StatusBadge>
-                {formatStatus(currentDesign.moderationStatus)}
+              <StatusBadge
+                tone={getModerationStatusTone(currentDesign.moderationStatus)}
+              >
+                {getModerationStatusLabel(currentDesign.moderationStatus)}
               </StatusBadge>
             ) : null
           }
         />
 
-        {isLoading && (
-          <p className="mt-6 text-slate-600">Loading design...</p>
-        )}
+        {isLoading && <p className="mt-6 text-slate-600">Loading design...</p>}
 
         <Alert className="mt-6" type="error">
           {error}
@@ -285,6 +289,12 @@ export default function MyDesignForm() {
         <Alert className="mt-6" type="success">
           {successMessage}
         </Alert>
+
+        {currentDesign && getOwnerModerationMessage(currentDesign) && (
+          <Alert className="mt-6" type="info">
+            {getOwnerModerationMessage(currentDesign)}
+          </Alert>
+        )}
 
         {currentDesign &&
           APPROVED_STATUSES.has(currentDesign.moderationStatus) && (
@@ -426,10 +436,7 @@ export default function MyDesignForm() {
                       type="checkbox"
                       checked={form.ownershipConfirmed}
                       onChange={(event) =>
-                        updateField(
-                          "ownershipConfirmed",
-                          event.target.checked,
-                        )
+                        updateField("ownershipConfirmed", event.target.checked)
                       }
                       className="mt-1 h-4 w-4 rounded border-slate-300"
                     />
@@ -444,10 +451,7 @@ export default function MyDesignForm() {
                       type="checkbox"
                       checked={form.policyAcknowledged}
                       onChange={(event) =>
-                        updateField(
-                          "policyAcknowledged",
-                          event.target.checked,
-                        )
+                        updateField("policyAcknowledged", event.target.checked)
                       }
                       className="mt-1 h-4 w-4 rounded border-slate-300"
                     />

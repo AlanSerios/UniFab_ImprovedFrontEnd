@@ -15,6 +15,14 @@ import {
   TextArea,
 } from "../../components/ui/Form";
 import { PageHeader, PageShell, Panel } from "../../components/ui/Page";
+import {
+  getDecisionSourceLabel,
+  getDecisionSourceTone,
+  getModerationStatusLabel,
+  getModerationStatusTone,
+  getSeverityTone,
+  parseModerationFlags,
+} from "../../utils/moderation-display";
 
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
 const APPROVED_STATUSES = new Set(["auto_approved", "admin_approved"]);
@@ -31,29 +39,8 @@ function assetUrl(path) {
   return `${API_ORIGIN}${path}`;
 }
 
-function formatStatus(status) {
-  return String(status || "unknown").replaceAll("_", " ");
-}
-
 function formatDate(value) {
   return value ? new Date(value).toLocaleString() : "-";
-}
-
-function parseModerationFlags(flags) {
-  if (Array.isArray(flags)) {
-    return flags;
-  }
-
-  if (typeof flags === "string" && flags.trim()) {
-    try {
-      const parsedFlags = JSON.parse(flags);
-      return Array.isArray(parsedFlags) ? parsedFlags : [];
-    } catch {
-      return [];
-    }
-  }
-
-  return [];
 }
 
 export default function AdminCommunityDesignDetail() {
@@ -191,7 +178,11 @@ export default function AdminCommunityDesignDetail() {
           }
           meta={
             design ? (
-              <StatusBadge>{formatStatus(design.moderationStatus)}</StatusBadge>
+              <StatusBadge
+                tone={getModerationStatusTone(design.moderationStatus)}
+              >
+                {getModerationStatusLabel(design.moderationStatus)}
+              </StatusBadge>
             ) : null
           }
         />
@@ -277,7 +268,13 @@ export default function AdminCommunityDesignDetail() {
 
                 <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
                   <SummaryItem label="Decision Source">
-                    {formatStatus(design.moderationDecisionSource)}
+                    <StatusBadge
+                      tone={getDecisionSourceTone(
+                        design.moderationDecisionSource,
+                      )}
+                    >
+                      {getDecisionSourceLabel(design.moderationDecisionSource)}
+                    </StatusBadge>
                   </SummaryItem>
                   <SummaryItem label="Reviewed">
                     {formatDate(design.reviewedAt)}
@@ -465,7 +462,6 @@ function SummaryItem({ label, children }) {
     </div>
   );
 }
-
 function ModerationFlag({ flag }) {
   const extraDetails = Object.entries(flag || {}).filter(
     ([key, value]) =>
@@ -478,10 +474,16 @@ function ModerationFlag({ flag }) {
   return (
     <div className="rounded-md border border-slate-200 bg-white p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <StatusBadge>{formatStatus(flag.source || "unknown")}</StatusBadge>
-        <StatusBadge>{formatStatus(flag.severity || "info")}</StatusBadge>
+        <StatusBadge tone={getDecisionSourceTone(flag.source)}>
+          {getDecisionSourceLabel(flag.source)}
+        </StatusBadge>
+
+        <StatusBadge tone={getSeverityTone(flag.severity)}>
+          {String(flag.severity || "info").replaceAll("_", " ")}
+        </StatusBadge>
+
         <span className="text-sm font-medium text-slate-800">
-          {formatStatus(flag.category)}
+          {String(flag.category || "unknown").replaceAll("_", " ")}
         </span>
       </div>
 
@@ -490,11 +492,11 @@ function ModerationFlag({ flag }) {
           {extraDetails.map(([key, value]) => (
             <div key={key}>
               <dt className="inline font-medium text-slate-500">
-                {formatStatus(key)}:
+                {String(key).replaceAll("_", " ")}:
               </dt>{" "}
               <dd className="inline break-words">
                 {typeof value === "object"
-                  ? JSON.stringify(value)
+                  ? JSON.stringify(value, null, 2)
                   : String(value)}
               </dd>
             </div>

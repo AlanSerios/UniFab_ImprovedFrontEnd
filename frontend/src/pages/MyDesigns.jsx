@@ -3,10 +3,15 @@ import { getMyDesigns, publishMyDesign } from "../api/designs";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { Alert, EmptyState, StatusBadge } from "../components/ui/Feedback";
 import { PageHeader, PageShell, Panel } from "../components/ui/Page";
+import {
+  getModerationStatusLabel,
+  getModerationStatusTone,
+  getOwnerModerationMessage,
+} from "../utils/moderation-display";
 
 const FILTERS = [
   { label: "All", value: "" },
-  { label: "Draft", value: "draft" },
+  { label: "Drafts", value: "draft" },
   { label: "Needs Review", value: "needs_admin_review" },
   { label: "Rejected", value: "rejected" },
   { label: "Approved", value: "approved" },
@@ -28,10 +33,6 @@ function matchesFilter(design, filter) {
   if (filter === "approved")
     return APPROVED_STATUSES.has(design.moderationStatus);
   return design.moderationStatus === filter;
-}
-
-function formatStatus(status) {
-  return String(status || "unknown").replaceAll("_", " ");
 }
 
 export default function MyDesigns() {
@@ -165,14 +166,16 @@ export default function MyDesigns() {
                     </p>
                   </div>
 
-                  <StatusBadge>
-                    {formatStatus(design.moderationStatus)}
+                  <StatusBadge
+                    tone={getModerationStatusTone(design.moderationStatus)}
+                  >
+                    {getModerationStatusLabel(design.moderationStatus)}
                   </StatusBadge>
                 </div>
 
-                {(design.moderationFeedback || design.moderationSummary) && (
-                  <p className="mt-4 text-sm text-slate-600">
-                    {design.moderationFeedback || design.moderationSummary}
+                {getOwnerModerationMessage(design) && (
+                  <p className="mt-4 text-sm leading-6 text-slate-600">
+                    {getOwnerModerationMessage(design)}
                   </p>
                 )}
 

@@ -3,6 +3,10 @@ import { Link, useSearchParams } from "react-router-dom";
 import { getAdminLocalDesigns } from "../../api/designs";
 import { Alert, EmptyState, StatusBadge } from "../../components/ui/Feedback";
 import { PageHeader, PageShell, Panel } from "../../components/ui/Page";
+import {
+  getModerationStatusLabel,
+  getModerationStatusTone,
+} from "../../utils/moderation-display";
 
 const STATUS_TABS = [
   {
@@ -171,11 +175,17 @@ export default function AdminCommunityDesigns() {
                     </td>
 
                     <td className="px-4 py-3">
-                      <StatusBadge>{formatStatus(design.moderationStatus)}</StatusBadge>
+                      <StatusBadge
+                        tone={getModerationStatusTone(design.moderationStatus)}
+                      >
+                        {getModerationStatusLabel(design.moderationStatus)}
+                      </StatusBadge>
                     </td>
 
                     <td className="px-4 py-3">
-                      <StatusBadge tone={design.isPrintReady ? "success" : "neutral"}>
+                      <StatusBadge
+                        tone={design.isPrintReady ? "success" : "neutral"}
+                      >
                         {design.isPrintReady ? "Ready" : "Not Ready"}
                       </StatusBadge>
                     </td>

@@ -43,7 +43,7 @@ import {
   LOCAL_DESIGN_THUMBNAIL_UPLOAD_FIELD,
 } from "../middlewares/local-design-upload.middleware.js";
 import { removeManagedLocalDesignFile } from "../utils/local-design-storage.util.js";
-import { runDesignRulesModeration } from "../services/design-moderation.service.js";
+import { runDesignModerationPipeline } from "../services/design-moderation-pipeline.service.js";
 
 const DESIGN_MODERATION_STATUSES = new Set([
   "draft",
@@ -1136,7 +1136,7 @@ const publishMyDesign = asyncHandler(async (req, res) => {
     );
   }
 
-  const moderation = runDesignRulesModeration(existingLocalDesign);
+  const moderation = await runDesignModerationPipeline(existingLocalDesign);
   const previousStatus = existingLocalDesign.moderation_status;
 
   const connection = await pool.getConnection();
@@ -1153,7 +1153,7 @@ const publishMyDesign = asyncHandler(async (req, res) => {
         moderationFlags: moderation.flags,
         moderationSummary: moderation.summary,
         moderationFeedback: moderation.feedback,
-        moderationDecisionSource: "rules",
+        moderationDecisionSource: moderation.decisionSOurce,
         publishedAt: new Date(),
         reviewedAt:
           moderation.status === "needs_admin_review" ? null : new Date(),

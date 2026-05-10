@@ -87,12 +87,10 @@ function runDesignRulesModeration(design) {
   }
 
   return {
-    status: "needs_admin_review",
-    isActive: false,
-    summary:
-      "Rules screening found no obvious policy concerns, but admin review is required before public visibility.",
-    feedback:
-      "Your design has been submitted for FabLab review before it appears publicly.",
+    status: "auto_approved",
+    isActive: true,
+    summary: "Rules screening found no obvious text policy concerns.",
+    feedback: null,
     flags,
   };
 }
