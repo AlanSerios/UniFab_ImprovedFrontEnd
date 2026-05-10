@@ -7,6 +7,7 @@ import {
   getModerationStatusLabel,
   getModerationStatusTone,
 } from "../../utils/moderation-display";
+import { SelectInput, TextInput } from "../../components/ui/Form";
 
 const STATUS_TABS = [
   {
@@ -32,10 +33,6 @@ const STATUS_TABS = [
   },
 ];
 
-function formatStatus(status) {
-  return String(status || "unknown").replaceAll("_", " ");
-}
-
 function formatDate(value) {
   return value ? new Date(value).toLocaleDateString() : "-";
 }
@@ -46,11 +43,46 @@ export default function AdminCommunityDesigns() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [searchFilter, setSearchFilter] = useState("");
+  const [decisionSourceFilter, setDecisionSourceFilter] = useState("");
+  const [printReadyFilter, setPrintReadyFilter] = useState("");
+
   const currentTab = searchParams.get("tab") || "needs_review";
   const activeTab = useMemo(
     () => STATUS_TABS.find((tab) => tab.value === currentTab) || STATUS_TABS[0],
     [currentTab],
   );
+
+  const visibleDesigns = useMemo(() => {
+    const normalizedSearch = searchFilter.trim().toLowerCase();
+
+    return designs.filter((design) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        [
+          design.title,
+          design.description,
+          design.moderationSummary,
+          design.moderationFeedback,
+          design.uploadedBy ? `user ${design.uploadedBy}` : "",
+        ]
+          .filter(Boolean)
+          .some((value) =>
+            String(value).toLowerCase().includes(normalizedSearch),
+          );
+
+      const matchesDecisionSource =
+        !decisionSourceFilter ||
+        design.moderationDecisionSource === decisionSourceFilter;
+
+      const matchesPrintReady =
+        !printReadyFilter ||
+        (printReadyFilter === "ready" && design.isPrintReady) ||
+        (printReadyFilter === "not_ready" && !design.isPrintReady);
+
+      return matchesSearch && matchesDecisionSource && matchesPrintReady;
+    });
+  }, [designs, searchFilter, decisionSourceFilter, printReadyFilter]);
 
   const updateTabFilter = (nextTab) => {
     setSearchParams(nextTab === "needs_review" ? {} : { tab: nextTab });
@@ -124,6 +156,36 @@ export default function AdminCommunityDesigns() {
           })}
         </div>
 
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <TextInput
+            type="search"
+            value={searchFilter}
+            onChange={(event) => setSearchFilter(event.target.value)}
+            placeholder="Search title, summary, feedback, or owner"
+          />
+
+          <SelectInput
+            value={decisionSourceFilter}
+            onChange={(event) => setDecisionSourceFilter(event.target.value)}
+          >
+            <option value="">All decision sources</option>
+            <option value="rules">Rules</option>
+            <option value="ai">AI</option>
+            <option value="render">Render</option>
+            <option value="admin">Admin</option>
+            <option value="none">None</option>
+          </SelectInput>
+
+          <SelectInput
+            value={printReadyFilter}
+            onChange={(event) => setPrintReadyFilter(event.target.value)}
+          >
+            <option value="">All Print Ready states</option>
+            <option value="ready">Print Ready</option>
+            <option value="not_ready">Not Print Ready</option>
+          </SelectInput>
+        </div>
+
         {isLoading && (
           <p className="mt-6 text-slate-600">Loading community designs...</p>
         )}
@@ -132,7 +194,7 @@ export default function AdminCommunityDesigns() {
           {error}
         </Alert>
 
-        {!isLoading && !error && designs.length === 0 && (
+        {!isLoading && !error && visibleDesigns.length === 0 && (
           <EmptyState
             className="mt-6"
             title="No community designs found."
@@ -155,7 +217,7 @@ export default function AdminCommunityDesigns() {
               </thead>
 
               <tbody className="divide-y divide-slate-200">
-                {designs.map((design) => (
+                {visibleDesigns.map((design) => (
                   <tr key={design.id}>
                     <td className="px-4 py-3">
                       <p className="font-medium text-slate-950">

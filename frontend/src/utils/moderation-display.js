@@ -44,6 +44,61 @@ const SEVERITY_TONES = {
   critical: "danger",
 };
 
+const MODERATION_FLAG_LABELS = {
+  ai_no_text_flags: "AI text check passed",
+  ai_flagged_content: "AI text check flagged content",
+  ai_moderation_disabled: "AI moderation disabled",
+  ai_moderation_unavailable: "AI moderation unavailable",
+  ai_moderation_request_failed: "AI moderation request failed",
+
+  image_no_flags: "Thumbnail image check passed",
+  image_flagged_content: "Thumbnail image flagged content",
+  image_moderation_disabled: "Image moderation disabled",
+  image_moderation_no_thumbnail: "No thumbnail provided",
+  image_moderation_unavailable: "Image moderation unavailable",
+  image_moderation_request_failed: "Image moderation request failed",
+
+  prohibited_content: "Prohibited content",
+  needs_context: "Needs admin context",
+};
+
+const MODERATION_FLAG_DESCRIPTIONS = {
+  ai_no_text_flags:
+    "The AI text moderation check did not find flagged title, description, tag, or metadata content.",
+  ai_flagged_content:
+    "The AI text moderation check found content that needs FabLab review.",
+  ai_moderation_disabled:
+    "AI text moderation is turned off in the backend environment.",
+  ai_moderation_unavailable:
+    "AI text moderation could not run, so the design was routed safely to review.",
+  ai_moderation_request_failed:
+    "The AI text moderation request failed, so the design was routed safely to review.",
+
+  image_no_flags:
+    "The thumbnail image moderation check did not find flagged content.",
+  image_flagged_content:
+    "The thumbnail image moderation check found content that needs FabLab review.",
+  image_moderation_disabled:
+    "Image moderation is turned off in the backend environment.",
+  image_moderation_no_thumbnail:
+    "The design has no uploaded thumbnail, so image moderation was skipped.",
+  image_moderation_unavailable:
+    "Image moderation could not run, so the design was routed safely to review.",
+  image_moderation_request_failed:
+    "The image moderation request failed, so the design was routed safely to review.",
+
+  prohibited_content: "A local rules check found a prohibited term.",
+  needs_context: "A local rules check found a term that needs admin review.",
+};
+
+function getModerationFlagLabel(category) {
+  return MODERATION_FLAG_LABELS[category] || formatFallbackLabel(category);
+}
+
+function getModerationFlagDescription(category) {
+  return MODERATION_FLAG_DESCRIPTIONS[category] || null;
+}
+
 function formatFallbackLabel(value) {
   return String(value || "unknown")
     .replaceAll("_", " ")
@@ -129,6 +184,8 @@ function parseModerationFlags(flags) {
 export {
   getDecisionSourceLabel,
   getDecisionSourceTone,
+  getModerationFlagDescription,
+  getModerationFlagLabel,
   getModerationStatusLabel,
   getModerationStatusTone,
   getOwnerModerationMessage,

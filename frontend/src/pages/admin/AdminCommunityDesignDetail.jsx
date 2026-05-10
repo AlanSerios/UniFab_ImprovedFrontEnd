@@ -22,6 +22,8 @@ import {
   getModerationStatusTone,
   getSeverityTone,
   parseModerationFlags,
+  getModerationFlagDescription,
+  getModerationFlagLabel,
 } from "../../utils/moderation-display";
 
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
@@ -483,9 +485,15 @@ function ModerationFlag({ flag }) {
         </StatusBadge>
 
         <span className="text-sm font-medium text-slate-800">
-          {String(flag.category || "unknown").replaceAll("_", " ")}
+          {getModerationFlagLabel(flag.category)}
         </span>
       </div>
+
+      {getModerationFlagDescription(flag.category) && (
+        <p className="mt-2 text-xs leading-5 text-slate-500">
+          {getModerationFlagDescription(flag.category)}
+        </p>
+      )}
 
       {extraDetails.length > 0 && (
         <dl className="mt-2 space-y-1 text-xs text-slate-600">

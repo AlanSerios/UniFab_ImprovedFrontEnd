@@ -212,19 +212,17 @@ const calculateQuote = asyncHandler(async (req, res) => {
 
     shouldRemoveUploadedModel = false;
 
-    return res
-      .status(200)
-      .json(
-        new ApiResponse(
-          200,
-          {
-            ...result,
-            quoteToken,
-            quoteExpiresAt: quoteRecord.expires_at,
-          },
-          "Quote calculated successfully",
-        ),
-      );
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          ...result,
+          quoteToken,
+          quoteExpiresAt: quoteRecord.expires_at,
+        },
+        "Quote calculated successfully",
+      ),
+    );
   } finally {
     if (shouldRemoveUploadedModel && fileUrl) {
       await removeManagedPrintRequestModelFile(fileUrl);
@@ -256,6 +254,13 @@ const calculateLocalDesignQuote = asyncHandler(async (req, res) => {
 
   if (!localDesign) {
     throw new ApiError(404, "Local design not found");
+  }
+
+  if (!localDesign.is_print_ready) {
+    throw new ApiError(
+      400,
+      "This design is visible in the library but is not marked Print Ready for instant quote.",
+    );
   }
 
   if (!localDesign.file_url) {
@@ -375,7 +380,10 @@ const calculateDesignRequestQuote = asyncHandler(async (req, res) => {
   }
 
   if (!localDesign.file_url) {
-    throw new ApiError(400, "Linked result design does not have a printable file");
+    throw new ApiError(
+      400,
+      "Linked result design does not have a printable file",
+    );
   }
 
   const modelPath = getManagedLocalDesignAbsolutePath(
@@ -496,7 +504,10 @@ const calculateMmfDesignQuote = asyncHandler(async (req, res) => {
   }
 
   if (!linkedLocalDesign.file_url) {
-    throw new ApiError(400, "Linked local design does not have a printable file");
+    throw new ApiError(
+      400,
+      "Linked local design does not have a printable file",
+    );
   }
 
   const modelPath = getManagedLocalDesignAbsolutePath(

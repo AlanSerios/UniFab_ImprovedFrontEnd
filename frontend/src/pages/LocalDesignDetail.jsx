@@ -1,12 +1,29 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { API_BASE_URL } from "../api/client";
 import { getLocalDesignById } from "../api/designs";
-import { calculateLocalDesignQuote } from "../api/quotes";
 import { getActiveMaterials } from "../api/materials";
+import { calculateLocalDesignQuote } from "../api/quotes";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { Alert, EmptyState, StatusBadge } from "../components/ui/Feedback";
 import { Field, SelectInput, TextInput } from "../components/ui/Form";
 import { PageHeader, PageShell, Panel } from "../components/ui/Page";
+
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
+
+function assetUrl(path) {
+  if (!path) return "";
+
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+
+  return `${API_ORIGIN}${path}`;
+}
+
+function formatSourceKind(sourceKind) {
+  return sourceKind === "community" ? "Community Design" : "Lab Design";
+}
 
 export default function LocalDesignDetail() {
   const { designId } = useParams();
@@ -130,7 +147,10 @@ export default function LocalDesignDetail() {
       <Panel>
         <PageHeader
           title={design?.title || "Local design"}
-          description={design?.description || "Quote a lab-managed local design."}
+          description={
+            design?.description ||
+            "View design details, download the file, and request an instant quote when available."
+          }
           action={
             <ButtonLink to="/designs" variant="secondary">
               Back to designs
@@ -161,34 +181,146 @@ export default function LocalDesignDetail() {
 
         {design && (
           <div className="mt-6 space-y-6">
-            <Panel className="grid gap-4 bg-slate-50 shadow-none sm:grid-cols-2">
-              <SummaryItem label="Material">{design.material || "-"}</SummaryItem>
-              <SummaryItem label="Dimensions">
-                {design.dimensions || "-"}
-              </SummaryItem>
-              <SummaryItem label="License">
-                {design.licenseType || "-"}
-              </SummaryItem>
-              <SummaryItem label="Category">
-                {design.category?.name || "-"}
-              </SummaryItem>
-              <SummaryItem label="Tags">
-                {(design.tags || []).length > 0
-                  ? design.tags.map((tag) => tag.name).join(", ")
-                  : "-"}
-              </SummaryItem>
-              <SummaryItem label="Status">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,420px)_1fr]">
+              <Panel className="bg-slate-50 shadow-none">
+                <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+                  {design.thumbnailUrl ? (
+                    <img
+                      src={assetUrl(design.thumbnailUrl)}
+                      alt={design.title || "Design thumbnail"}
+                      className="h-72 w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-72 items-center justify-center bg-slate-100 text-sm text-slate-500">
+                      No thumbnail uploaded
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <StatusBadge>
+                    {formatSourceKind(design.sourceKind)}
+                  </StatusBadge>
+
                   <StatusBadge tone={design.isActive ? "success" : "neutral"}>
                     {design.isActive ? "Available" : "Unavailable"}
                   </StatusBadge>
-              </SummaryItem>
-            </Panel>
+
+                  <StatusBadge
+                    tone={design.isPrintReady ? "success" : "warning"}
+                  >
+                    {design.isPrintReady ? "Print Ready" : "Not Print Ready"}
+                  </StatusBadge>
+                </div>
+
+                {design.fileUrl ? (
+                  <a
+                    href={assetUrl(design.fileUrl)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-4 inline-flex w-full items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 transition hover:border-slate-400 hover:bg-slate-50"
+                  >
+                    Download Design File
+                  </a>
+                ) : (
+                  <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    No downloadable design file is available.
+                  </p>
+                )}
+              </Panel>
+
+              <Panel className="bg-slate-50 shadow-none">
+                <h2 className="text-lg font-semibold text-slate-950">
+                  Design details
+                </h2>
+
+                {design.description && (
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+                    {design.description}
+                  </p>
+                )}
+
+                <div className="mt-6 grid gap-4 text-sm sm:grid-cols-2">
+                  <SummaryItem label="Material">
+                    {design.material || "-"}
+                  </SummaryItem>
+
+                  <SummaryItem label="Dimensions">
+                    {design.dimensions || "-"}
+                  </SummaryItem>
+
+                  <SummaryItem label="License">
+                    {design.licenseType || "-"}
+                  </SummaryItem>
+
+                  <SummaryItem label="Category">
+                    {design.category?.name || "-"}
+                  </SummaryItem>
+
+                  <SummaryItem label="Source">
+                    {formatSourceKind(design.sourceKind)}
+                  </SummaryItem>
+
+                  <SummaryItem label="Availability">
+                    <StatusBadge tone={design.isActive ? "success" : "neutral"}>
+                      {design.isActive ? "Available" : "Unavailable"}
+                    </StatusBadge>
+                  </SummaryItem>
+
+                  <SummaryItem label="Print Ready">
+                    <StatusBadge
+                      tone={design.isPrintReady ? "success" : "warning"}
+                    >
+                      {design.isPrintReady
+                        ? "Ready for Instant Quote"
+                        : "Requires FabLab Verification"}
+                    </StatusBadge>
+                  </SummaryItem>
+                </div>
+
+                <div className="mt-6">
+                  <p className="text-sm font-medium text-slate-500">Tags</p>
+
+                  {(design.tags || []).length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {design.tags.map((tag) => (
+                        <StatusBadge key={tag.id}>{tag.name}</StatusBadge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-sm text-slate-600">
+                      No tags provided.
+                    </p>
+                  )}
+                </div>
+              </Panel>
+            </div>
+
+            {!design.isPrintReady && (
+              <Alert type="info">
+                This design is approved for public viewing, but it is not yet
+                marked Print Ready. Instant quote is available only after FabLab
+                verifies the printable file.
+              </Alert>
+            )}
 
             <form
               onSubmit={handleQuote}
               className="rounded-lg border border-slate-200 bg-white p-5 shadow-none sm:p-6"
             >
-              <h2 className="text-lg font-semibold">Quote this design</h2>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold">Quote this design</h2>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Select material, print quality, infill, and quantity to
+                    generate an instant estimate.
+                  </p>
+                </div>
+
+                <StatusBadge tone={design.isPrintReady ? "success" : "warning"}>
+                  {design.isPrintReady ? "Quote Available" : "Not Print Ready"}
+                </StatusBadge>
+              </div>
 
               <div className="mt-4 grid gap-4 sm:grid-cols-4">
                 <Field label="Material">
@@ -258,11 +390,16 @@ export default function LocalDesignDetail() {
                   isQuoting ||
                   isLoadingMaterials ||
                   materials.length === 0 ||
-                  !design.isActive
+                  !design.isActive ||
+                  !design.isPrintReady
                 }
                 className="mt-4"
               >
-                {isQuoting ? "Calculating..." : "View quote"}
+                {isQuoting
+                  ? "Calculating..."
+                  : design.isPrintReady
+                    ? "View quote"
+                    : "Not Print Ready"}
               </Button>
             </form>
           </div>
