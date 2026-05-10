@@ -16,6 +16,12 @@ import {
   createDesignOverride,
   updateDesignOverride,
   deleteDesignOverride,
+  listMyDesigns,
+  createMyDesignDraft,
+  publishMyDesign,
+  moderateLocalDesign,
+  updateLocalDesignPrintReady,
+  updateMyDesign,
 } from "../controllers/designs.controller.js";
 import { validate } from "../middlewares/validator.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -31,6 +37,9 @@ import {
   overrideIdValidator,
   createDesignOverrideValidator,
   updateDesignOverrideValidator,
+  createMyDesignValidator,
+  moderateLocalDesignValidator,
+  updateLocalDesignPrintReadyValidator,
 } from "../validators/designs.validator.js";
 import {
   authenticatedReadRateLimiter,
@@ -89,6 +98,61 @@ router
     localDesignIdValidator(),
     validate,
     deleteLocalDesign,
+  );
+
+router
+  .route("/admin/local/:designId/moderate")
+  .patch(
+    writeRateLimiter,
+    verifyJWT,
+    verifyAdmin,
+    moderateLocalDesignValidator(),
+    validate,
+    moderateLocalDesign,
+  );
+
+router
+  .route("/admin/local/:designId/print-ready")
+  .patch(
+    writeRateLimiter,
+    verifyJWT,
+    verifyAdmin,
+    updateLocalDesignPrintReadyValidator(),
+    validate,
+    updateLocalDesignPrintReady,
+  );
+
+router
+  .route("/my")
+  .get(authenticatedReadRateLimiter, verifyJWT, listMyDesigns)
+  .post(
+    uploadRateLimiter,
+    verifyJWT,
+    localDesignUploadMiddleware,
+    createMyDesignValidator(),
+    validate,
+    createMyDesignDraft,
+  );
+
+router
+  .route("/my/:designId/publish")
+  .patch(
+    writeRateLimiter,
+    verifyJWT,
+    localDesignIdValidator(),
+    validate,
+    publishMyDesign,
+  );
+
+router
+  .route("/my/:designId")
+  .patch(
+    uploadRateLimiter,
+    verifyJWT,
+    localDesignUploadMiddleware,
+    updateLocalDesignValidator(),
+    validate,
+    updateMyDesign,
   );
 
 router

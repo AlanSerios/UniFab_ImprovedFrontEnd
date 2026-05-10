@@ -168,7 +168,10 @@ export default function UploadQuote() {
             />
           </Field>
 
-          <Field label="Quantity">
+          <Field
+            label="Quantity"
+            hint="Each file is sliced as one copy. The final quote multiplies the per-copy estimate by quantity."
+          >
             <TextInput
               type="number"
               min="1"

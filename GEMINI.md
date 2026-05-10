@@ -1,4 +1,4 @@
-# AGENTS.md
+# GEMINI.md
 
 ## Project Overview
 - **Project:** UniFab
@@ -93,7 +93,8 @@
 - Show admins moderation flags, AI/rule results, owner, submitted date, file previews/renders, and override controls for client-uploaded designs.
 - Keep admin screens practical and task-oriented: pending review, awaiting payment, payment verified, active printing, and completed requests should be easy to scan.
 
-## Do
+## Gemini Guidelines (Do)
+- Always act as Gemini, functioning as an expert AI developer for the UniFab project.
 - Read the existing code and database shape before changing behavior.
 - Match the current project patterns unless there is a clear reason to improve them.
 - Keep changes small, scoped, and implementation-aware.
@@ -101,7 +102,7 @@
 - Prefer explicit validation and clear error messages.
 - Run the relevant build/lint checks after frontend changes when practical.
 
-## Don't
+## Gemini Constraints (Don't)
 - Do not add unrelated marketplace, shipping, seller, or online payment workflows.
 - Do not introduce new dependencies without a clear reason.
 - Do not hardcode secrets, API keys, or credentials in committed files.
@@ -120,7 +121,8 @@
 - Do not force push.
 - Do not revert unrelated user changes.
 
-## Response Style
-- Be clear, concise, and practical.
+## Gemini Response Style
+- Be clear, concise, and practical in all responses.
 - Explain workflow-impacting decisions in plain English.
 - Call out assumptions, gaps, and risks when requirements are still evolving.
+- Make sure to follow best practices for code quality and structure as an AI pair programmer.

@@ -41,6 +41,8 @@ function calculateQuoteEstimate({
     estimatedPrintTimeMinutes,
     filamentWeightGrams,
     filamentLengthMeters,
+    modelDimensionsMm,
+    buildVolumeMm,
     profile,
   } = slicerResult;
 
@@ -99,6 +101,39 @@ function calculateQuoteEstimate({
     );
   }
 
+  if (modelDimensionsMm && buildVolumeMm) {
+    const axes = [
+      ["X", modelDimensionsMm.x, buildVolumeMm.x],
+      ["Y", modelDimensionsMm.y, buildVolumeMm.y],
+      ["Z", modelDimensionsMm.z, buildVolumeMm.z],
+    ];
+
+    const nearLimitAxes = axes
+      .filter(([, modelSize, buildLimit]) => {
+        return (
+          Number.isFinite(modelSize) &&
+          Number.isFinite(buildLimit) &&
+          buildLimit > 0 &&
+          modelSize / buildLimit >= 0.9
+        );
+      })
+      .map(([axis, modelSize, buildLimit]) => {
+        return `${axis}: ${Math.round(modelSize)}mm of ${Math.round(buildLimit)}mm`;
+      });
+
+    if (nearLimitAxes.length > 0) {
+      warnings.push(
+        `Model size is near the configured printer limits (${nearLimitAxes.join(", ")}). Confirm orientation and scale before submission.`,
+      );
+    }
+  }
+
+  if (quantity > 1) {
+    warnings.push(
+      "Quantity is priced as multiple copies of the per-copy slice. Layout sharing and batch-print time are not assumed in this estimate.",
+    );
+  }
+
   // Material-specific DFM (Design for Manufacturing) warnings
   if (profile?.material) {
     const mat = profile.material.toLowerCase();
@@ -124,6 +159,8 @@ function calculateQuoteEstimate({
     estimatedPrintTimeMinutes: Number(estimatedPrintTimeMinutes),
     filamentWeightGrams: Number(filamentWeightGrams),
     filamentLengthMeters: Number(filamentLengthMeters),
+    modelDimensionsMm,
+    buildVolumeMm,
     profile,
     warnings,
     costBreakdown: {

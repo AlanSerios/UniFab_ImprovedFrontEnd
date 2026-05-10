@@ -93,3 +93,41 @@ export function deleteAdminDesignOverride(overrideId) {
     method: "DELETE",
   });
 }
+
+export function getMyDesigns(params = {}) {
+  return apiRequest(`/designs/my${buildQueryString(params)}`);
+}
+
+export function createMyDesignDraft(formData) {
+  return apiRequest("/designs/my", {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export function updateMyDesign(designId, formData) {
+  return apiRequest(`/designs/my/${designId}`, {
+    method: "PATCH",
+    body: formData,
+  });
+}
+
+export function publishMyDesign(designId) {
+  return apiRequest(`/designs/my/${designId}/publish`, {
+    method: "PATCH",
+  });
+}
+
+export function moderateAdminLocalDesign(designId, payload) {
+  return apiRequest(`/designs/admin/local/${designId}/moderate`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateAdminLocalDesignPrintReady(designId, payload) {
+  return apiRequest(`/designs/admin/local/${designId}/print-ready`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}

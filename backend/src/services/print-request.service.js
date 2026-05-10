@@ -6,6 +6,7 @@ import {
   PRINT_REQUEST_STATUSES,
   PRINT_REQUEST_STATUS_TRANSITIONS,
   PRINT_REQUEST_STATUS_LABELS,
+  PRINT_REQUEST_TERMS_VERSION,
 } from "../constants/print-request.constants.js";
 import {
   createPrintRequest,
@@ -18,17 +19,12 @@ import {
   updatePrintRequestStatusById,
   archivePrintRequestById,
   deletePrintRequestById,
-  attachReceiptToPrintRequest,
 } from "../models/print-request.model.js";
 import {
   buildPrintRequestModelPublicPath,
-  buildPrintRequestPaymentSlipPublicPath,
-  buildPrintRequestReceiptPublicPath,
   getManagedPrintRequestModelAbsolutePath,
-  getManagedPrintRequestReceiptAbsolutePath,
   removeManagedPrintRequestModelFile,
   removeManagedPrintRequestPaymentSlipFile,
-  removeManagedPrintRequestReceiptFile,
 } from "../utils/print-request-storage.util.js";
 import { getManagedLocalDesignAbsolutePath } from "../utils/local-design-storage.util.js";
 import { findUserById } from "../models/user.model.js";
@@ -158,6 +154,17 @@ async function sendPrintRequestStatusEmail({ printRequest, note }) {
 }
 
 async function submitPrintRequest({ clientId, user, body, file }) {
+  if (!user?.isEmailVerified) {
+    throw new ApiError(
+      403,
+      "Please verify your email before submitting a print request.",
+    );
+  }
+
+  if (body.termsAccepted !== true && body.termsAccepted !== "true") {
+    throw new ApiError(400, "Terms and Conditions must be accepted");
+  }
+
   if (file) {
     const uploadedFileUrl = buildPrintRequestModelPublicPath(file);
 
@@ -269,6 +276,8 @@ async function submitPrintRequest({ clientId, user, body, file }) {
         receiptMimeType: null,
         receiptSize: null,
         receiptUploadedAt: null,
+        termsAcceptedAt: new Date(),
+        termsVersion: PRINT_REQUEST_TERMS_VERSION,
         status: PRINT_REQUEST_STATUSES.PENDING_REVIEW,
         rejectionReason: null,
       },
@@ -413,7 +422,6 @@ async function deleteAdminPrintRequest({ requestId }) {
     removeManagedPrintRequestPaymentSlipFile(
       existingPrintRequest.payment_slip_url,
     ),
-    removeManagedPrintRequestReceiptFile(existingPrintRequest.receipt_url),
   ]);
 
   return { deleted: true };
@@ -585,209 +593,6 @@ async function undoAdminPrintRequestStatus({ requestId, adminId }) {
   }
 }
 
-async function uploadClientPrintRequestReceipt({ clientId, requestId, file }) {
-  if (!file) {
-    throw new ApiError(400, "Receipt file is required");
-  }
-
-  const receiptUrl = buildPrintRequestReceiptPublicPath(file);
-
-  if (!receiptUrl) {
-    throw new ApiError(500, "Unable to resolve uploaded receipt file path");
-  }
-
-  try {
-    const existingPrintRequest = await getPrintRequestByIdForOwner(
-      requestId,
-      clientId,
-    );
-
-    if (!existingPrintRequest) {
-      throw new ApiError(404, "Print request not found");
-    }
-
-    if (
-      existingPrintRequest.status !== PRINT_REQUEST_STATUSES.PAYMENT_SLIP_ISSUED
-    ) {
-      throw new ApiError(
-        400,
-        "Receipt can only be uploaded after a payment slip has been issued",
-      );
-    }
-
-    const connection = await pool.getConnection();
-
-    try {
-      await connection.beginTransaction();
-
-      const updatedPrintRequest = await attachReceiptToPrintRequest(
-        requestId,
-        {
-          receiptUrl,
-          receiptOriginalName: file.originalname,
-          receiptMimeType: file.mimetype,
-          receiptSize: file.size,
-          status: PRINT_REQUEST_STATUSES.PAYMENT_SUBMITTED,
-        },
-        connection,
-      );
-
-      await createPrintRequestStatusHistory(
-        {
-          printRequestId: requestId,
-          status: PRINT_REQUEST_STATUSES.PAYMENT_SUBMITTED,
-          changedBy: clientId,
-          changedByRole: "client",
-          note: "Payment receipt uploaded by client",
-        },
-        connection,
-      );
-
-      await connection.commit();
-
-      const statusHistory = await getPrintRequestStatusHistoryByRequestId(
-        updatedPrintRequest.id,
-      );
-
-      return {
-        printRequest: updatedPrintRequest,
-        statusHistory,
-      };
-    } catch (error) {
-      await connection.rollback();
-      throw error;
-    } finally {
-      connection.release();
-    }
-  } catch (error) {
-    await removeManagedPrintRequestReceiptFile(receiptUrl);
-    throw error;
-  }
-}
-
-async function uploadAdminPrintRequestPaymentSlip({
-  requestId,
-  adminId,
-  body,
-  file,
-}) {
-  if (!file) {
-    throw new ApiError(400, "Payment slip file is required");
-  }
-
-  const paymentSlipUrl = buildPrintRequestPaymentSlipPublicPath(file);
-
-  if (!paymentSlipUrl) {
-    throw new ApiError(500, "Unable to resolve uploaded payment slip path");
-  }
-
-  try {
-    const existingPrintRequest = await getPrintRequestById(requestId);
-
-    if (!existingPrintRequest) {
-      throw new ApiError(404, "Print request not found");
-    }
-
-    const nextStatus = PRINT_REQUEST_STATUSES.PAYMENT_SLIP_ISSUED;
-
-    assertValidStatusTransition(existingPrintRequest.status, nextStatus);
-
-    const confirmedCost = normalizeOptionalMoney(
-      body.confirmedCost,
-      "Confirmed cost",
-    );
-
-    if (confirmedCost === undefined) {
-      throw new ApiError(
-        400,
-        "Confirmed cost is required when uploading a payment slip",
-      );
-    }
-
-    const connection = await pool.getConnection();
-
-    try {
-      await connection.beginTransaction();
-
-      const updatedPrintRequest = await updatePrintRequestStatusById(
-        requestId,
-        {
-          status: nextStatus,
-          rejectionReason: existingPrintRequest.rejection_reason,
-          confirmedCost,
-          paymentSlipUrl,
-        },
-        connection,
-      );
-
-      await createPrintRequestStatusHistory(
-        {
-          printRequestId: requestId,
-          status: nextStatus,
-          changedBy: adminId,
-          changedByRole: "admin",
-          note:
-            normalizeOptionalText(body.note) ||
-            "Payment slip uploaded and issued",
-        },
-        connection,
-      );
-
-      await connection.commit();
-
-      const statusHistory = await getPrintRequestStatusHistoryByRequestId(
-        updatedPrintRequest.id,
-      );
-
-      await sendPrintRequestStatusEmail({
-        printRequest: updatedPrintRequest,
-        note: normalizeOptionalText(body.note) || null,
-      });
-
-      return {
-        printRequest: updatedPrintRequest,
-        statusHistory,
-      };
-    } catch (error) {
-      await connection.rollback();
-      throw error;
-    } finally {
-      connection.release();
-    }
-  } catch (error) {
-    await removeManagedPrintRequestPaymentSlipFile(paymentSlipUrl);
-    throw error;
-  }
-}
-
-async function getPrintRequestReceiptForUser({ user, requestId }) {
-  const printRequest = user?.isAdmin
-    ? await getPrintRequestById(requestId)
-    : await getPrintRequestByIdForOwner(requestId, user.id);
-
-  if (!printRequest) {
-    throw new ApiError(404, "Print request not found");
-  }
-
-  if (!printRequest.receipt_url) {
-    throw new ApiError(404, "Receipt not found for this print request");
-  }
-
-  const receiptPath = getManagedPrintRequestReceiptAbsolutePath(
-    printRequest.receipt_url,
-  );
-
-  if (!receiptPath) {
-    throw new ApiError(500, "Stored receipt path is invalid");
-  }
-
-  return {
-    receiptPath,
-    originalName: printRequest.receipt_original_name || "receipt",
-    mimeType: printRequest.receipt_mime_type || "application/octet-stream",
-  };
-}
-
 export {
   submitPrintRequest,
   listClientPrintRequests,
@@ -796,8 +601,5 @@ export {
   updateAdminPrintRequestStatus,
   archiveAdminPrintRequest,
   deleteAdminPrintRequest,
-  uploadAdminPrintRequestPaymentSlip,
-  uploadClientPrintRequestReceipt,
-  getPrintRequestReceiptForUser,
   undoAdminPrintRequestStatus,
 };

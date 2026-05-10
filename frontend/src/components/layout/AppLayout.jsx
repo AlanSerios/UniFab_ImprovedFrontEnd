@@ -47,6 +47,7 @@ export default function AppLayout() {
                 <HeaderLink to="/design-requests">Design Requests</HeaderLink>
                 <HeaderLink to="/requests">Requests</HeaderLink>
                 <HeaderLink to="/printers">Printers</HeaderLink>
+                <HeaderLink to="/my-designs">My Designs</HeaderLink>
 
                 {isAdmin && <HeaderLink to="/admin">Admin</HeaderLink>}
 

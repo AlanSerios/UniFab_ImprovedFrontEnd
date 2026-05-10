@@ -42,10 +42,12 @@ async function createPrintRequest(payload, connection = null) {
       receipt_mime_type,
       receipt_size,
       receipt_uploaded_at,
+      terms_accepted_at,
+      terms_version,
       status,
       rejection_reason
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const [result] = await executor.query(sql, [
@@ -74,6 +76,8 @@ async function createPrintRequest(payload, connection = null) {
     payload.receiptMimeType ?? null,
     payload.receiptSize ?? null,
     payload.receiptUploadedAt ?? null,
+    payload.termsAcceptedAt ?? null,
+    payload.termsVersion ?? null,
     payload.status,
     payload.rejectionReason ?? null,
   ]);
@@ -112,6 +116,8 @@ async function getPrintRequestById(requestId, connection = null) {
       receipt_mime_type,
       receipt_size,
       receipt_uploaded_at,
+      terms_accepted_at,
+      terms_version,
       status,
       rejection_reason,
       archived_at,
@@ -162,6 +168,8 @@ async function getPrintRequestByIdForOwner(
       receipt_mime_type,
       receipt_size,
       receipt_uploaded_at,
+      terms_accepted_at,
+      terms_version,
       status,
       rejection_reason,
       archived_at,
@@ -227,6 +235,8 @@ async function getPaginatedPrintRequestsByOwner(
       receipt_mime_type,
       receipt_size,
       receipt_uploaded_at,
+      terms_accepted_at,
+      terms_version,
       status,
       rejection_reason,
       archived_at,
@@ -311,6 +321,8 @@ async function getPaginatedAllPrintRequests({
       receipt_mime_type,
       receipt_size,
       receipt_uploaded_at,
+      terms_accepted_at,
+      terms_version,
       status,
       rejection_reason,
       archived_at,
@@ -438,41 +450,6 @@ async function getPrintRequestStatusHistoryByRequestId(
   return rows;
 }
 
-async function attachReceiptToPrintRequest(
-  requestId,
-  payload,
-  connection = null,
-) {
-  const executor = getExecutor(connection);
-
-  const sql = `
-    UPDATE print_requests
-    SET
-      receipt_url = ?,
-      receipt_original_name = ?,
-      receipt_mime_type = ?,
-      receipt_size = ?,
-      receipt_uploaded_at = NOW(),
-      status = ?
-    WHERE id = ?
-  `;
-
-  const [result] = await executor.query(sql, [
-    payload.receiptUrl,
-    payload.receiptOriginalName,
-    payload.receiptMimeType,
-    payload.receiptSize,
-    payload.status,
-    requestId,
-  ]);
-
-  if (result.affectedRows === 0) {
-    return null;
-  }
-
-  return getPrintRequestById(requestId, connection);
-}
-
 async function archivePrintRequestById(requestId, archivedBy) {
   const sql = `
     UPDATE print_requests
@@ -510,7 +487,6 @@ export {
   updatePrintRequestStatusById,
   archivePrintRequestById,
   deletePrintRequestById,
-  attachReceiptToPrintRequest,
   createPrintRequestStatusHistory,
   getPrintRequestStatusHistoryById,
   getPrintRequestStatusHistoryByRequestId,

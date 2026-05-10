@@ -6,6 +6,20 @@ function getExecutor(connection) {
 
 const LOCAL_DESIGN_SELECT = `
   ld.id,
+  ld.source_kind,
+  ld.moderation_status,
+  ld.is_print_ready,
+  ld.ownership_confirmed,
+  ld.policy_acknowledged,
+  ld.moderation_flags,
+  ld.moderation_summary,
+  ld.moderation_feedback,
+  ld.moderation_decision_source,
+  ld.published_at,
+  ld.reviewed_at,
+  ld.reviewed_by,
+  ld.print_ready_at,
+  ld.print_ready_by,
   ld.title,
   ld.description,
   ld.thumbnail_url,
@@ -93,24 +107,67 @@ async function getActiveLocalDesigns() {
       ${LOCAL_DESIGN_SELECT}
     FROM local_designs ld
     LEFT JOIN design_categories dc ON dc.id = ld.category_id
-    WHERE ld.is_active = TRUE AND ld.archived_at IS NULL
+    WHERE ld.is_active = TRUE AND ld.archived_at IS NULL AND ld.moderation_status IN ('auto_approved', 'admin_approved')
     ORDER BY ld.created_at DESC
   `;
 
   return getLocalDesignRows(sql);
 }
 
-async function getAllLocalDesignsForAdmin({ archived = false } = {}) {
+async function getAllLocalDesignsForAdmin({
+  archived = false,
+  sourceKind = null,
+  statuses = [],
+} = {}) {
+  const params = [];
+  const where = [`ld.archived_at ${archived ? "IS NOT NULL" : "IS NULL"}`];
+
+  if (sourceKind) {
+    where.push("ld.source_kind = ?");
+    params.push(sourceKind);
+  }
+
+  if (Array.isArray(statuses) && statuses.length > 0) {
+    where.push(
+      `ld.moderation_status IN (${statuses.map(() => "?").join(", ")})`,
+    );
+    params.push(...statuses);
+  }
+
   const sql = `
     SELECT
       ${LOCAL_DESIGN_SELECT}
     FROM local_designs ld
     LEFT JOIN design_categories dc ON dc.id = ld.category_id
-    WHERE ld.archived_at ${archived ? "IS NOT NULL" : "IS NULL"}
+    WHERE ${where.join(" AND ")}
     ORDER BY ld.created_at DESC
   `;
 
-  return getLocalDesignRows(sql);
+  return getLocalDesignRows(sql, params);
+}
+
+async function getLocalDesignsByOwner(ownerId, { status = null } = {}) {
+  const params = [ownerId];
+  let statusSql = "";
+
+  if (status) {
+    statusSql = "AND ld.moderation_status = ?";
+    params.push(status);
+  }
+
+  const sql = `
+    SELECT
+      ${LOCAL_DESIGN_SELECT}
+    FROM local_designs ld
+    LEFT JOIN design_categories dc ON dc.id = ld.category_id
+    WHERE ld.uploaded_by = ?
+      AND ld.source_kind = 'community'
+      AND ld.archived_at IS NULL
+      ${statusSql}
+    ORDER BY ld.updated_at DESC, ld.id DESC
+  `;
+
+  return getLocalDesignRows(sql, params);
 }
 
 async function getLocalDesignById(designId, connection = null) {
@@ -141,22 +198,36 @@ async function getLocalDesignByIdForAdmin(designId, connection = null) {
   return rows[0] || null;
 }
 
-async function createLocalDesign({
-  title,
-  description,
-  thumbnailUrl,
-  fileUrl,
-  material,
-  dimensions,
-  licenseType,
-  categoryId,
-  uploadedBy,
-  isActive = true,
-}, connection = null) {
+async function createLocalDesign(
+  {
+    title,
+    description,
+    thumbnailUrl,
+    fileUrl,
+    material,
+    dimensions,
+    licenseType,
+    categoryId,
+    uploadedBy,
+    isActive = true,
+    sourceKind = "lab",
+    moderationStatus = "admin_approved",
+    isPrintReady = true,
+    ownershipConfirmed = false,
+    policyAcknowledged = false,
+    moderationFlags = null,
+    moderationSummary = null,
+    moderationFeedback = null,
+    moderationDecisionSource = "none",
+    publishedAt = null,
+  },
+  connection = null,
+) {
   const executor = getExecutor(connection);
 
   const sql = `
     INSERT INTO local_designs (
+      source_kind,
       title,
       description,
       thumbnail_url,
@@ -165,13 +236,23 @@ async function createLocalDesign({
       dimensions,
       license_type,
       category_id,
+      moderation_status,
+      is_print_ready,
+      ownership_confirmed,
+      policy_acknowledged,
       is_active,
+      moderation_flags,
+      moderation_summary,
+      moderation_feedback,
+      moderation_decision_source,
+      published_at,
       uploaded_by
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const [result] = await executor.query(sql, [
+    sourceKind,
     title,
     description,
     thumbnailUrl,
@@ -180,7 +261,16 @@ async function createLocalDesign({
     dimensions,
     licenseType,
     categoryId ?? null,
+    moderationStatus,
+    isPrintReady,
+    ownershipConfirmed,
+    policyAcknowledged,
     isActive,
+    moderationFlags ? JSON.stringify(moderationFlags) : null,
+    moderationSummary,
+    moderationFeedback,
+    moderationDecisionSource,
+    publishedAt,
     uploadedBy,
   ]);
 
@@ -225,6 +315,68 @@ async function updateLocalDesignById(designId, payload, connection = null) {
   return getLocalDesignByIdForAdmin(designId);
 }
 
+async function updateLocalDesignModerationState(
+  designId,
+  {
+    moderationStatus,
+    isActive,
+    isPrintReady,
+    moderationFlags = null,
+    moderationSummary = null,
+    moderationFeedback = null,
+    moderationDecisionSource = "none",
+    reviewedBy = null,
+    publishedAt = null,
+    reviewedAt = null,
+    printReadyAt = null,
+    printReadyBy = null,
+  },
+  connection = null,
+) {
+  const executor = getExecutor(connection);
+
+  const [result] = await executor.query(
+    `
+      UPDATE local_designs
+      SET
+        moderation_status = ?,
+        is_active = ?,
+        is_print_ready = ?,
+        moderation_flags = ?,
+        moderation_summary = ?,
+        moderation_feedback = ?,
+        moderation_decision_source = ?,
+        reviewed_by = ?,
+        published_at = COALESCE(?, published_at),
+        reviewed_at = ?,
+        print_ready_at = ?,
+        print_ready_by = ?
+      WHERE id = ?
+    `,
+    [
+      moderationStatus,
+      isActive,
+      isPrintReady,
+      moderationFlags ? JSON.stringify(moderationFlags) : null,
+      moderationSummary,
+      moderationFeedback,
+      moderationDecisionSource,
+      reviewedBy,
+      publishedAt,
+      reviewedAt,
+      printReadyAt,
+      printReadyBy,
+      designId,
+    ],
+  );
+
+  if (result.affectedRows === 0) {
+    return null;
+  }
+
+  return getLocalDesignByIdForAdmin(designId, connection);
+}
+
 async function deactivateLocalDesignById(designId) {
   const sql = `
     UPDATE local_designs
@@ -256,7 +408,7 @@ async function archiveLocalDesignById(designId, archivedBy) {
     return null;
   }
 
-  return getLocalDesignByIdForAdmin(designId, connection);
+  return getLocalDesignByIdForAdmin(designId);
 }
 
 async function countLocalDesignReferences(designId) {
@@ -444,9 +596,10 @@ async function replaceLocalDesignTags({
   const executor = getExecutor(connection);
   const uniqueTagIds = [...new Set(tagIds.map(Number).filter(Boolean))];
 
-  await executor.query("DELETE FROM local_design_tags WHERE local_design_id = ?", [
-    localDesignId,
-  ]);
+  await executor.query(
+    "DELETE FROM local_design_tags WHERE local_design_id = ?",
+    [localDesignId],
+  );
 
   if (uniqueTagIds.length === 0) {
     return [];
@@ -484,21 +637,144 @@ async function deleteLocalDesignById(designId) {
   return result.affectedRows > 0;
 }
 
+async function createLocalDesignAuditEvent(
+  {
+    localDesignId,
+    actorId = null,
+    actorType = "system",
+    eventType,
+    fromStatus = null,
+    toStatus = null,
+    summary = null,
+    metadata = null,
+  },
+  connection = null,
+) {
+  const executor = getExecutor(connection);
+
+  await executor.query(
+    `
+      INSERT INTO local_design_audit_events (
+        local_design_id,
+        actor_id,
+        actor_type,
+        event_type,
+        from_status,
+        to_status,
+        summary,
+        metadata
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      localDesignId,
+      actorId,
+      actorType,
+      eventType,
+      fromStatus,
+      toStatus,
+      summary,
+      metadata ? JSON.stringify(metadata) : null,
+    ],
+  );
+}
+
+async function updateCommunityDesignById(designId, payload, connection = null) {
+  const executor = getExecutor(connection);
+
+  const sql = `
+    UPDATE local_designs
+    SET
+      title = ?,
+      description = ?,
+      thumbnail_url = ?,
+      file_url = ?,
+      material = ?,
+      dimensions = ?,
+      license_type = ?,
+      category_id = ?,
+      ownership_confirmed = ?,
+      policy_acknowledged = ?,
+      moderation_status = ?,
+      is_active = ?,
+      is_print_ready = ?,
+      moderation_feedback = ?,
+      moderation_summary = ?,
+      moderation_decision_source = ?
+    WHERE id = ?
+      AND source_kind = 'community'
+  `;
+
+  const [result] = await executor.query(sql, [
+    payload.title,
+    payload.description,
+    payload.thumbnailUrl,
+    payload.fileUrl,
+    payload.material,
+    payload.dimensions,
+    payload.licenseType,
+    payload.categoryId ?? null,
+    payload.ownershipConfirmed,
+    payload.policyAcknowledged,
+    payload.moderationStatus,
+    payload.isActive,
+    payload.isPrintReady,
+    payload.moderationFeedback,
+    payload.moderationSummary,
+    payload.moderationDecisionSource,
+    designId,
+  ]);
+
+  if (result.affectedRows === 0) return null;
+  return getLocalDesignByIdForAdmin(designId, connection);
+}
+
+async function getLocalDesignAuditEvents(localDesignId, connection = null) {
+  const executor = getExecutor(connection);
+
+  const [rows] = await executor.query(
+    `
+      SELECT
+        id,
+        local_design_id,
+        actor_id,
+        actor_type,
+        event_type,
+        from_status,
+        to_status,
+        summary,
+        metadata,
+        created_at
+      FROM local_design_audit_events
+      WHERE local_design_id = ?
+      ORDER BY created_at DESC, id DESC
+    `,
+    [localDesignId],
+  );
+
+  return rows;
+}
+
 export {
   getActiveLocalDesigns,
   getAllLocalDesignsForAdmin,
+  getLocalDesignsByOwner,
   getLocalDesignById,
   getLocalDesignByIdForAdmin,
+  getLocalDesignAuditEvents,
+  getDesignCategoryById,
   createLocalDesign,
   updateLocalDesignById,
+  updateLocalDesignModerationState,
   deactivateLocalDesignById,
   archiveLocalDesignById,
   countLocalDesignReferences,
   deleteLocalDesignById,
+  createLocalDesignAuditEvent,
   listDesignCategories,
   listDesignTags,
-  getDesignCategoryById,
   upsertDesignCategoryByName,
   upsertDesignTagByName,
   replaceLocalDesignTags,
+  updateCommunityDesignById,
 };

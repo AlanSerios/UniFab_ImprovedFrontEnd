@@ -8,9 +8,6 @@ import {
   updateAdminPrintRequestStatus,
   archiveAdminPrintRequest,
   deleteAdminPrintRequest,
-  uploadAdminPrintRequestPaymentSlip,
-  uploadClientPrintRequestReceipt,
-  getPrintRequestReceiptForUser,
   undoAdminPrintRequestStatus,
 } from "../services/print-request.service.js";
 
@@ -63,11 +60,8 @@ function normalizePrintRequest(printRequest) {
         ? null
         : Number(printRequest.confirmed_cost),
     paymentSlipUrl: printRequest.payment_slip_url,
-    receiptUrl: printRequest.receipt_url,
-    receiptOriginalName: printRequest.receipt_original_name,
-    receiptMimeType: printRequest.receipt_mime_type,
-    receiptSize: printRequest.receipt_size,
-    receiptUploadedAt: printRequest.receipt_uploaded_at,
+    termsAcceptedAt: printRequest.terms_accepted_at,
+    termsVersion: printRequest.terms_version,
     status: printRequest.status,
     rejectionReason: printRequest.rejection_reason,
     archivedAt: printRequest.archived_at,
@@ -239,60 +233,6 @@ const deletePrintRequest = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, null, "Print request deleted successfully"));
 });
 
-const uploadPrintRequestReceipt = asyncHandler(async (req, res) => {
-  const result = await uploadClientPrintRequestReceipt({
-    clientId: req.user.id,
-    requestId: req.params.requestId,
-    file: req.file,
-  });
-
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      {
-        printRequest: normalizePrintRequest(result.printRequest),
-        statusHistory: result.statusHistory.map(normalizeStatusHistory),
-      },
-      "Receipt uploaded successfully",
-    ),
-  );
-});
-
-const uploadPrintRequestPaymentSlip = asyncHandler(async (req, res) => {
-  const result = await uploadAdminPrintRequestPaymentSlip({
-    requestId: req.params.requestId,
-    adminId: req.user.id,
-    body: req.body,
-    file: req.file,
-  });
-
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      {
-        printRequest: normalizePrintRequest(result.printRequest),
-        statusHistory: result.statusHistory.map(normalizeStatusHistory),
-      },
-      "Payment slip uploaded successfully",
-    ),
-  );
-});
-
-const getPrintRequestReceipt = asyncHandler(async (req, res) => {
-  const receipt = await getPrintRequestReceiptForUser({
-    user: req.user,
-    requestId: req.params.requestId,
-  });
-
-  res.setHeader("Content-Type", receipt.mimeType);
-  res.setHeader(
-    "Content-Disposition",
-    `inline; filename="${encodeURIComponent(receipt.originalName)}"`,
-  );
-
-  return res.sendFile(receipt.receiptPath);
-});
-
 export {
   submitPrintRequest,
   listMyPrintRequests,
@@ -302,7 +242,4 @@ export {
   undoPrintRequestStatus,
   archivePrintRequest,
   deletePrintRequest,
-  uploadPrintRequestPaymentSlip,
-  uploadPrintRequestReceipt,
-  getPrintRequestReceipt,
 };

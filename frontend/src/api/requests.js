@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiRequest } from "./client";
+import { apiRequest } from "./client";
 
 export function submitPrintRequestFromQuote(quoteToken, payload = {}) {
   return apiRequest("/requests", {
@@ -16,13 +16,6 @@ export function getMyPrintRequests() {
 
 export function getPrintRequestById(requestId) {
   return apiRequest(`/requests/${requestId}`);
-}
-
-export function uploadPrintRequestReceipt(requestId, formData) {
-  return apiRequest(`/requests/${requestId}/receipt`, {
-    method: "POST",
-    body: formData,
-  });
 }
 
 export function getAdminPrintRequests(params = {}) {
@@ -52,13 +45,6 @@ export function undoAdminPrintRequestStatus(requestId) {
   });
 }
 
-export function uploadAdminPaymentSlip(requestId, formData) {
-  return apiRequest(`/requests/admin/${requestId}/payment-slip`, {
-    method: "POST",
-    body: formData,
-  });
-}
-
 export function archiveAdminPrintRequest(requestId) {
   return apiRequest(`/requests/admin/${requestId}/archive`, {
     method: "PATCH",
@@ -71,6 +57,3 @@ export function deleteAdminPrintRequest(requestId) {
   });
 }
 
-export function getPrintRequestReceiptUrl(requestId) {
-  return `${API_BASE_URL}/requests/${requestId}/receipt`;
-}

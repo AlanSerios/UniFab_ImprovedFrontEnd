@@ -35,7 +35,9 @@ export default function QuoteReview() {
       setSubmitMessage("");
       setError("");
 
-      const data = await submitPrintRequestFromQuote(quoteToken);
+      const data = await submitPrintRequestFromQuote(quoteToken, {
+        termsAccepted: true,
+      });
 
       const createdRequest =
         data.data?.printRequest ||
@@ -120,6 +122,12 @@ export default function QuoteReview() {
               <div>
                 <p className="text-sm font-medium text-slate-500">Quantity</p>
                 <p className="font-semibold text-slate-950">{quote.quantity}</p>
+                {quote.quantity > 1 && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Slicing is validated per copy; pricing is multiplied by
+                    quantity.
+                  </p>
+                )}
               </div>
             </div>
 

@@ -20,6 +20,8 @@ import AdminDesignRequests from "./pages/admin/AdminDesignRequests";
 import AdminDesignRequestDetail from "./pages/admin/AdminDesignRequestDetail";
 import AdminLocalDesigns from "./pages/admin/AdminLocalDesigns";
 import AdminLocalDesignForm from "./pages/admin/AdminLocalDesignForm";
+import AdminCommunityDesigns from "./pages/admin/AdminCommunityDesigns";
+import AdminCommunityDesignDetail from "./pages/admin/AdminCommunityDesignDetail";
 import AdminMmfOverrides from "./pages/admin/AdminMmfOverrides";
 import AdminMaterials from "./pages/admin/AdminMaterials";
 import AdminSlicerProfiles from "./pages/admin/AdminSlicerProfiles";
@@ -40,6 +42,8 @@ import MmfDesignDetail from "./pages/MmfDesignDetail";
 import NotFound from "./pages/NotFound";
 import Printers from "./pages/Printers";
 import SystemStatus from "./pages/SystemStatus";
+import MyDesigns from "./pages/MyDesigns";
+import MyDesignForm from "./pages/MyDesignForm";
 
 export default function App() {
   return (
@@ -145,6 +149,22 @@ export default function App() {
               }
             />
             <Route
+              path="/admin/community-designs"
+              element={
+                <AdminRoute>
+                  <AdminCommunityDesigns />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/community-designs/:designId"
+              element={
+                <AdminRoute>
+                  <AdminCommunityDesignDetail />
+                </AdminRoute>
+              }
+            />
+            <Route
               path="/admin/mmf-overrides"
               element={
                 <AdminRoute>
@@ -234,6 +254,30 @@ export default function App() {
               }
             />
             <Route path="/designs" element={<DesignLibrary />} />
+            <Route
+              path="/my-designs"
+              element={
+                <ProtectedRoute>
+                  <MyDesigns />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-designs/new"
+              element={
+                <ProtectedRoute>
+                  <MyDesignForm />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-designs/:designId"
+              element={
+                <ProtectedRoute>
+                  <MyDesignForm />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/designs/local/:designId"
               element={<LocalDesignDetail />}

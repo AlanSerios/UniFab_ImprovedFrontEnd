@@ -20,6 +20,12 @@ const adminLinks = [
     description: "Add and manage lab-owned printable designs for the library.",
   },
   {
+    to: "/admin/community-designs",
+    title: "Community designs",
+    description:
+      "Review user submissions, approve, reject, hide, or restore community designs.",
+  },
+  {
     to: "/admin/mmf-overrides",
     title: "MMF readiness",
     description:

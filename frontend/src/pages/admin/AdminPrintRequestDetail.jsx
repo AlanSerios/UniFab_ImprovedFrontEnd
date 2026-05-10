@@ -4,7 +4,6 @@ import {
   archiveAdminPrintRequest,
   deleteAdminPrintRequest,
   getPrintRequestById,
-  getPrintRequestReceiptUrl,
   updateAdminPrintRequestStatus,
   undoAdminPrintRequestStatus,
 } from "../../api/requests";
@@ -14,7 +13,6 @@ const STATUS_TRANSITIONS = {
   design_in_progress: ["approved", "rejected"],
   approved: ["payment_slip_issued", "rejected"],
   payment_slip_issued: ["payment_verified", "rejected"],
-  payment_submitted: ["payment_verified", "rejected"],
   payment_verified: ["printing", "rejected"],
   printing: ["completed", "rejected"],
   completed: [],
@@ -26,7 +24,6 @@ const STATUS_LABELS = {
   design_in_progress: "Design in Progress",
   approved: "Approved",
   payment_slip_issued: "Payment Slip Issued",
-  payment_submitted: "Payment Submitted",
   payment_verified: "Payment Verified",
   printing: "Printing",
   completed: "Completed",
@@ -353,26 +350,13 @@ export default function AdminPrintRequestDetail() {
             </section>
 
             <section className="rounded-lg border border-slate-200 p-4">
-              <h2 className="text-lg font-semibold">Files</h2>
+              <h2 className="text-lg font-semibold">Payment Verification</h2>
 
-              <div className="mt-3 space-y-2 text-sm text-slate-600">
-                <p>
-                  Client receipt:{" "}
-                  {printRequest.receiptUrl ? (
-                    <a
-                      href={getPrintRequestReceiptUrl(requestId)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-semibold text-slate-950 underline"
-                    >
-                      {printRequest.receiptOriginalName ||
-                        "View uploaded receipt"}
-                    </a>
-                  ) : (
-                    "Not uploaded"
-                  )}
-                </p>
-              </div>
+              <p className="mt-3 text-sm text-slate-600">
+                Verify payment from the official physical receipt presented at
+                the FabLab. After checking it in person, move the request from
+                Payment Slip Issued to Payment Verified.
+              </p>
             </section>
 
             <section className="rounded-lg border border-slate-200 p-4">

@@ -11,6 +11,7 @@ import {
   getAllLocalDesignsForAdmin,
   getLocalDesignById,
   getLocalDesignByIdForAdmin,
+  getLocalDesignAuditEvents,
   createLocalDesign as createLocalDesignRecord,
   updateLocalDesignById,
   deactivateLocalDesignById,
@@ -23,6 +24,10 @@ import {
   upsertDesignCategoryByName,
   upsertDesignTagByName,
   replaceLocalDesignTags,
+  getLocalDesignsByOwner,
+  createLocalDesignAuditEvent,
+  updateLocalDesignModerationState,
+  updateCommunityDesignById,
 } from "../models/local-design.model.js";
 import {
   getAllDesignOverrides,
@@ -38,6 +43,140 @@ import {
   LOCAL_DESIGN_THUMBNAIL_UPLOAD_FIELD,
 } from "../middlewares/local-design-upload.middleware.js";
 import { removeManagedLocalDesignFile } from "../utils/local-design-storage.util.js";
+import { runDesignRulesModeration } from "../services/design-moderation.service.js";
+import { runDesignAiModeration } from "../services/design-ai-moderation.service.js";
+
+const DESIGN_MODERATION_STATUSES = new Set([
+  "draft",
+  "screening",
+  "auto_approved",
+  "needs_admin_review",
+  "auto_rejected",
+  "admin_approved",
+  "admin_rejected",
+  "hidden",
+]);
+
+const ADMIN_DESIGN_ACTIONS = new Set([
+  "approve",
+  "reject",
+  "hide",
+  "restore",
+  "send_to_review",
+]);
+
+const EDITABLE_OWNER_STATUSES = new Set([
+  "draft",
+  "auto_rejected",
+  "admin_rejected",
+  "auto_approved",
+  "admin_approved",
+]);
+
+function resolveOwnerEditState(existingDesign, shouldReturnToReview) {
+  if (
+    shouldReturnToReview &&
+    ["auto_approved", "admin_approved"].includes(
+      existingDesign.moderation_status,
+    )
+  ) {
+    return {
+      moderationStatus: "needs_admin_review",
+      isActive: false,
+      isPrintReady: false,
+      moderationFeedback:
+        "This design was updated and must be reviewed before public visibility.",
+      moderationSummary:
+        "Owner updated an approved design, so it was returned to review.",
+      moderationDecisionSource: "rules",
+      eventType: "owner_updated_approved_design",
+    };
+  }
+
+  return {
+    moderationStatus: existingDesign.moderation_status,
+    isActive: Boolean(existingDesign.is_active),
+    isPrintReady: Boolean(existingDesign.is_print_ready),
+    moderationFeedback: existingDesign.moderation_feedback,
+    moderationSummary: existingDesign.moderation_summary,
+    moderationDecisionSource: existingDesign.moderation_decision_source,
+    eventType: "owner_updated_design",
+  };
+}
+
+function resolveAdminDesignAction({ action, existingDesign, feedback }) {
+  const now = new Date();
+
+  if (action === "approve") {
+    return {
+      moderationStatus: "admin_approved",
+      isActive: true,
+      isPrintReady: false,
+      moderationDecisionSource: "admin",
+      moderationFeedback: normalizeOptionalText(feedback),
+      moderationSummary: "Admin approved this design for public visibility.",
+      reviewedAt: now,
+      reviewedBy: null,
+      eventType: "admin_approved",
+    };
+  }
+
+  if (action === "reject") {
+    return {
+      moderationStatus: "admin_rejected",
+      isActive: false,
+      isPrintReady: false,
+      moderationDecisionSource: "admin",
+      moderationFeedback:
+        normalizeOptionalText(feedback) ||
+        "This design was rejected by FabLab review.",
+      moderationSummary: "Admin rejected this design.",
+      reviewedAt: now,
+      reviewedBy: null,
+      eventType: "admin_rejected",
+    };
+  }
+
+  if (action === "hide") {
+    return {
+      moderationStatus: "hidden",
+      isActive: false,
+      isPrintReady: false,
+      moderationDecisionSource: "admin",
+      moderationFeedback: normalizeOptionalText(feedback),
+      moderationSummary: "Admin hid this design from public browsing.",
+      reviewedAt: now,
+      reviewedBy: null,
+      eventType: "admin_hidden",
+    };
+  }
+
+  if (action === "restore") {
+    return {
+      moderationStatus: "admin_approved",
+      isActive: true,
+      isPrintReady: false,
+      moderationDecisionSource: "admin",
+      moderationFeedback: normalizeOptionalText(feedback),
+      moderationSummary: "Admin restored this design to public browsing.",
+      reviewedAt: now,
+      reviewedBy: null,
+      eventType: "admin_restored",
+    };
+  }
+
+  return {
+    moderationStatus: "needs_admin_review",
+    isActive: false,
+    isPrintReady: false,
+    moderationDecisionSource: "admin",
+    moderationFeedback: normalizeOptionalText(feedback),
+    moderationSummary: "Admin sent this design back to review.",
+    reviewedAt: now,
+    reviewedBy: null,
+    eventType: "admin_sent_to_review",
+  };
+}
 
 function hasText(value) {
   return value !== undefined && value !== null && String(value).trim() !== "";
@@ -155,7 +294,9 @@ function matchesLocalDesignTag(localDesign, tagFilter) {
 
 function parseIdList(value) {
   if (Array.isArray(value)) {
-    return value.map(Number).filter((item) => Number.isInteger(item) && item > 0);
+    return value
+      .map(Number)
+      .filter((item) => Number.isInteger(item) && item > 0);
   }
 
   if (typeof value === "string") {
@@ -174,10 +315,7 @@ function parseNameList(value) {
   }
 
   if (typeof value === "string") {
-    return value
-      .split(",")
-      .map(normalizeOptionalText)
-      .filter(Boolean);
+    return value.split(",").map(normalizeOptionalText).filter(Boolean);
   }
 
   return [];
@@ -217,6 +355,8 @@ function normalizeLocalDesign(localDesign) {
   return {
     id: localDesign.id,
     source: "local",
+    sourceKind: localDesign.source_kind,
+    moderationStatus: localDesign.moderation_status,
     title: localDesign.title,
     description: localDesign.description,
     thumbnailUrl: localDesign.thumbnail_url,
@@ -234,6 +374,18 @@ function normalizeLocalDesign(localDesign) {
       : null,
     tags: Array.isArray(localDesign.tags) ? localDesign.tags : [],
     isActive: Boolean(localDesign.is_active),
+    isPrintReady: Boolean(localDesign.is_print_ready),
+    ownershipConfirmed: Boolean(localDesign.ownership_confirmed),
+    policyAcknowledged: Boolean(localDesign.policy_acknowledged),
+    moderationFlags: localDesign.moderation_flags,
+    moderationSummary: localDesign.moderation_summary,
+    moderationFeedback: localDesign.moderation_feedback,
+    moderationDecisionSource: localDesign.moderation_decision_source,
+    publishedAt: localDesign.published_at,
+    reviewedAt: localDesign.reviewed_at,
+    reviewedBy: localDesign.reviewed_by,
+    printReadyAt: localDesign.print_ready_at,
+    printReadyBy: localDesign.print_ready_by,
     uploadedBy: localDesign.uploaded_by,
     archivedAt: localDesign.archived_at,
     archivedBy: localDesign.archived_by,
@@ -290,6 +442,21 @@ function normalizeTag(tag) {
     isActive: Boolean(tag.is_active),
     createdAt: tag.created_at,
     updatedAt: tag.updated_at,
+  };
+}
+
+function normalizeLocalDesignAuditEvent(event) {
+  return {
+    id: event.id,
+    localDesignId: event.local_design_id,
+    actorId: event.actor_id,
+    actorType: event.actor_type,
+    eventType: event.event_type,
+    fromStatus: event.from_status,
+    toStatus: event.to_status,
+    summary: event.summary,
+    metadata: event.metadata,
+    createdAt: event.created_at,
   };
 }
 
@@ -498,6 +665,96 @@ const getMmfDesignDetail = asyncHandler(async (req, res) => {
     );
 });
 
+const moderateLocalDesign = asyncHandler(async (req, res) => {
+  const designId = req.params.designId;
+  const action = String(req.body.action || "").trim();
+
+  if (!ADMIN_DESIGN_ACTIONS.has(action)) {
+    throw new ApiError(
+      400,
+      "Action must be one of: approve, reject, hide, restore, send_to_review",
+    );
+  }
+
+  const existingLocalDesign = await getLocalDesignByIdForAdmin(designId);
+
+  if (!existingLocalDesign) {
+    throw new ApiError(404, "Local design not found");
+  }
+
+  if (existingLocalDesign.source_kind !== "community") {
+    throw new ApiError(400, "Only community designs use moderation actions");
+  }
+
+  const previousStatus = existingLocalDesign.moderation_status;
+  const decision = resolveAdminDesignAction({
+    action,
+    existingDesign: existingLocalDesign,
+    feedback: req.body.feedback,
+  });
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const updatedDesign = await updateLocalDesignModerationState(
+      designId,
+      {
+        moderationStatus: decision.moderationStatus,
+        isActive: decision.isActive,
+        isPrintReady: decision.isPrintReady,
+        moderationFlags: existingLocalDesign.moderation_flags,
+        moderationSummary: decision.moderationSummary,
+        moderationFeedback: decision.moderationFeedback,
+        moderationDecisionSource: decision.moderationDecisionSource,
+        reviewedBy: req.user.id,
+        reviewedAt: decision.reviewedAt,
+        printReadyAt: decision.isPrintReady
+          ? existingLocalDesign.print_ready_at
+          : null,
+        printReadyBy: decision.isPrintReady
+          ? existingLocalDesign.print_ready_by
+          : null,
+      },
+      connection,
+    );
+
+    await createLocalDesignAuditEvent(
+      {
+        localDesignId: designId,
+        actorId: req.user.id,
+        actorType: "admin",
+        eventType: decision.eventType,
+        fromStatus: previousStatus,
+        toStatus: decision.moderationStatus,
+        summary: decision.moderationSummary,
+        metadata: {
+          feedback: decision.moderationFeedback,
+        },
+      },
+      connection,
+    );
+
+    await connection.commit();
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { localDesign: normalizeLocalDesign(updatedDesign) },
+          "Design moderation action applied successfully",
+        ),
+      );
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+});
+
 const listLocalDesigns = asyncHandler(async (req, res) => {
   const localDesigns = (await getActiveLocalDesigns()).map(
     normalizeLocalDesign,
@@ -538,10 +795,33 @@ const listLocalDesignsForAdmin = asyncHandler(async (req, res) => {
       .trim()
       .toLowerCase(),
   );
+  const sourceKind = hasText(req.query.sourceKind)
+    ? String(req.query.sourceKind).trim()
+    : null;
+  const statuses = hasText(req.query.status)
+    ? String(req.query.status)
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
+
+  if (sourceKind && !["lab", "community"].includes(sourceKind)) {
+    throw new ApiError(400, "sourceKind must be either lab or community");
+  }
+
+  const invalidStatus = statuses.find(
+    (status) => !DESIGN_MODERATION_STATUSES.has(status),
+  );
+
+  if (invalidStatus) {
+    throw new ApiError(400, `Invalid design status filter: ${invalidStatus}`);
+  }
 
   const localDesigns = (
     await getAllLocalDesignsForAdmin({
       archived,
+      sourceKind,
+      statuses,
     })
   ).map(normalizeLocalDesign);
 
@@ -553,6 +833,26 @@ const listLocalDesignsForAdmin = asyncHandler(async (req, res) => {
         { localDesigns },
         "Admin local designs fetched successfully",
       ),
+    );
+});
+
+const listMyDesigns = asyncHandler(async (req, res) => {
+  const status = hasText(req.query.status)
+    ? String(req.query.status).trim()
+    : null;
+
+  if (status && !DESIGN_MODERATION_STATUSES.has(status)) {
+    throw new ApiError(400, "Invalid design status filter");
+  }
+
+  const localDesigns = (
+    await getLocalDesignsByOwner(req.user.id, { status })
+  ).map(normalizeLocalDesign);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, { localDesigns }, "My designs fetched successfully"),
     );
 });
 
@@ -576,20 +876,22 @@ const getLocalDesignDetail = asyncHandler(async (req, res) => {
 
 const getLocalDesignDetailForAdmin = asyncHandler(async (req, res) => {
   const localDesign = await getLocalDesignByIdForAdmin(req.params.designId);
+  const auditEvents = await getLocalDesignAuditEvents(req.params.designId);
 
   if (!localDesign) {
     throw new ApiError(404, "Local design not found");
   }
 
-  return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        { localDesign: normalizeLocalDesign(localDesign) },
-        "Admin local design fetched successfully",
-      ),
-    );
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        localDesign: normalizeLocalDesign(localDesign),
+        auditEvents: auditEvents.map(normalizeLocalDesignAuditEvent),
+      },
+      "Admin local design fetched successfully",
+    ),
+  );
 });
 
 const createLocalDesign = asyncHandler(async (req, res) => {
@@ -671,6 +973,261 @@ const createLocalDesign = asyncHandler(async (req, res) => {
     }
 
     throw error;
+  }
+});
+
+const createMyDesignDraft = asyncHandler(async (req, res) => {
+  const uploadedDesignFile = getUploadedFile(
+    req,
+    LOCAL_DESIGN_FILE_UPLOAD_FIELD,
+  );
+  const uploadedThumbnailImage = getUploadedFile(
+    req,
+    LOCAL_DESIGN_THUMBNAIL_UPLOAD_FIELD,
+  );
+
+  const fileUrl = uploadedDesignFile
+    ? buildStoredLocalDesignPath(uploadedDesignFile, "design")
+    : null;
+
+  const thumbnailUrl = uploadedThumbnailImage
+    ? buildStoredLocalDesignPath(uploadedThumbnailImage, "thumbnail")
+    : null;
+
+  try {
+    const connection = await pool.getConnection();
+
+    try {
+      await connection.beginTransaction();
+
+      const taxonomy = await resolveLocalDesignTaxonomy({
+        body: req.body,
+        userId: req.user.id,
+        connection,
+      });
+
+      const localDesign = await createLocalDesignRecord(
+        {
+          sourceKind: "community",
+          title: hasText(req.body.title)
+            ? String(req.body.title).trim()
+            : "Untitled draft",
+          description: normalizeOptionalText(req.body.description),
+          thumbnailUrl,
+          fileUrl,
+          material: normalizeOptionalText(req.body.material),
+          dimensions: normalizeOptionalText(req.body.dimensions),
+          licenseType: normalizeOptionalText(req.body.licenseType),
+          categoryId: taxonomy.categoryId,
+          uploadedBy: req.user.id,
+          isActive: false,
+          moderationStatus: "draft",
+          isPrintReady: false,
+          ownershipConfirmed:
+            parseOptionalBoolean(
+              req.body.ownershipConfirmed,
+              "ownershipConfirmed",
+            ) ?? false,
+          policyAcknowledged:
+            parseOptionalBoolean(
+              req.body.policyAcknowledged,
+              "policyAcknowledged",
+            ) ?? false,
+        },
+        connection,
+      );
+
+      await replaceLocalDesignTags({
+        localDesignId: localDesign.id,
+        tagIds: taxonomy.tagIds,
+        connection,
+      });
+
+      await createLocalDesignAuditEvent(
+        {
+          localDesignId: localDesign.id,
+          actorId: req.user.id,
+          actorType: "user",
+          eventType: "draft_created",
+          toStatus: "draft",
+          summary: "User saved a design draft.",
+        },
+        connection,
+      );
+
+      await connection.commit();
+
+      const savedLocalDesign = await getLocalDesignByIdForAdmin(localDesign.id);
+
+      return res
+        .status(201)
+        .json(
+          new ApiResponse(
+            201,
+            { localDesign: normalizeLocalDesign(savedLocalDesign) },
+            "Design draft saved successfully",
+          ),
+        );
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    if (fileUrl) await removeManagedLocalDesignFile(fileUrl, "design");
+    if (thumbnailUrl) {
+      await removeManagedLocalDesignFile(thumbnailUrl, "thumbnail");
+    }
+
+    throw error;
+  }
+});
+
+const publishMyDesign = asyncHandler(async (req, res) => {
+  const designId = req.params.designId;
+  const existingLocalDesign = await getLocalDesignByIdForAdmin(designId);
+
+  if (!existingLocalDesign) {
+    throw new ApiError(404, "Design not found");
+  }
+
+  if (Number(existingLocalDesign.uploaded_by) !== Number(req.user.id)) {
+    throw new ApiError(403, "You can only publish your own designs");
+  }
+
+  if (existingLocalDesign.source_kind !== "community") {
+    throw new ApiError(400, "Only community designs can be published");
+  }
+
+  if (
+    !["draft", "auto_rejected", "admin_rejected"].includes(
+      existingLocalDesign.moderation_status,
+    )
+  ) {
+    throw new ApiError(400, "Only draft or rejected designs can be published");
+  }
+
+  if (
+    !hasText(existingLocalDesign.title) ||
+    existingLocalDesign.title === "Untitled draft"
+  ) {
+    throw new ApiError(400, "Title is required before publishing");
+  }
+
+  if (!hasText(existingLocalDesign.description)) {
+    throw new ApiError(400, "Description is required before publishing");
+  }
+
+  if (!hasText(existingLocalDesign.file_url)) {
+    throw new ApiError(400, "Design file is required before publishing");
+  }
+
+  if (!existingLocalDesign.ownership_confirmed) {
+    throw new ApiError(
+      400,
+      "Ownership confirmation is required before publishing",
+    );
+  }
+
+  if (!existingLocalDesign.policy_acknowledged) {
+    throw new ApiError(
+      400,
+      "FabLab policy acknowledgement is required before publishing",
+    );
+  }
+
+  const rulesModeration = runDesignRulesModeration(existingLocalDesign);
+  let aiModeration = null;
+
+  if (rulesModeration.status !== "auto_rejected") {
+    aiModeration = await runDesignAiModeration(existingLocalDesign);
+  }
+
+  const finalStatus =
+    rulesModeration.status === "auto_rejected" ||
+    aiModeration?.status === "auto_rejected"
+      ? "auto_rejected"
+      : "needs_admin_review";
+
+  const combinedFlags = [
+    ...(rulesModeration.flags || []),
+    ...(aiModeration?.flags || []),
+  ];
+
+  const combinedSummary = [
+    rulesModeration.summary,
+    aiModeration?.summary,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const combinedFeedback =
+    finalStatus === "auto_rejected"
+      ? rulesModeration.status === "auto_rejected"
+        ? rulesModeration.feedback
+        : aiModeration?.feedback
+      : "Your design has been submitted for FabLab review before it appears publicly.";
+
+  const decisionSource = aiModeration ? "ai" : "rules";
+  const previousStatus = existingLocalDesign.moderation_status;
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const updatedDesign = await updateLocalDesignModerationState(
+      designId,
+      {
+        moderationStatus: finalStatus,
+        isActive: false,
+        isPrintReady: false,
+        moderationFlags: combinedFlags,
+        moderationSummary: combinedSummary,
+        moderationFeedback: combinedFeedback,
+        moderationDecisionSource: decisionSource,
+        publishedAt: new Date(),
+        reviewedAt: finalStatus === "needs_admin_review" ? null : new Date(),
+      },
+      connection,
+    );
+
+    await createLocalDesignAuditEvent(
+      {
+        localDesignId: designId,
+        actorId: req.user.id,
+        actorType: "user",
+        eventType: "published_for_screening",
+        fromStatus: previousStatus,
+        toStatus: finalStatus,
+        summary: combinedSummary,
+        metadata: {
+          decisionSource,
+          rules: rulesModeration,
+          ai: aiModeration,
+          flags: combinedFlags,
+        },
+      },
+      connection,
+    );
+
+    await connection.commit();
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { localDesign: normalizeLocalDesign(updatedDesign) },
+          "Design published for review successfully",
+        ),
+      );
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
   }
 });
 
@@ -909,7 +1466,10 @@ const deleteLocalDesign = asyncHandler(async (req, res) => {
 
   await Promise.all([
     removeManagedLocalDesignFile(existingLocalDesign.file_url, "design"),
-    removeManagedLocalDesignFile(existingLocalDesign.thumbnail_url, "thumbnail"),
+    removeManagedLocalDesignFile(
+      existingLocalDesign.thumbnail_url,
+      "thumbnail",
+    ),
   ]);
 
   return res
@@ -1045,6 +1605,289 @@ const deleteDesignOverride = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, null, "Design override deleted successfully"));
 });
 
+const updateLocalDesignPrintReady = asyncHandler(async (req, res) => {
+  const designId = req.params.designId;
+  const isPrintReady = parseOptionalBoolean(
+    req.body.isPrintReady,
+    "isPrintReady",
+  );
+
+  if (isPrintReady === undefined) {
+    throw new ApiError(400, "isPrintReady is required");
+  }
+
+  const existingLocalDesign = await getLocalDesignByIdForAdmin(designId);
+
+  if (!existingLocalDesign) {
+    throw new ApiError(404, "Local design not found");
+  }
+
+  if (
+    !["auto_approved", "admin_approved"].includes(
+      existingLocalDesign.moderation_status,
+    )
+  ) {
+    throw new ApiError(400, "Only approved designs can be marked Print Ready");
+  }
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const updatedDesign = await updateLocalDesignModerationState(
+      designId,
+      {
+        moderationStatus: existingLocalDesign.moderation_status,
+        isActive: Boolean(existingLocalDesign.is_active),
+        isPrintReady,
+        moderationFlags: existingLocalDesign.moderation_flags,
+        moderationSummary: existingLocalDesign.moderation_summary,
+        moderationFeedback: existingLocalDesign.moderation_feedback,
+        moderationDecisionSource:
+          existingLocalDesign.moderation_decision_source,
+        reviewedBy: existingLocalDesign.reviewed_by,
+        reviewedAt: existingLocalDesign.reviewed_at,
+        printReadyAt: isPrintReady ? new Date() : null,
+        printReadyBy: isPrintReady ? req.user.id : null,
+      },
+      connection,
+    );
+
+    await createLocalDesignAuditEvent(
+      {
+        localDesignId: designId,
+        actorId: req.user.id,
+        actorType: "admin",
+        eventType: isPrintReady
+          ? "admin_marked_print_ready"
+          : "admin_unmarked_print_ready",
+        fromStatus: existingLocalDesign.moderation_status,
+        toStatus: existingLocalDesign.moderation_status,
+        summary: isPrintReady
+          ? "Admin marked the design as Print Ready after local verification."
+          : "Admin removed Print Ready status.",
+      },
+      connection,
+    );
+
+    await connection.commit();
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { localDesign: normalizeLocalDesign(updatedDesign) },
+          "Print Ready status updated successfully",
+        ),
+      );
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+});
+
+const updateMyDesign = asyncHandler(async (req, res) => {
+  const designId = req.params.designId;
+  const existingLocalDesign = await getLocalDesignByIdForAdmin(designId);
+
+  if (!existingLocalDesign) {
+    await cleanupNewUploadedLocalDesignAssets(req);
+    throw new ApiError(404, "Design not found");
+  }
+
+  if (existingLocalDesign.source_kind !== "community") {
+    await cleanupNewUploadedLocalDesignAssets(req);
+    throw new ApiError(400, "Only community designs can be edited here");
+  }
+
+  if (Number(existingLocalDesign.uploaded_by) !== Number(req.user.id)) {
+    await cleanupNewUploadedLocalDesignAssets(req);
+    throw new ApiError(403, "You can only edit your own designs");
+  }
+
+  if (!EDITABLE_OWNER_STATUSES.has(existingLocalDesign.moderation_status)) {
+    await cleanupNewUploadedLocalDesignAssets(req);
+    throw new ApiError(
+      400,
+      "This design cannot be edited in its current status",
+    );
+  }
+
+  const uploadedDesignFile = getUploadedFile(
+    req,
+    LOCAL_DESIGN_FILE_UPLOAD_FIELD,
+  );
+  const uploadedThumbnailImage = getUploadedFile(
+    req,
+    LOCAL_DESIGN_THUMBNAIL_UPLOAD_FIELD,
+  );
+
+  const nextFileUrl = uploadedDesignFile
+    ? buildStoredLocalDesignPath(uploadedDesignFile, "design")
+    : existingLocalDesign.file_url;
+
+  const nextThumbnailUrl = uploadedThumbnailImage
+    ? buildStoredLocalDesignPath(uploadedThumbnailImage, "thumbnail")
+    : existingLocalDesign.thumbnail_url;
+
+  const replacedDesignFile =
+    Boolean(uploadedDesignFile) &&
+    existingLocalDesign.file_url &&
+    existingLocalDesign.file_url !== nextFileUrl;
+
+  const hasMetadataUpdate =
+    Object.prototype.hasOwnProperty.call(req.body, "title") ||
+    Object.prototype.hasOwnProperty.call(req.body, "description") ||
+    Object.prototype.hasOwnProperty.call(req.body, "categoryId") ||
+    Object.prototype.hasOwnProperty.call(req.body, "categoryName") ||
+    Object.prototype.hasOwnProperty.call(req.body, "tagIds") ||
+    Object.prototype.hasOwnProperty.call(req.body, "tagNames") ||
+    Object.prototype.hasOwnProperty.call(req.body, "licenseType") ||
+    Object.prototype.hasOwnProperty.call(req.body, "ownershipConfirmed") ||
+    Object.prototype.hasOwnProperty.call(req.body, "policyAcknowledged");
+
+  const shouldReturnToReview =
+    replacedDesignFile || hasMetadataUpdate || Boolean(uploadedThumbnailImage);
+
+  const nextState = resolveOwnerEditState(
+    existingLocalDesign,
+    shouldReturnToReview,
+  );
+
+  try {
+    const connection = await pool.getConnection();
+
+    try {
+      await connection.beginTransaction();
+
+      const taxonomy = await resolveLocalDesignTaxonomy({
+        body: req.body,
+        userId: req.user.id,
+        connection,
+        existingLocalDesign,
+      });
+
+      const updatedDesign = await updateCommunityDesignById(
+        designId,
+        {
+          title: hasText(req.body.title)
+            ? String(req.body.title).trim()
+            : existingLocalDesign.title,
+          description: Object.prototype.hasOwnProperty.call(
+            req.body,
+            "description",
+          )
+            ? normalizeOptionalText(req.body.description)
+            : existingLocalDesign.description,
+          thumbnailUrl: nextThumbnailUrl,
+          fileUrl: nextFileUrl,
+          material: Object.prototype.hasOwnProperty.call(req.body, "material")
+            ? normalizeOptionalText(req.body.material)
+            : existingLocalDesign.material,
+          dimensions: Object.prototype.hasOwnProperty.call(
+            req.body,
+            "dimensions",
+          )
+            ? normalizeOptionalText(req.body.dimensions)
+            : existingLocalDesign.dimensions,
+          licenseType: Object.prototype.hasOwnProperty.call(
+            req.body,
+            "licenseType",
+          )
+            ? normalizeOptionalText(req.body.licenseType)
+            : existingLocalDesign.license_type,
+          categoryId: taxonomy.categoryId,
+          ownershipConfirmed:
+            parseOptionalBoolean(
+              req.body.ownershipConfirmed,
+              "ownershipConfirmed",
+            ) ?? Boolean(existingLocalDesign.ownership_confirmed),
+          policyAcknowledged:
+            parseOptionalBoolean(
+              req.body.policyAcknowledged,
+              "policyAcknowledged",
+            ) ?? Boolean(existingLocalDesign.policy_acknowledged),
+          ...nextState,
+        },
+        connection,
+      );
+
+      if (taxonomy.hasTagUpdate) {
+        await replaceLocalDesignTags({
+          localDesignId: Number(designId),
+          tagIds: taxonomy.tagIds,
+          connection,
+        });
+      }
+
+      await createLocalDesignAuditEvent(
+        {
+          localDesignId: designId,
+          actorId: req.user.id,
+          actorType: "user",
+          eventType: nextState.eventType,
+          fromStatus: existingLocalDesign.moderation_status,
+          toStatus: nextState.moderationStatus,
+          summary: nextState.moderationSummary || "Owner updated the design.",
+        },
+        connection,
+      );
+
+      await connection.commit();
+
+      if (uploadedDesignFile && existingLocalDesign.file_url) {
+        await removeManagedLocalDesignFile(
+          existingLocalDesign.file_url,
+          "design",
+        );
+      }
+
+      if (uploadedThumbnailImage && existingLocalDesign.thumbnail_url) {
+        await removeManagedLocalDesignFile(
+          existingLocalDesign.thumbnail_url,
+          "thumbnail",
+        );
+      }
+
+      const refreshedLocalDesign = await getLocalDesignByIdForAdmin(
+        updatedDesign.id,
+      );
+
+      return res
+        .status(200)
+        .json(
+          new ApiResponse(
+            200,
+            { localDesign: normalizeLocalDesign(refreshedLocalDesign) },
+            "Design updated successfully",
+          ),
+        );
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    if (uploadedDesignFile && nextFileUrl !== existingLocalDesign.file_url) {
+      await removeManagedLocalDesignFile(nextFileUrl, "design");
+    }
+
+    if (
+      uploadedThumbnailImage &&
+      nextThumbnailUrl !== existingLocalDesign.thumbnail_url
+    ) {
+      await removeManagedLocalDesignFile(nextThumbnailUrl, "thumbnail");
+    }
+
+    throw error;
+  }
+});
+
 export {
   searchDesignLibrary,
   getMmfDesignDetail,
@@ -1062,4 +1905,10 @@ export {
   createDesignOverride,
   updateDesignOverride,
   deleteDesignOverride,
+  listMyDesigns,
+  createMyDesignDraft,
+  publishMyDesign,
+  moderateLocalDesign,
+  updateLocalDesignPrintReady,
+  updateMyDesign,
 };

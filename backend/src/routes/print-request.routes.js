@@ -7,30 +7,20 @@ import {
   updatePrintRequestStatus,
   archivePrintRequest,
   deletePrintRequest,
-  uploadPrintRequestPaymentSlip,
-  uploadPrintRequestReceipt,
-  getPrintRequestReceipt,
   undoPrintRequestStatus,
 } from "../controllers/print-request.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { verifyAdmin } from "../middlewares/role.middleware.js";
 import { validate } from "../middlewares/validator.middleware.js";
 import {
-  printRequestPaymentSlipUploadMiddleware,
-  printRequestReceiptUploadMiddleware,
-} from "../middlewares/print-request-upload.middleware.js";
-import {
   submitPrintRequestValidator,
   printRequestIdValidator,
   listMyPrintRequestsQueryValidator,
   listAllPrintRequestsQueryValidator,
   updatePrintRequestStatusValidator,
-  uploadPrintRequestPaymentSlipValidator,
-  uploadPrintRequestReceiptValidator,
 } from "../validators/print-request.validator.js";
 import {
   authenticatedReadRateLimiter,
-  uploadRateLimiter,
   writeRateLimiter,
 } from "../middlewares/rate-limit.middleware.js";
 
@@ -89,17 +79,6 @@ router
   );
 
 router
-  .route("/admin/:requestId/payment-slip")
-  .post(
-    uploadRateLimiter,
-    verifyAdmin,
-    printRequestPaymentSlipUploadMiddleware,
-    uploadPrintRequestPaymentSlipValidator(),
-    validate,
-    uploadPrintRequestPaymentSlip,
-  );
-
-router
   .route("/")
   .get(
     authenticatedReadRateLimiter,
@@ -112,22 +91,6 @@ router
     submitPrintRequestValidator(),
     validate,
     submitPrintRequest,
-  );
-
-router
-  .route("/:requestId/receipt")
-  .get(
-    authenticatedReadRateLimiter,
-    printRequestIdValidator(),
-    validate,
-    getPrintRequestReceipt,
-  )
-  .post(
-    uploadRateLimiter,
-    printRequestReceiptUploadMiddleware,
-    uploadPrintRequestReceiptValidator(),
-    validate,
-    uploadPrintRequestReceipt,
   );
 
 router

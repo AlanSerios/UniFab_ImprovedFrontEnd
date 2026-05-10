@@ -16,7 +16,6 @@ export default function PrintRequestDetail() {
 
   const getMappedStatus = (status) => {
     if (status === "approved") return "pending_review";
-    if (status === "payment_submitted") return "payment_slip_issued";
     return status;
   };
 
@@ -27,6 +26,8 @@ export default function PrintRequestDetail() {
 
   const quoteSnapshot = printRequest?.quoteSnapshot;
   const quoteMetrics = quoteSnapshot?.quote || quoteSnapshot;
+  const paymentSlipAmount =
+    printRequest?.confirmedCost ?? printRequest?.estimatedCost ?? 0;
 
   useEffect(() => {
     async function loadPrintRequest() {
@@ -188,8 +189,7 @@ export default function PrintRequestDetail() {
                         </li>
                         <li>
                           Bring the official physical receipt back to the FabLab
-                          during our face-to-face service hours (Mon-Fri, 8:00
-                          AM - 4:00 PM).
+                          for in-person verification during service hours.
                         </li>
                       </ol>
                     </div>
@@ -343,7 +343,7 @@ export default function PrintRequestDetail() {
                   {printRequest.quantity}
                 </td>
                 <td className="py-4 text-lg font-bold text-slate-900 text-right">
-                  {Number(printRequest.estimatedCost || 0).toFixed(2)}
+                  {Number(paymentSlipAmount || 0).toFixed(2)}
                 </td>
               </tr>
             </tbody>
@@ -357,7 +357,7 @@ export default function PrintRequestDetail() {
                   Amount Due
                 </p>
                 <p className="text-2xl font-bold text-slate-900">
-                  PHP {Number(printRequest.estimatedCost || 0).toFixed(2)}
+                  PHP {Number(paymentSlipAmount || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -375,8 +375,8 @@ export default function PrintRequestDetail() {
               </li>
               <li>Pay the exact amount shown above.</li>
               <li>
-                Return to the FabLab with the Official University Receipt to
-                begin your print.
+                Bring the official physical receipt to the FabLab for in-person
+                verification.
               </li>
             </ol>
           </div>

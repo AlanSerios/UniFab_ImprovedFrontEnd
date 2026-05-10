@@ -161,14 +161,120 @@ const createLocalDesignValidator = () => {
       .optional()
       .custom((value) => {
         if (Array.isArray(value)) {
-          return value.every((item) => Number.isInteger(Number(item)) && Number(item) > 0);
+          return value.every(
+            (item) => Number.isInteger(Number(item)) && Number(item) > 0,
+          );
         }
 
         if (typeof value === "string") {
           return value
             .split(",")
             .filter(Boolean)
-            .every((item) => Number.isInteger(Number(item)) && Number(item) > 0);
+            .every(
+              (item) => Number.isInteger(Number(item)) && Number(item) > 0,
+            );
+        }
+
+        throw new Error("Tag IDs must be an array or comma-separated list");
+      }),
+
+    body("tagNames")
+      .optional()
+      .custom((value) => {
+        const tagNames = Array.isArray(value)
+          ? value
+          : String(value)
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean);
+
+        return tagNames.every((item) => item.length >= 1 && item.length <= 100);
+      })
+      .withMessage("Each tag name must be between 1 and 100 characters"),
+  ];
+};
+
+const createMyDesignValidator = () => {
+  return [
+    body("title")
+      .optional({ checkFalsy: true })
+      .trim()
+      .isString()
+      .withMessage("Title must be a string")
+      .bail()
+      .isLength({ min: 1, max: 255 })
+      .withMessage("Title must be between 1 and 255 characters"),
+
+    body("description")
+      .optional()
+      .trim()
+      .isString()
+      .withMessage("Description must be a string"),
+
+    body("material")
+      .optional()
+      .trim()
+      .isString()
+      .withMessage("Material must be a string")
+      .bail()
+      .isLength({ max: 100 })
+      .withMessage("Material must not exceed 100 characters"),
+
+    body("dimensions")
+      .optional()
+      .trim()
+      .isString()
+      .withMessage("Dimensions must be a string")
+      .bail()
+      .isLength({ max: 255 })
+      .withMessage("Dimensions must not exceed 255 characters"),
+
+    body("licenseType")
+      .optional()
+      .trim()
+      .isString()
+      .withMessage("License type must be a string")
+      .bail()
+      .isLength({ max: 255 })
+      .withMessage("License type must not exceed 255 characters"),
+
+    body("ownershipConfirmed")
+      .optional()
+      .isIn(["true", "false", "1", "0", "yes", "no"])
+      .withMessage("ownershipConfirmed must be a valid boolean"),
+
+    body("policyAcknowledged")
+      .optional()
+      .isIn(["true", "false", "1", "0", "yes", "no"])
+      .withMessage("policyAcknowledged must be a valid boolean"),
+
+    body("categoryId")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Category ID must be a positive integer"),
+
+    body("categoryName")
+      .optional({ checkFalsy: true })
+      .trim()
+      .isLength({ min: 1, max: 100 })
+      .withMessage("Category name must be between 1 and 100 characters"),
+
+    body("tagIds")
+      .optional()
+      .custom((value) => {
+        if (Array.isArray(value)) {
+          return value.every(
+            (item) => Number.isInteger(Number(item)) && Number(item) > 0,
+          );
+        }
+
+        if (typeof value === "string") {
+          return value
+            .split(",")
+            .filter(Boolean)
+            .every(
+              (item) => Number.isInteger(Number(item)) && Number(item) > 0,
+            );
         }
 
         throw new Error("Tag IDs must be an array or comma-separated list");
@@ -251,14 +357,18 @@ const updateLocalDesignValidator = () => {
       .optional()
       .custom((value) => {
         if (Array.isArray(value)) {
-          return value.every((item) => Number.isInteger(Number(item)) && Number(item) > 0);
+          return value.every(
+            (item) => Number.isInteger(Number(item)) && Number(item) > 0,
+          );
         }
 
         if (typeof value === "string") {
           return value
             .split(",")
             .filter(Boolean)
-            .every((item) => Number.isInteger(Number(item)) && Number(item) > 0);
+            .every(
+              (item) => Number.isInteger(Number(item)) && Number(item) > 0,
+            );
         }
 
         throw new Error("Tag IDs must be an array or comma-separated list");
@@ -349,9 +459,7 @@ const createDesignOverrideValidator = () => {
     body("isPrintReady")
       .optional()
       .isIn(["true", "false", "1", "0", "yes", "no"])
-      .withMessage(
-        "isPrintReady must be one of: true, false, 1, 0, yes, no",
-      ),
+      .withMessage("isPrintReady must be one of: true, false, 1, 0, yes, no"),
 
     body("linkedLocalDesignId")
       .optional({ nullable: true, checkFalsy: true })
@@ -414,9 +522,7 @@ const updateDesignOverrideValidator = () => {
     body("isPrintReady")
       .optional()
       .isIn(["true", "false", "1", "0", "yes", "no"])
-      .withMessage(
-        "isPrintReady must be one of: true, false, 1, 0, yes, no",
-      ),
+      .withMessage("isPrintReady must be one of: true, false, 1, 0, yes, no"),
 
     body("linkedLocalDesignId")
       .optional({ nullable: true, checkFalsy: true })
@@ -451,6 +557,38 @@ const updateDesignOverrideValidator = () => {
   ];
 };
 
+const moderateLocalDesignValidator = () => {
+  return [
+    ...localDesignIdValidator(),
+
+    body("action")
+      .isIn(["approve", "reject", "hide", "restore", "send_to_review"])
+      .withMessage("Invalid moderation action"),
+
+    body("feedback")
+      .optional()
+      .trim()
+      .isString()
+      .withMessage("Feedback must be a string")
+      .bail()
+      .isLength({ max: 2000 })
+      .withMessage("Feedback must not exceed 2000 characters"),
+  ];
+};
+
+const updateLocalDesignPrintReadyValidator = () => {
+  return [
+    ...localDesignIdValidator(),
+
+    body("isPrintReady")
+      .exists()
+      .withMessage("isPrintReady is required")
+      .bail()
+      .isIn(["true", "false", "1", "0", "yes", "no"])
+      .withMessage("isPrintReady must be a valid boolean"),
+  ];
+};
+
 export {
   searchDesignLibraryValidator,
   mmfObjectIdValidator,
@@ -461,4 +599,7 @@ export {
   overrideIdValidator,
   createDesignOverrideValidator,
   updateDesignOverrideValidator,
+  createMyDesignValidator,
+  moderateLocalDesignValidator,
+  updateLocalDesignPrintReadyValidator,
 };

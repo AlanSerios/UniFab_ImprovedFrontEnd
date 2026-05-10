@@ -1,7 +1,6 @@
 import dotenv from "dotenv";
-dotenv.config();
-
 import path from "path";
+import { fileURLToPath } from "url";
 import express from "express";
 import cors from "cors";
 import multer from "multer";
@@ -18,6 +17,11 @@ import printRequestRoutes from "./src/routes/print-request.routes.js";
 import printersRoutes from "./src/routes/printers.routes.js";
 import { startExpiredQuoteCleanupJob } from "./src/services/quote-cleanup.service.js";
 import { ApiError } from "./src/utils/api-error.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 const app = express();
 
