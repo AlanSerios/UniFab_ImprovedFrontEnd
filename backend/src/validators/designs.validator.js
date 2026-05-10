@@ -115,6 +115,54 @@ const searchDesignLibraryValidator = () => {
       .optional()
       .isIn(["true", "false", "1", "0"])
       .withMessage("printReady must be true or false"),
+
+    query("mmfPage")
+      .optional()
+      .custom((value, { req }) => {
+        if (!hasText(req.query.q)) {
+          throw new Error("MMF page can only be used when q is provided");
+        }
+        return true;
+      })
+      .bail()
+      .isInt({ min: 1 })
+      .withMessage("MMF page must be a positive integer"),
+
+    query("mmfPerPage")
+      .optional()
+      .custom((value, { req }) => {
+        if (!hasText(req.query.q)) {
+          throw new Error("MMF per page can only be used when q is provided");
+        }
+        return true;
+      })
+      .bail()
+      .isInt({ min: 1, max: 50 })
+      .withMessage("MMF per page must be between 1 and 50"),
+
+    query("mmfSort")
+      .optional()
+      .custom((value, { req }) => {
+        if (!hasText(req.query.q)) {
+          throw new Error("MMF sort can only be used when q is provided");
+        }
+        return true;
+      })
+      .bail()
+      .isIn(ALLOWED_SORT_VALUES)
+      .withMessage("MMF sort must be one of: visits, date, popularity"),
+
+    query("mmfOrder")
+      .optional()
+      .custom((value, { req }) => {
+        if (!hasText(req.query.q)) {
+          throw new Error("MMF order can only be used when q is provided");
+        }
+        return true;
+      })
+      .bail()
+      .isIn(ALLOWED_ORDER_VALUES)
+      .withMessage("MMF order must be either asc or desc"),
   ];
 };
 

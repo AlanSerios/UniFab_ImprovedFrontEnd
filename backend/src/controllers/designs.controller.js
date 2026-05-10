@@ -580,12 +580,27 @@ const searchDesignLibrary = asyncHandler(async (req, res) => {
 
   if (searchQuery) {
     try {
+      const mmfPage = Number(req.query.mmfPage || req.query.page || 1);
+      const mmfPerPage = Number(
+        req.query.mmfPerPage || req.query.per_page || 12,
+      );
+      const mmfSort = hasText(req.query.mmfSort)
+        ? String(req.query.mmfSort).trim()
+        : hasText(req.query.sort)
+          ? String(req.query.sort).trim()
+          : "popularity";
+      const mmfOrder = hasText(req.query.mmfOrder)
+        ? String(req.query.mmfOrder).trim()
+        : hasText(req.query.order)
+          ? String(req.query.order).trim()
+          : "desc";
+
       mmfResults = await searchObjects({
         q: searchQuery,
-        page: req.query.page,
-        per_page: req.query.per_page,
-        sort: req.query.sort,
-        order: req.query.order,
+        page: mmfPage,
+        per_page: mmfPerPage,
+        sort: mmfSort,
+        order: mmfOrder,
       });
     } catch (error) {
       mmfStatus = {
@@ -596,8 +611,14 @@ const searchDesignLibrary = asyncHandler(async (req, res) => {
   }
 
   let curatedMmfResults = {
-    totalCount: 0,
     items: [],
+    page: searchQuery ? Number(req.query.mmfPage || req.query.page || 1) : 1,
+    limit: searchQuery
+      ? Number(req.query.mmfPerPage || req.query.per_page || 12)
+      : 12,
+    totalCount: 0,
+    totalPages: 1,
+    visibleCount: 0,
   };
 
   if (mmfResults) {
@@ -620,9 +641,22 @@ const searchDesignLibrary = asyncHandler(async (req, res) => {
       (item) => !item.override?.isPinned,
     );
 
+    const mmfPage = Number(req.query.mmfPage || req.query.page || 1);
+    const mmfPerPage = Number(req.query.mmfPerPage || req.query.per_page || 12);
+    const mmfTotalCount = Number(
+      mmfResults.totalCount || visibleItems.length || 0,
+    );
+
     curatedMmfResults = {
-      totalCount: visibleItems.length,
       items: [...pinnedItems, ...unpinnedItems],
+      page: Math.max(mmfPage, 1),
+      limit: Math.max(mmfPerPage, 1),
+      totalCount: mmfTotalCount,
+      totalPages: Math.max(
+        Math.ceil(mmfTotalCount / Math.max(mmfPerPage, 1)),
+        1,
+      ),
+      visibleCount: visibleItems.length,
     };
   }
 

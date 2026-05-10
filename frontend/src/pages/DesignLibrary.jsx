@@ -16,6 +16,14 @@ const DEFAULT_LOCAL_PAGINATION = {
   totalPages: 1,
 };
 
+const DEFAULT_MMF_PAGINATION = {
+  page: 1,
+  limit: 12,
+  totalCount: 0,
+  totalPages: 1,
+  visibleCount: 0,
+};
+
 const LOCAL_SORT_VALUES = new Set([
   "newest",
   "oldest",
@@ -27,6 +35,10 @@ const LOCAL_SORT_VALUES = new Set([
 const LOCAL_LIMIT_VALUES = new Set([6, 12, 24]);
 const SOURCE_FILTER_VALUES = new Set(["lab", "community"]);
 const PRINT_READY_FILTER_VALUES = new Set(["true", "false"]);
+
+const MMF_SORT_VALUES = new Set(["popularity", "date", "visits"]);
+const MMF_ORDER_VALUES = new Set(["asc", "desc"]);
+const MMF_LIMIT_VALUES = new Set([12, 24, 36]);
 
 function assetUrl(path) {
   if (!path) return "";
@@ -71,6 +83,16 @@ function getLocalLimitSearchValue(searchParams) {
   const value = Number(searchParams.get("localLimit"));
 
   if (!LOCAL_LIMIT_VALUES.has(value)) {
+    return 12;
+  }
+
+  return value;
+}
+
+function getMmfLimitSearchValue(searchParams) {
+  const value = Number(searchParams.get("mmfPerPage"));
+
+  if (!MMF_LIMIT_VALUES.has(value)) {
     return 12;
   }
 
@@ -122,35 +144,79 @@ function parseLocalDesignPayload(localPayload, fallbackLimit) {
   };
 }
 
+function parseMmfPaginationPayload(mmfPayload, fallbackLimit) {
+  const items = mmfPayload?.items || [];
+  const page = Number(mmfPayload?.page || 1);
+  const limit = Number(mmfPayload?.limit || fallbackLimit);
+  const totalCount = Number(mmfPayload?.totalCount || 0);
+  const totalPages = Number(mmfPayload?.totalPages || 1);
+  const visibleCount = Number(
+    mmfPayload?.visibleCount ?? mmfPayload?.items?.length ?? 0,
+  );
+
+  return {
+    items,
+    pagination: {
+      page: Math.max(page, 1),
+      limit: Math.max(limit, 1),
+      totalCount: Math.max(totalCount, 0),
+      totalPages: Math.max(totalPages, 1),
+      visibleCount: Math.max(visibleCount, 0),
+    },
+  };
+}
+
 export default function DesignLibrary() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const submittedSearch = getSearchValue(searchParams, "q");
   const categoryFilter = getSearchValue(searchParams, "category");
   const tagFilter = getSearchValue(searchParams, "tag");
+
   const sourceFilter = getAllowedSearchValue(
     searchParams,
     "sourceKind",
     SOURCE_FILTER_VALUES,
   );
+
   const printReadyFilter = getAllowedSearchValue(
     searchParams,
     "printReady",
     PRINT_READY_FILTER_VALUES,
   );
+
   const localSort = getAllowedSearchValue(
     searchParams,
     "localSort",
     LOCAL_SORT_VALUES,
     "newest",
   );
+
   const localPage = getPositiveIntegerSearchValue(searchParams, "localPage", 1);
   const localLimit = getLocalLimitSearchValue(searchParams);
+
+  const mmfPage = getPositiveIntegerSearchValue(searchParams, "mmfPage", 1);
+  const mmfPerPage = getMmfLimitSearchValue(searchParams);
+
+  const mmfSort = getAllowedSearchValue(
+    searchParams,
+    "mmfSort",
+    MMF_SORT_VALUES,
+    "popularity",
+  );
+
+  const mmfOrder = getAllowedSearchValue(
+    searchParams,
+    "mmfOrder",
+    MMF_ORDER_VALUES,
+    "desc",
+  );
 
   const [searchTerm, setSearchTerm] = useState(submittedSearch);
   const [localPagination, setLocalPagination] = useState(
     DEFAULT_LOCAL_PAGINATION,
   );
+  const [mmfPagination, setMmfPagination] = useState(DEFAULT_MMF_PAGINATION);
 
   const [localDesigns, setLocalDesigns] = useState([]);
   const [mmfItems, setMmfItems] = useState([]);
@@ -196,6 +262,10 @@ export default function DesignLibrary() {
 
         if (submittedSearch) {
           params.q = submittedSearch;
+          params.mmfPage = mmfPage;
+          params.mmfPerPage = mmfPerPage;
+          params.mmfSort = mmfSort;
+          params.mmfOrder = mmfOrder;
         }
 
         if (categoryFilter) {
@@ -217,14 +287,21 @@ export default function DesignLibrary() {
         const data = await searchDesignLibrary(params);
         const payload = data.data || data;
 
-        const { items, pagination } = parseLocalDesignPayload(
+        const localPayload = parseLocalDesignPayload(
           payload.localDesigns || [],
           localLimit,
         );
 
-        setLocalDesigns(items);
-        setLocalPagination(pagination);
-        setMmfItems(payload.mmfResults?.items || []);
+        const mmfPayload = parseMmfPaginationPayload(
+          payload.mmfResults || {},
+          mmfPerPage,
+        );
+
+        setLocalDesigns(localPayload.items);
+        setLocalPagination(localPayload.pagination);
+
+        setMmfItems(mmfPayload.items);
+        setMmfPagination(mmfPayload.pagination);
         setMmfStatus(payload.mmfStatus || null);
       } catch (err) {
         setError(err.message);
@@ -232,6 +309,7 @@ export default function DesignLibrary() {
         setMmfItems([]);
         setMmfStatus(null);
         setLocalPagination(DEFAULT_LOCAL_PAGINATION);
+        setMmfPagination(DEFAULT_MMF_PAGINATION);
       } finally {
         setIsLoading(false);
       }
@@ -247,6 +325,10 @@ export default function DesignLibrary() {
     localSort,
     localPage,
     localLimit,
+    mmfPage,
+    mmfPerPage,
+    mmfSort,
+    mmfOrder,
   ]);
 
   const updateUrlFilters = (overrides = {}) => {
@@ -259,6 +341,10 @@ export default function DesignLibrary() {
       localSort,
       localPage,
       localLimit,
+      mmfPage,
+      mmfPerPage,
+      mmfSort,
+      mmfOrder,
       ...overrides,
     };
 
@@ -296,6 +382,24 @@ export default function DesignLibrary() {
       nextParams.set("localLimit", String(nextValues.localLimit));
     }
 
+    if (nextValues.q) {
+      if (Number(nextValues.mmfPage) > 1) {
+        nextParams.set("mmfPage", String(nextValues.mmfPage));
+      }
+
+      if (Number(nextValues.mmfPerPage) !== 12) {
+        nextParams.set("mmfPerPage", String(nextValues.mmfPerPage));
+      }
+
+      if (nextValues.mmfSort && nextValues.mmfSort !== "popularity") {
+        nextParams.set("mmfSort", nextValues.mmfSort);
+      }
+
+      if (nextValues.mmfOrder && nextValues.mmfOrder !== "desc") {
+        nextParams.set("mmfOrder", nextValues.mmfOrder);
+      }
+    }
+
     setSearchParams(nextParams);
   };
 
@@ -305,6 +409,7 @@ export default function DesignLibrary() {
     updateUrlFilters({
       q: searchTerm.trim(),
       localPage: 1,
+      mmfPage: 1,
     });
   };
 
@@ -313,15 +418,27 @@ export default function DesignLibrary() {
     setSearchParams(new URLSearchParams());
   };
 
-  const goToPreviousPage = () => {
+  const goToPreviousLocalPage = () => {
     updateUrlFilters({
       localPage: Math.max(localPagination.page - 1, 1),
     });
   };
 
-  const goToNextPage = () => {
+  const goToNextLocalPage = () => {
     updateUrlFilters({
       localPage: Math.min(localPagination.page + 1, localPagination.totalPages),
+    });
+  };
+
+  const goToPreviousMmfPage = () => {
+    updateUrlFilters({
+      mmfPage: Math.max(mmfPagination.page - 1, 1),
+    });
+  };
+
+  const goToNextMmfPage = () => {
+    updateUrlFilters({
+      mmfPage: Math.min(mmfPagination.page + 1, mmfPagination.totalPages),
     });
   };
 
@@ -504,7 +621,7 @@ export default function DesignLibrary() {
                           type="button"
                           variant="secondary"
                           disabled={localPagination.page <= 1}
-                          onClick={goToPreviousPage}
+                          onClick={goToPreviousLocalPage}
                         >
                           Previous
                         </Button>
@@ -515,7 +632,7 @@ export default function DesignLibrary() {
                           disabled={
                             localPagination.page >= localPagination.totalPages
                           }
-                          onClick={goToNextPage}
+                          onClick={goToNextLocalPage}
                         >
                           Next
                         </Button>
@@ -534,7 +651,9 @@ export default function DesignLibrary() {
                       MyMiniFactory Results
                     </h2>
                     <p className="mt-1 text-sm text-slate-500">
-                      External references are shown only for active searches.
+                      {mmfPagination.totalCount} external result
+                      {mmfPagination.totalCount === 1 ? "" : "s"} found ·{" "}
+                      {mmfPagination.visibleCount} visible on this page
                     </p>
                   </div>
 
@@ -545,18 +664,97 @@ export default function DesignLibrary() {
                   )}
                 </div>
 
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <SelectInput
+                    value={mmfSort}
+                    onChange={(event) =>
+                      updateUrlFilters({
+                        mmfSort: event.target.value,
+                        mmfPage: 1,
+                      })
+                    }
+                    className="w-44"
+                  >
+                    <option value="popularity">Most popular</option>
+                    <option value="date">Newest on MMF</option>
+                    <option value="visits">Most visited</option>
+                  </SelectInput>
+
+                  <SelectInput
+                    value={mmfOrder}
+                    onChange={(event) =>
+                      updateUrlFilters({
+                        mmfOrder: event.target.value,
+                        mmfPage: 1,
+                      })
+                    }
+                    className="w-32"
+                  >
+                    <option value="desc">Desc</option>
+                    <option value="asc">Asc</option>
+                  </SelectInput>
+
+                  <SelectInput
+                    value={mmfPerPage}
+                    onChange={(event) =>
+                      updateUrlFilters({
+                        mmfPerPage: Number(event.target.value),
+                        mmfPage: 1,
+                      })
+                    }
+                    className="w-36"
+                  >
+                    <option value={12}>12 / page</option>
+                    <option value={24}>24 / page</option>
+                    <option value={36}>36 / page</option>
+                  </SelectInput>
+                </div>
+
                 {mmfItems.length === 0 ? (
                   <EmptyState
                     className="mt-4"
                     title="No MyMiniFactory results found."
-                    description="Try a different search term."
+                    description="Try a different search term or MMF sorting option."
                   />
                 ) : (
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {mmfItems.map((item) => (
-                      <MmfDesignCard key={item.id} item={item} />
-                    ))}
-                  </div>
+                  <>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {mmfItems.map((item) => (
+                        <MmfDesignCard key={item.id} item={item} />
+                      ))}
+                    </div>
+
+                    {mmfPagination.totalPages > 1 && (
+                      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm text-slate-500">
+                          Showing MMF page {mmfPagination.page} of{" "}
+                          {mmfPagination.totalPages}
+                        </p>
+
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={mmfPagination.page <= 1}
+                            onClick={goToPreviousMmfPage}
+                          >
+                            Previous
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={
+                              mmfPagination.page >= mmfPagination.totalPages
+                            }
+                            onClick={goToNextMmfPage}
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </section>
             )}
