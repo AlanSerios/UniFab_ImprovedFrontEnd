@@ -2,29 +2,174 @@ import {
   deleteQuoteRecordById,
   getExpiredUnusedQuoteRecords,
 } from "../models/quote-record.model.js";
-import { removeManagedPrintRequestModelFile } from "../utils/print-request-storage.util.js";
+import {
+  deleteUnusedQuoteRecordsForAsset,
+  getExpiredUnusedQuoteAssets,
+  markQuoteAssetExpired,
+} from "../models/quote-asset.model.js";
+import { deleteOldQuoteAttempts } from "../models/quote-attempt.model.js";
+import {
+  removeManagedPrintRequestModelFile,
+  removeManagedPrintRequestThumbnailFile,
+} from "../utils/print-request-storage.util.js";
+import {
+  removeManagedQuoteModelFile,
+  removeManagedQuoteThumbnailFile,
+} from "../utils/quote-storage.util.js";
+import {
+  countActiveFileReferences,
+  markFileReferencesInactive,
+} from "../models/file-registry.model.js";
+import { markFileObjectDeleted } from "./file-storage.service.js";
 
-async function cleanupExpiredUnusedQuotes({ limit = 100 } = {}) {
-  const quoteRecords = await getExpiredUnusedQuoteRecords({ limit });
+async function cleanupExpiredUnusedQuotes({
+  limit = 100,
+  graceHours = Number(process.env.QUOTE_CLEANUP_GRACE_HOURS || 0),
+} = {}) {
+  const quoteRecords = await getExpiredUnusedQuoteRecords({ limit, graceHours });
+  const quoteAssets = await getExpiredUnusedQuoteAssets({ limit, graceHours });
   const result = {
-    checked: quoteRecords.length,
+    checked: quoteRecords.length + quoteAssets.length,
+    expiredQuoteAssets: 0,
     deletedQuoteRecords: 0,
+    deletedQuoteAttempts: 0,
     deletedModelFiles: 0,
+    deletedThumbnailFiles: 0,
     missingModelFiles: 0,
     failed: [],
   };
 
-  for (const quoteRecord of quoteRecords) {
+  result.deletedQuoteAttempts = await deleteOldQuoteAttempts({
+    retentionDays: Number(process.env.QUOTE_ATTEMPT_RETENTION_DAYS || 30),
+  });
+
+  for (const quoteAsset of quoteAssets) {
     try {
-      if (quoteRecord.source_type === "upload" && quoteRecord.file_url) {
-        const removedFile = await removeManagedPrintRequestModelFile(
-          quoteRecord.file_url,
-        );
+      await markFileReferencesInactive({
+        referenceType: "quote_asset",
+        referenceId: quoteAsset.id,
+        status: "expired",
+        reason: "Expired unused quote asset cleanup.",
+      });
+
+      if (quoteAsset.sourceType === "upload" && quoteAsset.fileUrl) {
+        let removedFile = false;
+
+        if (
+          quoteAsset.fileObjectId &&
+          (await countActiveFileReferences(quoteAsset.fileObjectId)) === 0
+        ) {
+          await markFileObjectDeleted({
+            fileObjectId: quoteAsset.fileObjectId,
+            reason: "Expired unused quote asset model deleted after retention.",
+            deletePhysical: true,
+          });
+          removedFile = true;
+        }
 
         if (removedFile) {
           result.deletedModelFiles += 1;
         } else {
           result.missingModelFiles += 1;
+        }
+      }
+
+      if (quoteAsset.thumbnailUrl) {
+        let removedThumbnail = false;
+
+        if (
+          quoteAsset.thumbnailFileObjectId &&
+          (await countActiveFileReferences(quoteAsset.thumbnailFileObjectId)) === 0
+        ) {
+          await markFileObjectDeleted({
+            fileObjectId: quoteAsset.thumbnailFileObjectId,
+            reason:
+              "Expired unused quote asset thumbnail deleted after retention.",
+            deletePhysical: true,
+          });
+          removedThumbnail = true;
+        }
+
+        if (removedThumbnail) {
+          result.deletedThumbnailFiles += 1;
+        }
+      }
+
+      result.deletedQuoteRecords += await deleteUnusedQuoteRecordsForAsset(
+        quoteAsset.id,
+      );
+
+      if (await markQuoteAssetExpired(quoteAsset.id)) {
+        result.expiredQuoteAssets += 1;
+      }
+    } catch (error) {
+      result.failed.push({
+        quoteAssetId: quoteAsset.id,
+        message: error.message || "Cleanup failed",
+      });
+    }
+  }
+
+  for (const quoteRecord of quoteRecords) {
+    try {
+      await markFileReferencesInactive({
+        referenceType: "quote_record",
+        referenceId: quoteRecord.id,
+        status: "expired",
+        reason: "Expired unused quote cleanup.",
+      });
+
+      if (quoteRecord.source_type === "upload" && quoteRecord.file_url) {
+        let removedFile = false;
+
+        if (
+          quoteRecord.file_object_id &&
+          (await countActiveFileReferences(quoteRecord.file_object_id)) === 0
+        ) {
+          await markFileObjectDeleted({
+            fileObjectId: quoteRecord.file_object_id,
+            reason: "Expired unused quote model deleted after retention.",
+            deletePhysical: true,
+          });
+          removedFile = true;
+        } else if (!quoteRecord.file_object_id) {
+          removedFile =
+            (await removeManagedQuoteModelFile(quoteRecord.file_url)) ||
+            (await removeManagedPrintRequestModelFile(quoteRecord.file_url));
+        }
+
+        if (removedFile) {
+          result.deletedModelFiles += 1;
+        } else {
+          result.missingModelFiles += 1;
+        }
+      }
+
+      if (quoteRecord.thumbnail_url) {
+        let removedThumbnail = false;
+
+        if (
+          quoteRecord.thumbnail_file_object_id &&
+          (await countActiveFileReferences(
+            quoteRecord.thumbnail_file_object_id,
+          )) === 0
+        ) {
+          await markFileObjectDeleted({
+            fileObjectId: quoteRecord.thumbnail_file_object_id,
+            reason: "Expired unused quote thumbnail deleted after retention.",
+            deletePhysical: true,
+          });
+          removedThumbnail = true;
+        } else if (!quoteRecord.thumbnail_file_object_id) {
+          removedThumbnail =
+            (await removeManagedQuoteThumbnailFile(quoteRecord.thumbnail_url)) ||
+            (await removeManagedPrintRequestThumbnailFile(
+              quoteRecord.thumbnail_url,
+            ));
+        }
+
+        if (removedThumbnail) {
+          result.deletedThumbnailFiles += 1;
         }
       }
 

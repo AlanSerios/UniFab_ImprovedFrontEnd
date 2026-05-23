@@ -119,7 +119,7 @@ export default function AdminSlicerProfiles() {
 
     try {
       await uploadSlicerProfile(form.materialKey, form);
-      setMessage("Slicer profile uploaded successfully.");
+      setMessage("Slicer profile uploaded and dry-run validated successfully.");
       setForm((current) => ({ ...current, profileFile: null }));
       event.target.reset();
       await refreshProfiles();
@@ -135,7 +135,7 @@ export default function AdminSlicerProfiles() {
       <Panel>
         <PageHeader
           title="Slicer profiles"
-          description="Upload PrusaSlicer .ini profiles for material and quality quote readiness."
+          description="Upload PrusaSlicer .ini profiles. Each profile must pass a dry-run slice before it becomes active."
           meta={`${activeProfiles} active / ${profiles.length} versions`}
         />
 
@@ -259,13 +259,14 @@ export default function AdminSlicerProfiles() {
                 <th className="px-4 py-3">Printer</th>
                 <th className="px-4 py-3">Nozzle</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Validation</th>
                 <th className="px-4 py-3">Uploaded</th>
               </tr>
               </TableHead>
               <TableBody>
               {isLoading && (
                 <tr>
-                  <td className="px-4 py-6 text-slate-500" colSpan={7}>
+                  <td className="px-4 py-6 text-slate-500" colSpan={8}>
                     Loading slicer profiles...
                   </td>
                 </tr>
@@ -273,7 +274,7 @@ export default function AdminSlicerProfiles() {
 
               {!isLoading && profiles.length === 0 && (
                 <tr>
-                  <td className="px-4 py-6 text-slate-500" colSpan={7}>
+                  <td className="px-4 py-6 text-slate-500" colSpan={8}>
                     No slicer profiles found.
                   </td>
                 </tr>
@@ -309,6 +310,18 @@ export default function AdminSlicerProfiles() {
                         {profile.is_active ? "Active" : "Old version"}
                       </StatusBadge>
                     </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge
+                        tone={getValidationTone(profile.validation_status)}
+                      >
+                        {profile.validation_status || "not_run"}
+                      </StatusBadge>
+                      {profile.validation_message && (
+                        <p className="mt-1 max-w-xs text-xs leading-5 text-slate-500">
+                          {profile.validation_message}
+                        </p>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-slate-500">
                       {profile.created_at
                         ? new Date(profile.created_at).toLocaleDateString()
@@ -323,4 +336,16 @@ export default function AdminSlicerProfiles() {
       </Panel>
     </PageShell>
   );
+}
+
+function getValidationTone(status) {
+  if (status === "passed") {
+    return "success";
+  }
+
+  if (status === "failed") {
+    return "danger";
+  }
+
+  return "warning";
 }

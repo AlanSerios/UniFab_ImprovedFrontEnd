@@ -4,7 +4,10 @@ import {
   updatePricing,
 } from "../controllers/pricing-config.controller.js";
 import { validate } from "../middlewares/validator.middleware.js";
-import { verifyJWT } from "../middlewares/auth.middleware.js";
+import {
+  verifyEmailVerified,
+  verifyJWT,
+} from "../middlewares/auth.middleware.js";
 import { verifyAdmin } from "../middlewares/role.middleware.js";
 import { updateQuoteValidator } from "../validators/quote.validator.js";
 import rateLimit from "express-rate-limit";
@@ -14,10 +17,11 @@ const router = express.Router();
 
 router
   .route("/")
-  .get(authLimiter, verifyJWT, verifyAdmin, getPricingConfig)
+  .get(authLimiter, verifyJWT, verifyEmailVerified, verifyAdmin, getPricingConfig)
   .put(
     authLimiter,
     verifyJWT,
+    verifyEmailVerified,
     verifyAdmin,
     updateQuoteValidator(),
     validate,

@@ -7,6 +7,12 @@ import {
   ensureSlicerProfileStorageDir,
   getSlicerProfileFilePath,
 } from "../utils/slicer-profile-path.util.js";
+import { runProfileDryRun } from "./slicer.service.js";
+import { createSlicerProfileValidationEvent } from "../models/slicer-profile-validation-event.model.js";
+import {
+  attachManagedFileReference,
+  registerManagedFile,
+} from "./file-storage.service.js";
 
 const ALLOWED_QUALITIES = new Set(["draft", "standard", "fine"]);
 
@@ -34,50 +40,6 @@ function normalizeQuality(quality) {
   }
 
   return normalizedQuality;
-}
-
-function normalizeDisplayName(displayName, fallbackValue) {
-  if (!hasText(displayName)) {
-    return fallbackValue;
-  }
-
-  return String(displayName).trim();
-}
-
-function parseRequiredNonNegativeNumber(value, fieldName) {
-  if (value === undefined || value === null || value === "") {
-    throw new ApiError(400, `${fieldName} is required`);
-  }
-
-  const parsedValue = Number(value);
-
-  if (Number.isNaN(parsedValue) || parsedValue < 0) {
-    throw new ApiError(400, `${fieldName} must be a valid non-negative number`);
-  }
-
-  return parsedValue;
-}
-
-function parseOptionalBoolean(value, fieldName) {
-  if (value === undefined || value === null || value === "") {
-    return undefined;
-  }
-
-  if (typeof value === "boolean") {
-    return value;
-  }
-
-  const normalizedValue = String(value).trim().toLowerCase();
-
-  if (["true", "1", "yes"].includes(normalizedValue)) {
-    return true;
-  }
-
-  if (["false", "0", "no"].includes(normalizedValue)) {
-    return false;
-  }
-
-  throw new ApiError(400, `${fieldName} must be a valid boolean value`);
 }
 
 function toSafeSlug(value) {
@@ -143,6 +105,7 @@ async function createNewActiveProfileVersion({
   originalFileName,
   uploadedBy,
   fileState,
+  validationMessage,
 }) {
   const normalizedPrinterName = hasText(printerName)
     ? String(printerName).trim()
@@ -182,6 +145,16 @@ async function createNewActiveProfileVersion({
   fileState.finalFilePath = finalFilePath;
 
   await fs.promises.rename(tempFilePath, finalFilePath);
+  const profileFileObject = await registerManagedFile({
+    absolutePath: finalFilePath,
+    publicPath: `/storage/slicer-profiles/library/${finalFileName}`,
+    originalFileName,
+    mimeType: "text/plain",
+    visibility: "private",
+    createdBy: uploadedBy,
+    dedupe: false,
+    connection,
+  });
 
   await connection.query(
     `
@@ -202,11 +175,15 @@ async function createNewActiveProfileVersion({
         support_rule,
         orientation_rule,
         profile_filename,
+        file_object_id,
         version_number,
         is_active,
+        validation_status,
+        validation_message,
+        validated_at,
         uploaded_by
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, 'passed', ?, NOW(), ?)
     `,
     [
       materialRow.id,
@@ -216,7 +193,47 @@ async function createNewActiveProfileVersion({
       normalizedSupportRule,
       normalizedOrientationRule,
       finalFileName,
+      profileFileObject?.id || null,
       nextVersion,
+      validationMessage,
+      uploadedBy,
+    ],
+  );
+  if (profileFileObject?.id) {
+    await attachManagedFileReference({
+      fileObjectId: profileFileObject.id,
+      referenceType: "slicer_profile",
+      referenceId: insertProfileResult.insertId,
+      referenceColumn: "file_object_id",
+      fileRole: "profile",
+      ownerUserId: uploadedBy,
+      visibility: "private",
+      actorId: uploadedBy,
+      connection,
+    });
+  }
+
+  await connection.query(
+    `
+      INSERT INTO slicer_profile_validation_events (
+        material_id,
+        material_key,
+        quality,
+        profile_original_name,
+        profile_filename,
+        status,
+        message,
+        uploaded_by
+      )
+      VALUES (?, ?, ?, ?, ?, 'passed', ?, ?)
+    `,
+    [
+      materialRow.id,
+      materialRow.material_key,
+      quality,
+      originalFileName,
+      finalFileName,
+      validationMessage,
       uploadedBy,
     ],
   );
@@ -234,6 +251,9 @@ async function createNewActiveProfileVersion({
         profile_filename,
         version_number,
         is_active,
+        validation_status,
+        validation_message,
+        validated_at,
         uploaded_by,
         created_at,
         updated_at
@@ -246,178 +266,6 @@ async function createNewActiveProfileVersion({
 
   return profileRows[0];
 }
-
-/**
- * Temporary backward-compatible flow:
- * create/update material metadata, then register a new profile version.
- */
-// async function registerMaterialProfile({
-//   materialKey,
-//   displayName,
-//   materialCostPerGram,
-//   isActiveMaterial,
-//   quality,
-//   printerName = "Creality Ender 3 V3 SE",
-//   nozzle = "0.4mm",
-//   supportRule = "auto",
-//   orientationRule = "original",
-//   tempFilePath,
-//   originalFileName,
-//   uploadedBy,
-// }) {
-//   validateProfileUploadInput({ tempFilePath, uploadedBy });
-
-//   const normalizedMaterialKey = normalizeMaterialKey(materialKey);
-//   const normalizedQuality = normalizeQuality(quality);
-//   const parsedMaterialCostPerGram = parseRequiredNonNegativeNumber(
-//     materialCostPerGram,
-//     "Material cost per gram",
-//   );
-//   const parsedIsActiveMaterial = parseOptionalBoolean(
-//     isActiveMaterial,
-//     "isActiveMaterial",
-//   );
-
-//   const connection = await pool.getConnection();
-//   const fileState = { finalFilePath: null };
-
-//   try {
-//     await connection.beginTransaction();
-
-//     const [existingMaterialRows] = await connection.query(
-//       `
-//         SELECT
-//           id,
-//           material_key,
-//           display_name,
-//           material_cost_per_gram,
-//           is_active,
-//           created_at,
-//           updated_at
-//         FROM materials
-//         WHERE material_key = ?
-//         LIMIT 1
-//         FOR UPDATE
-//       `,
-//       [normalizedMaterialKey],
-//     );
-
-//     let materialId;
-
-//     if (existingMaterialRows.length === 0) {
-//       const nextDisplayName = normalizeDisplayName(
-//         displayName,
-//         normalizedMaterialKey,
-//       );
-//       const nextIsActiveMaterial =
-//         parsedIsActiveMaterial !== undefined ? parsedIsActiveMaterial : true;
-
-//       const [insertMaterialResult] = await connection.query(
-//         `
-//           INSERT INTO materials (
-//             material_key,
-//             display_name,
-//             material_cost_per_gram,
-//             is_active
-//           )
-//           VALUES (?, ?, ?, ?)
-//         `,
-//         [
-//           normalizedMaterialKey,
-//           nextDisplayName,
-//           parsedMaterialCostPerGram,
-//           nextIsActiveMaterial,
-//         ],
-//       );
-
-//       materialId = insertMaterialResult.insertId;
-//     } else {
-//       const existingMaterial = existingMaterialRows[0];
-
-//       const nextDisplayName = hasText(displayName)
-//         ? normalizeDisplayName(displayName, normalizedMaterialKey)
-//         : existingMaterial.display_name;
-
-//       const nextIsActiveMaterial =
-//         parsedIsActiveMaterial !== undefined
-//           ? parsedIsActiveMaterial
-//           : Boolean(existingMaterial.is_active);
-
-//       await connection.query(
-//         `
-//           UPDATE materials
-//           SET
-//             display_name = ?,
-//             material_cost_per_gram = ?,
-//             is_active = ?
-//           WHERE id = ?
-//         `,
-//         [
-//           nextDisplayName,
-//           parsedMaterialCostPerGram,
-//           nextIsActiveMaterial,
-//           existingMaterial.id,
-//         ],
-//       );
-
-//       materialId = existingMaterial.id;
-//     }
-
-//     const [materialRows] = await connection.query(
-//       `
-//         SELECT
-//           id,
-//           material_key,
-//           display_name,
-//           material_cost_per_gram,
-//           is_active,
-//           created_at,
-//           updated_at
-//         FROM materials
-//         WHERE id = ?
-//         LIMIT 1
-//       `,
-//       [materialId],
-//     );
-
-//     const materialRow = materialRows[0];
-
-//     const slicerProfile = await createNewActiveProfileVersion({
-//       connection,
-//       materialRow,
-//       quality: normalizedQuality,
-//       printerName,
-//       nozzle,
-//       supportRule,
-//       orientationRule,
-//       tempFilePath,
-//       originalFileName,
-//       uploadedBy,
-//       fileState,
-//     });
-
-//     await connection.commit();
-
-//     return {
-//       material: materialRow,
-//       slicerProfile,
-//     };
-//   } catch (error) {
-//     await connection.rollback();
-
-//     if (fileState.finalFilePath && fs.existsSync(fileState.finalFilePath)) {
-//       await fs.promises.rm(fileState.finalFilePath, { force: true });
-//     }
-
-//     if (tempFilePath && fs.existsSync(tempFilePath)) {
-//       await fs.promises.rm(tempFilePath, { force: true });
-//     }
-
-//     throw error;
-//   } finally {
-//     connection.release();
-//   }
-// }
 
 /**
  * New long-term flow:
@@ -438,6 +286,63 @@ async function registerSlicerProfileVersion({
 
   const normalizedMaterialKey = normalizeMaterialKey(materialKey);
   const normalizedQuality = normalizeQuality(quality);
+  const [preflightMaterialRows] = await pool.query(
+    `
+      SELECT
+        id,
+        material_key,
+        display_name,
+        material_cost_per_gram,
+        is_active
+      FROM materials
+      WHERE material_key = ? AND is_active = TRUE
+      LIMIT 1
+    `,
+    [normalizedMaterialKey],
+  );
+  const preflightMaterial = preflightMaterialRows[0];
+
+  if (!preflightMaterial) {
+    throw new ApiError(
+      404,
+      `Active material not found for key: ${normalizedMaterialKey}`,
+    );
+  }
+
+  let validationMessage = "Dry-run validation passed.";
+
+  try {
+    const validationResult = await runProfileDryRun({
+      configPath: tempFilePath,
+      infill: 20,
+    });
+    const minutes = Math.round(
+      Number(validationResult.estimatedPrintTimeMinutes || 0),
+    );
+    const grams = Number(validationResult.filamentWeightGrams || 0).toFixed(2);
+    validationMessage = `Dry-run validation passed using sample cube (${minutes} min, ${grams} g).`;
+  } catch (error) {
+    try {
+      await createSlicerProfileValidationEvent({
+        materialId: preflightMaterial.id,
+        materialKey: preflightMaterial.material_key,
+        quality: normalizedQuality,
+        profileOriginalName: originalFileName,
+        status: "failed",
+        message: error.message || "Dry-run validation failed.",
+        uploadedBy,
+      });
+    } catch (eventError) {
+      console.error(
+        `Failed to record slicer profile validation event: ${eventError.message}`,
+      );
+    }
+
+    throw new ApiError(
+      error.statusCode || 422,
+      `Slicer profile dry-run validation failed: ${error.message}`,
+    );
+  }
 
   const connection = await pool.getConnection();
   const fileState = { finalFilePath: null };
@@ -484,6 +389,7 @@ async function registerSlicerProfileVersion({
       originalFileName,
       uploadedBy,
       fileState,
+      validationMessage,
     });
 
     await connection.commit();

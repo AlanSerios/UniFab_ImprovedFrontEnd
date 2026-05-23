@@ -1,49 +1,33 @@
 import fs from "fs";
 import path from "path";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { ApiError } from "../utils/api-error.js";
 import { ensureDirExists } from "../utils/temp-path.util.js";
-import { LOCAL_DESIGN_FILES_ROOT } from "../utils/local-design-storage.util.js";
+import {
+  MMF_PRINT_READY_FILES_ROOT,
+  buildMmfPrintReadyFilePublicPath,
+} from "../utils/mmf-print-ready-storage.util.js";
+import {
+  attachManagedFileReference,
+  registerManagedFile,
+  registerManagedPublicPath,
+} from "./file-storage.service.js";
 import {
   downloadMmfFile,
-  getObjectFilesById,
-  selectPreferredPrintableMmfFile,
+  getObjectFilesByIdWithOAuth,
+  hydrateMmfFileForDownload,
+  SUPPORTED_MMF_MODEL_EXTENSIONS,
 } from "./myminifactory.service.js";
+import { extractZipEntry } from "../utils/zip-file.util.js";
 import {
-  createLocalDesign,
-  createLocalDesignAuditEvent,
-} from "../models/local-design.model.js";
+  findMmfPrintReadyFileSelection,
+  getMmfPrintReadyFileByObjectId,
+  upsertMmfPrintReadyFile,
+} from "../models/mmf-print-ready-file.model.js";
+import { generateStoredMmfPrintReadySnapshot } from "../utils/model-snapshot.util.js";
 
 function hasText(value) {
   return value !== undefined && value !== null && String(value).trim() !== "";
-}
-
-function firstMmfImageUrl(mmfObject) {
-  const primaryImage = mmfObject?.images?.find((image) => image.isPrimary);
-  const image = primaryImage || mmfObject?.images?.[0];
-
-  return (
-    image?.standardUrl ||
-    image?.thumbnailUrl ||
-    image?.originalUrl ||
-    null
-  );
-}
-
-function formatMmfDescription(mmfObject, selectedFile) {
-  const lines = [
-    hasText(mmfObject?.description) ? String(mmfObject.description).trim() : null,
-    `Mapped automatically from MyMiniFactory object #${mmfObject.id}.`,
-    hasText(mmfObject?.url) ? `Source: ${mmfObject.url}` : null,
-    hasText(mmfObject?.designer?.name)
-      ? `Designer: ${mmfObject.designer.name}`
-      : null,
-    hasText(selectedFile?.name)
-      ? `Mapped file: ${selectedFile.name}`
-      : null,
-  ];
-
-  return lines.filter(Boolean).join("\n\n");
 }
 
 function getLicenseType(mmfObject) {
@@ -58,107 +42,273 @@ function getLicenseType(mmfObject) {
   return activeLicenses?.length ? activeLicenses.join(", ") : null;
 }
 
-function formatDimensions(dimensions) {
-  if (!dimensions) {
+function parseJsonSafely(value) {
+  if (!value || typeof value !== "string") {
+    return value || null;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
     return null;
   }
-
-  if (typeof dimensions === "string") {
-    return dimensions;
-  }
-
-  const axisValues = ["x", "y", "z"]
-    .map((axis) => dimensions[axis] || dimensions[axis.toUpperCase()])
-    .filter(Boolean);
-
-  if (axisValues.length > 0) {
-    return axisValues.join(" x ");
-  }
-
-  return JSON.stringify(dimensions);
 }
 
-async function mapMmfObjectToLocalDesign({ mmfObject, adminUserId }) {
-  if (!mmfObject?.id) {
-    throw new ApiError(404, "MyMiniFactory design not found");
+async function resolveSelectedMmfFile({ mmfObject, selectedMmfFileId }) {
+  if (!selectedMmfFileId) {
+    throw new ApiError(
+      400,
+      "Select a MyMiniFactory file before enabling Print Ready mapping.",
+    );
   }
 
   const files =
     mmfObject?.files?.length > 0
       ? mmfObject.files
-      : await getObjectFilesById(mmfObject.id);
-  const selectedFile = selectPreferredPrintableMmfFile(files);
+      : await getObjectFilesByIdWithOAuth(mmfObject.id);
+  const selectedFile = files.find(
+    (file) => Number(file.id) === Number(selectedMmfFileId),
+  );
 
   if (!selectedFile) {
+    throw new ApiError(400, "Selected MyMiniFactory file was not found");
+  }
+
+  return hydrateMmfFileForDownload(selectedFile);
+}
+
+async function resolveSelectedMmfFileBuffer({
+  selectedFile,
+  selectedArchiveEntryPath,
+}) {
+  const fileBuffer = await downloadMmfFile(selectedFile);
+
+  if (selectedFile.extension === ".zip") {
+    if (!hasText(selectedArchiveEntryPath)) {
+      throw new ApiError(
+        400,
+        "Select a printable file inside the ZIP archive before enabling Print Ready mapping.",
+      );
+    }
+
+    const extractedEntry = extractZipEntry(fileBuffer, selectedArchiveEntryPath);
+
+    return {
+      fileBuffer: extractedEntry.buffer,
+      extension: extractedEntry.extension,
+      storedFileName: extractedEntry.name,
+      selectedArchiveEntry: {
+        path: extractedEntry.path,
+        name: extractedEntry.name,
+        size: extractedEntry.size,
+        extension: extractedEntry.extension,
+      },
+    };
+  }
+
+  if (!SUPPORTED_MMF_MODEL_EXTENSIONS.has(selectedFile.extension)) {
     throw new ApiError(
       400,
-      "No supported printable STL, OBJ, or 3MF file was found through the MyMiniFactory API. Download and verify the design manually, then link a local design if needed.",
+      "Selected MyMiniFactory file must be an STL, OBJ, 3MF, or ZIP containing one of those files.",
     );
   }
 
-  const fileBuffer = await downloadMmfFile(selectedFile);
-  const extension = selectedFile.extension;
-  const safeFileName = `${randomUUID()}${extension}`;
-  const absoluteFilePath = path.join(LOCAL_DESIGN_FILES_ROOT, safeFileName);
-  const publicFilePath = `/storage/local-designs/files/${safeFileName}`;
+  return {
+    fileBuffer,
+    extension: selectedFile.extension,
+    storedFileName: selectedFile.name,
+    selectedArchiveEntry: null,
+  };
+}
 
-  ensureDirExists(LOCAL_DESIGN_FILES_ROOT);
+function buildMmfSourceSnapshot(mmfObject, selectedFile, selectedArchiveEntry) {
+  return {
+    mmfObjectId: mmfObject.id,
+    mmfUrl: mmfObject.url,
+    sourceObjectName: mmfObject?.name || mmfObject?.title || null,
+    designer: mmfObject?.designer || null,
+    selectedFile: selectedFile
+      ? {
+          id: selectedFile.id || null,
+          name: selectedFile.name || selectedFile.filename || null,
+          extension: selectedFile.extension || null,
+          size: selectedFile.size || null,
+        }
+      : null,
+    selectedArchiveEntry,
+    cachedAt: new Date().toISOString(),
+  };
+}
+
+async function cacheMmfObjectPrintReadyFile({
+  mmfObject,
+  adminUserId,
+  selectedMmfFileId,
+  selectedArchiveEntryPath = null,
+}) {
+  if (!mmfObject?.id) {
+    throw new ApiError(404, "MyMiniFactory design not found");
+  }
+
+  const selectedFile = await resolveSelectedMmfFile({
+    mmfObject,
+    selectedMmfFileId,
+  });
+  const existingSelection = await findMmfPrintReadyFileSelection({
+    mmfObjectId: mmfObject.id,
+    mmfFileId: selectedFile.id || null,
+    archiveEntryPath: selectedArchiveEntryPath || null,
+  });
+
+  if (
+    existingSelection?.cached_file_url &&
+    ["cached", "archived"].includes(existingSelection.status)
+  ) {
+    const printReadyFile =
+      existingSelection.status === "archived"
+        ? await upsertMmfPrintReadyFile({
+            mmfObjectId: mmfObject.id,
+            mmfFileId: existingSelection.mmf_file_id,
+            archiveEntryPath: existingSelection.archive_entry_path,
+            archiveEntryName: existingSelection.archive_entry_name,
+            cachedFileUrl: existingSelection.cached_file_url,
+            fileObjectId: existingSelection.file_object_id,
+            modelSnapshotUrl: existingSelection.model_snapshot_url,
+            modelSnapshotFileObjectId:
+              existingSelection.model_snapshot_file_object_id,
+            originalFileName: existingSelection.original_file_name,
+            extension: existingSelection.extension,
+            fileSize: existingSelection.file_size,
+            checksumSha256: existingSelection.checksum_sha256,
+            sourceUrl: existingSelection.source_url,
+            licenseSnapshot: parseJsonSafely(existingSelection.license_snapshot),
+            sourceSnapshot: parseJsonSafely(existingSelection.source_snapshot),
+            mappedBy: adminUserId,
+            verifiedBy: adminUserId,
+            verifiedAt: new Date(),
+            status: "cached",
+            errorMessage: null,
+            sortOrder: existingSelection.sort_order,
+            isPrimary: existingSelection.is_primary,
+          })
+        : existingSelection;
+
+    return {
+      printReadyFile,
+      selectedFile,
+      selectedArchiveEntry: printReadyFile.archive_entry_path
+        ? {
+            path: printReadyFile.archive_entry_path,
+            name: printReadyFile.archive_entry_name,
+          }
+        : null,
+      sourceSnapshot: parseJsonSafely(printReadyFile.source_snapshot),
+    };
+  }
+
+  const {
+    fileBuffer,
+    extension,
+    storedFileName,
+    selectedArchiveEntry,
+  } = await resolveSelectedMmfFileBuffer({
+    selectedFile,
+    selectedArchiveEntryPath,
+  });
+  const safeFileName = `${randomUUID()}${extension}`;
+  const absoluteFilePath = path.join(MMF_PRINT_READY_FILES_ROOT, safeFileName);
+  const publicFilePath = buildMmfPrintReadyFilePublicPath(safeFileName);
+  const checksumSha256 = createHash("sha256").update(fileBuffer).digest("hex");
+  const existingPrintReadyFile = await getMmfPrintReadyFileByObjectId(
+    mmfObject.id,
+  );
+
+  ensureDirExists(MMF_PRINT_READY_FILES_ROOT);
   await fs.promises.writeFile(absoluteFilePath, fileBuffer);
 
   try {
-    const localDesign = await createLocalDesign({
-      sourceKind: "lab",
-      title: mmfObject?.name
-        ? `MMF: ${mmfObject.name}`
-        : `MMF object #${mmfObject.id}`,
-      description: formatMmfDescription(mmfObject, selectedFile),
-      thumbnailUrl: firstMmfImageUrl(mmfObject),
-      fileUrl: publicFilePath,
-      material: null,
-      dimensions: formatDimensions(mmfObject?.dimensions),
-      licenseType: getLicenseType(mmfObject),
-      categoryId: null,
-      uploadedBy: adminUserId,
-      isActive: false,
-      moderationStatus: "admin_approved",
-      isPrintReady: true,
-      ownershipConfirmed: true,
-      policyAcknowledged: true,
-      moderationFlags: [
-        {
-          code: "mmf_api_file_mapped",
-          source: "admin",
-          severity: "info",
-          label: "MMF file mapped through API",
-          detail:
-            "A FabLab admin marked this MyMiniFactory design Print Ready after the backend mapped a supported file through the MyMiniFactory API.",
-        },
-      ],
-      moderationSummary:
-        "Mapped from MyMiniFactory API as a backend-managed Print Ready file.",
-      moderationFeedback: null,
-      moderationDecisionSource: "admin",
-      publishedAt: new Date(),
+    const modelSnapshotUrl =
+      await generateStoredMmfPrintReadySnapshot(absoluteFilePath);
+    const fileObject = await registerManagedFile({
+      absolutePath: absoluteFilePath,
+      publicPath: publicFilePath,
+      originalFileName: storedFileName || selectedFile.name,
+      mimeType: null,
+      visibility: "private",
+      createdBy: adminUserId,
     });
-
-    await createLocalDesignAuditEvent({
-      localDesignId: localDesign.id,
-      actorId: adminUserId,
-      actorType: "admin",
-      eventType: "mmf_file_mapped",
-      fromStatus: null,
-      toStatus: "admin_approved",
-      summary: "Mapped a MyMiniFactory file into a Print Ready local design.",
-      metadata: {
-        mmfObjectId: mmfObject.id,
-        mmfUrl: mmfObject.url,
-        mappedFile: selectedFile,
+    const modelSnapshotFileObject = modelSnapshotUrl
+      ? await registerManagedPublicPath({
+          publicPath: modelSnapshotUrl,
+          originalFileName: `${storedFileName || selectedFile.name || "mmf"}-snapshot.png`,
+          mimeType: "image/png",
+          visibility: "public",
+          createdBy: adminUserId,
+        })
+      : null;
+    const sourceSnapshot = buildMmfSourceSnapshot(
+      mmfObject,
+      selectedFile,
+      selectedArchiveEntry,
+    );
+    const printReadyFile = await upsertMmfPrintReadyFile({
+      mmfObjectId: mmfObject.id,
+      mmfFileId: selectedFile.id || null,
+      archiveEntryPath: selectedArchiveEntry?.path || null,
+      archiveEntryName: selectedArchiveEntry?.name || null,
+      cachedFileUrl: fileObject?.publicPath || publicFilePath,
+      fileObjectId: fileObject?.id || null,
+      modelSnapshotUrl: modelSnapshotFileObject?.publicPath || modelSnapshotUrl,
+      modelSnapshotFileObjectId: modelSnapshotFileObject?.id || null,
+      originalFileName: storedFileName || selectedFile.name,
+      extension,
+      fileSize: fileObject?.fileSize || fileBuffer.byteLength,
+      checksumSha256: fileObject?.checksumSha256 || checksumSha256,
+      sourceUrl: mmfObject.url || null,
+      licenseSnapshot: {
+        licenseType: getLicenseType(mmfObject),
+        licenses: mmfObject?.licenses || null,
       },
+      sourceSnapshot,
+      mappedBy: adminUserId,
+      verifiedBy: adminUserId,
+      verifiedAt: new Date(),
+      status: "cached",
+      errorMessage: null,
+      isPrimary: !existingPrintReadyFile,
     });
+    await Promise.all([
+      fileObject?.id
+        ? attachManagedFileReference({
+            fileObjectId: fileObject.id,
+            referenceType: "mmf_print_ready_file",
+            referenceId: printReadyFile.id,
+            referenceColumn: "file_object_id",
+            fileRole: "model",
+            ownerUserId: adminUserId,
+            visibility: "private",
+            actorId: adminUserId,
+          })
+        : Promise.resolve(null),
+      modelSnapshotFileObject?.id
+        ? attachManagedFileReference({
+            fileObjectId: modelSnapshotFileObject.id,
+            referenceType: "mmf_print_ready_file",
+            referenceId: printReadyFile.id,
+            referenceColumn: "model_snapshot_file_object_id",
+            fileRole: "thumbnail",
+            ownerUserId: adminUserId,
+            visibility: "public",
+            actorId: adminUserId,
+          })
+        : Promise.resolve(null),
+    ]);
 
     return {
-      localDesign,
+      printReadyFile,
       selectedFile,
+      selectedArchiveEntry,
+      sourceSnapshot,
     };
   } catch (error) {
     await fs.promises.rm(absoluteFilePath, { force: true });
@@ -166,4 +316,4 @@ async function mapMmfObjectToLocalDesign({ mmfObject, adminUserId }) {
   }
 }
 
-export { mapMmfObjectToLocalDesign };
+export { cacheMmfObjectPrintReadyFile };

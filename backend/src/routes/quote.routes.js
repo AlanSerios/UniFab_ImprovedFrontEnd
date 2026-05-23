@@ -1,23 +1,29 @@
 import express from "express";
 import {
-  calculateDesignRequestQuote,
   calculateMmfDesignQuote,
   calculateQuote,
   calculateLocalDesignQuote,
+  recalculateUploadQuote,
   getQuoteByToken,
   cleanupExpiredQuotes,
+  getAdminQuoteReadiness,
+  listAdminQuoteDiagnostics,
 } from "../controllers/quote.controller.js";
 import { validate } from "../middlewares/validator.middleware.js";
 import { quoteUploadMiddleware } from "../middlewares/quote-upload.middleware.js";
 import {
-  calculateDesignRequestQuoteValidator,
   calculateLocalDesignQuoteValidator,
   calculateMmfDesignQuoteValidator,
   calculateQuoteValidator,
   cleanupExpiredQuotesValidator,
+  listQuoteDiagnosticsValidator,
   quoteTokenValidator,
 } from "../validators/quote.validator.js";
-import { verifyJWT } from "../middlewares/auth.middleware.js";
+import {
+  optionalVerifyJWT,
+  verifyEmailVerified,
+  verifyJWT,
+} from "../middlewares/auth.middleware.js";
 import { verifyAdmin } from "../middlewares/role.middleware.js";
 import {
   publicReadRateLimiter,
@@ -31,6 +37,7 @@ router
   .route("/calculate")
   .post(
     quoteCalculationRateLimiter,
+    optionalVerifyJWT,
     quoteUploadMiddleware,
     calculateQuoteValidator(),
     validate,
@@ -41,28 +48,31 @@ router
   .route("/local-designs/:designId")
   .post(
     quoteCalculationRateLimiter,
+    optionalVerifyJWT,
     calculateLocalDesignQuoteValidator(),
     validate,
     calculateLocalDesignQuote,
   );
 
 router
-  .route("/design-requests/:requestId")
-  .post(
-    quoteCalculationRateLimiter,
-    verifyJWT,
-    calculateDesignRequestQuoteValidator(),
-    validate,
-    calculateDesignRequestQuote,
-  );
-
-router
   .route("/mmf/:objectId")
   .post(
     quoteCalculationRateLimiter,
+    optionalVerifyJWT,
     calculateMmfDesignQuoteValidator(),
     validate,
     calculateMmfDesignQuote,
+  );
+
+router
+  .route("/:quoteToken/recalculate")
+  .post(
+    quoteCalculationRateLimiter,
+    optionalVerifyJWT,
+    quoteTokenValidator(),
+    calculateQuoteValidator(),
+    validate,
+    recalculateUploadQuote,
   );
 
 router
@@ -70,10 +80,33 @@ router
   .delete(
     writeRateLimiter,
     verifyJWT,
+    verifyEmailVerified,
     verifyAdmin,
     cleanupExpiredQuotesValidator(),
     validate,
     cleanupExpiredQuotes,
+  );
+
+router
+  .route("/admin/readiness")
+  .get(
+    publicReadRateLimiter,
+    verifyJWT,
+    verifyEmailVerified,
+    verifyAdmin,
+    getAdminQuoteReadiness,
+  );
+
+router
+  .route("/admin/diagnostics")
+  .get(
+    publicReadRateLimiter,
+    verifyJWT,
+    verifyEmailVerified,
+    verifyAdmin,
+    listQuoteDiagnosticsValidator(),
+    validate,
+    listAdminQuoteDiagnostics,
   );
 
 router

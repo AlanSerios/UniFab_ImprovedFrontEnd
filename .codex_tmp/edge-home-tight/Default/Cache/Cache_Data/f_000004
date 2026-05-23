@@ -1,0 +1,857 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/App.jsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=45caa8ea"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+let prevRefreshReg;
+let prevRefreshSig;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  prevRefreshReg = window.$RefreshReg$;
+  prevRefreshSig = window.$RefreshSig$;
+  window.$RefreshReg$ = RefreshRuntime.getRefreshReg("C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx");
+  window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+}
+import { BrowserRouter, Routes, Route } from "/node_modules/.vite/deps/react-router-dom.js?v=45caa8ea";
+import { AuthProvider } from "/src/context/AuthContext.jsx";
+import { CartProvider } from "/src/context/CartContext.jsx";
+import AppLayout from "/src/components/layout/AppLayout.jsx";
+import Home from "/src/pages/Home.jsx?t=1779039353668";
+import UploadQuote from "/src/pages/UploadQuote.jsx";
+import QuoteReview from "/src/pages/QuoteReview.jsx";
+import Login from "/src/pages/Login.jsx";
+import Register from "/src/pages/Register.jsx";
+import ForgotPassword from "/src/pages/ForgotPassword.jsx";
+import ResetPassword from "/src/pages/ResetPassword.jsx";
+import AccountSettings from "/src/pages/AccountSettings.jsx";
+import VerifyEmail from "/src/pages/VerifyEmail.jsx";
+import VerifyRequired from "/src/pages/VerifyRequired.jsx";
+import Terms from "/src/pages/Terms.jsx";
+import Cart from "/src/pages/Cart.jsx";
+import PrintRequestSubmission from "/src/pages/PrintRequestSubmission.jsx";
+import ClientDashboard from "/src/pages/ClientDashboard.jsx";
+import AdminLayout from "/src/pages/admin/AdminLayout.jsx";
+import AdminDashboard from "/src/pages/admin/AdminDashboard.jsx";
+import AdminPrintRequests from "/src/pages/admin/AdminPrintRequests.jsx";
+import AdminPrintRequestDetail from "/src/pages/admin/AdminPrintRequestDetail.jsx";
+import AdminLocalDesigns from "/src/pages/admin/AdminLocalDesigns.jsx";
+import AdminLocalDesignForm from "/src/pages/admin/AdminLocalDesignForm.jsx";
+import AdminCommunityDesigns from "/src/pages/admin/AdminCommunityDesigns.jsx";
+import AdminCommunityDesignDetail from "/src/pages/admin/AdminCommunityDesignDetail.jsx";
+import AdminMmfOverrides from "/src/pages/admin/AdminMmfOverrides.jsx";
+import AdminMaterials from "/src/pages/admin/AdminMaterials.jsx";
+import AdminSlicerProfiles from "/src/pages/admin/AdminSlicerProfiles.jsx";
+import AdminPricingConfig from "/src/pages/admin/AdminPricingConfig.jsx";
+import AdminMaintenance from "/src/pages/admin/AdminMaintenance.jsx";
+import AdminPrinters from "/src/pages/admin/AdminPrinters.jsx";
+import AdminQuoteReadiness from "/src/pages/admin/AdminQuoteReadiness.jsx";
+import AdminDesignTaxonomy from "/src/pages/admin/AdminDesignTaxonomy.jsx";
+import AdminUsers from "/src/pages/admin/AdminUsers.jsx";
+import AdminAudit from "/src/pages/admin/AdminAudit.jsx";
+import AdminContent from "/src/pages/admin/AdminContent.jsx";
+import ProtectedRoute from "/src/components/routes/ProtectedRoute.jsx";
+import AdminRoute from "/src/components/routes/AdminRoute.jsx";
+import PrintRequestDetail from "/src/pages/PrintRequestDetail.jsx";
+import PrintRequests from "/src/pages/PrintRequests.jsx";
+import DesignLibrary from "/src/pages/DesignLibrary.jsx";
+import LocalDesignDetail from "/src/pages/LocalDesignDetail.jsx";
+import MmfDesignDetail from "/src/pages/MmfDesignDetail.jsx";
+import NotFound from "/src/pages/NotFound.jsx";
+import Printers from "/src/pages/Printers.jsx";
+import SystemStatus from "/src/pages/SystemStatus.jsx";
+import MyDesigns from "/src/pages/MyDesigns.jsx";
+import MyDesignForm from "/src/pages/MyDesignForm.jsx";
+import SavedDesigns from "/src/pages/SavedDesigns.jsx";
+export default function App() {
+  return /* @__PURE__ */ jsxDEV(AuthProvider, { children: /* @__PURE__ */ jsxDEV(CartProvider, { children: /* @__PURE__ */ jsxDEV(BrowserRouter, { children: /* @__PURE__ */ jsxDEV(Routes, { children: /* @__PURE__ */ jsxDEV(Route, { element: /* @__PURE__ */ jsxDEV(AppLayout, {}, void 0, false, {
+    fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+    lineNumber: 80,
+    columnNumber: 27
+  }, this), children: [
+    /* @__PURE__ */ jsxDEV(Route, { path: "/", element: /* @__PURE__ */ jsxDEV(Home, {}, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 81,
+      columnNumber: 38
+    }, this) }, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 81,
+      columnNumber: 13
+    }, this),
+    /* @__PURE__ */ jsxDEV(Route, { path: "/quote", element: /* @__PURE__ */ jsxDEV(UploadQuote, {}, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 82,
+      columnNumber: 43
+    }, this) }, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 82,
+      columnNumber: 13
+    }, this),
+    /* @__PURE__ */ jsxDEV(Route, { path: "/quote/:quoteToken", element: /* @__PURE__ */ jsxDEV(QuoteReview, {}, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 83,
+      columnNumber: 55
+    }, this) }, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 83,
+      columnNumber: 13
+    }, this),
+    /* @__PURE__ */ jsxDEV(Route, { path: "/printers", element: /* @__PURE__ */ jsxDEV(Printers, {}, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 84,
+      columnNumber: 46
+    }, this) }, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 84,
+      columnNumber: 13
+    }, this),
+    /* @__PURE__ */ jsxDEV(Route, { path: "/terms", element: /* @__PURE__ */ jsxDEV(Terms, {}, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 85,
+      columnNumber: 43
+    }, this) }, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 85,
+      columnNumber: 13
+    }, this),
+    /* @__PURE__ */ jsxDEV(
+      Route,
+      {
+        path: "/cart",
+        element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(Cart, {}, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 90,
+          columnNumber: 19
+        }, this) }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 89,
+          columnNumber: 17
+        }, this)
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+        lineNumber: 86,
+        columnNumber: 13
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(
+      Route,
+      {
+        path: "/requests/new",
+        element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(PrintRequestSubmission, {}, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 98,
+          columnNumber: 19
+        }, this) }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 97,
+          columnNumber: 17
+        }, this)
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+        lineNumber: 94,
+        columnNumber: 13
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(
+      Route,
+      {
+        path: "/requests/new/:draftToken",
+        element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(PrintRequestSubmission, {}, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 106,
+          columnNumber: 19
+        }, this) }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 105,
+          columnNumber: 17
+        }, this)
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+        lineNumber: 102,
+        columnNumber: 13
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(Route, { path: "/login", element: /* @__PURE__ */ jsxDEV(Login, {}, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 111,
+      columnNumber: 43
+    }, this) }, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 111,
+      columnNumber: 13
+    }, this),
+    /* @__PURE__ */ jsxDEV(Route, { path: "/register", element: /* @__PURE__ */ jsxDEV(Register, {}, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 112,
+      columnNumber: 46
+    }, this) }, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 112,
+      columnNumber: 13
+    }, this),
+    /* @__PURE__ */ jsxDEV(Route, { path: "/forgot-password", element: /* @__PURE__ */ jsxDEV(ForgotPassword, {}, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 113,
+      columnNumber: 53
+    }, this) }, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 113,
+      columnNumber: 13
+    }, this),
+    /* @__PURE__ */ jsxDEV(
+      Route,
+      {
+        path: "/reset-forgot-password/:resetToken",
+        element: /* @__PURE__ */ jsxDEV(ResetPassword, {}, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 116,
+          columnNumber: 26
+        }, this)
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+        lineNumber: 114,
+        columnNumber: 13
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(
+      Route,
+      {
+        path: "/account-settings",
+        element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(AccountSettings, {}, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 122,
+          columnNumber: 19
+        }, this) }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 121,
+          columnNumber: 17
+        }, this)
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+        lineNumber: 118,
+        columnNumber: 13
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(
+      Route,
+      {
+        path: "/verify-email/:verificationToken",
+        element: /* @__PURE__ */ jsxDEV(VerifyEmail, {}, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 128,
+          columnNumber: 26
+        }, this)
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+        lineNumber: 126,
+        columnNumber: 13
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(
+      Route,
+      {
+        path: "/verify-required",
+        element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { requireVerified: false, children: /* @__PURE__ */ jsxDEV(VerifyRequired, {}, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 134,
+          columnNumber: 19
+        }, this) }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 133,
+          columnNumber: 17
+        }, this)
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+        lineNumber: 130,
+        columnNumber: 13
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(
+      Route,
+      {
+        path: "/dashboard",
+        element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(ClientDashboard, {}, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 143,
+          columnNumber: 19
+        }, this) }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 142,
+          columnNumber: 17
+        }, this)
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+        lineNumber: 139,
+        columnNumber: 13
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(
+      Route,
+      {
+        path: "/admin",
+        element: /* @__PURE__ */ jsxDEV(AdminRoute, { children: /* @__PURE__ */ jsxDEV(AdminLayout, {}, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 151,
+          columnNumber: 19
+        }, this) }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 150,
+          columnNumber: 17
+        }, this),
+        children: [
+          /* @__PURE__ */ jsxDEV(Route, { index: true, element: /* @__PURE__ */ jsxDEV(AdminDashboard, {}, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 155,
+            columnNumber: 37
+          }, this) }, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 155,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV(Route, { path: "print-requests", element: /* @__PURE__ */ jsxDEV(AdminPrintRequests, {}, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 156,
+            columnNumber: 53
+          }, this) }, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 156,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV(
+            Route,
+            {
+              path: "print-requests/:requestId",
+              element: /* @__PURE__ */ jsxDEV(AdminPrintRequestDetail, {}, void 0, false, {
+                fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+                lineNumber: 159,
+                columnNumber: 28
+              }, this)
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+              lineNumber: 157,
+              columnNumber: 15
+            },
+            this
+          ),
+          /* @__PURE__ */ jsxDEV(Route, { path: "local-designs", element: /* @__PURE__ */ jsxDEV(AdminLocalDesigns, {}, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 161,
+            columnNumber: 52
+          }, this) }, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 161,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV(Route, { path: "lab-designs", element: /* @__PURE__ */ jsxDEV(AdminLocalDesigns, {}, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 162,
+            columnNumber: 50
+          }, this) }, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 162,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV(
+            Route,
+            {
+              path: "local-designs/new",
+              element: /* @__PURE__ */ jsxDEV(AdminLocalDesignForm, {}, void 0, false, {
+                fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+                lineNumber: 165,
+                columnNumber: 28
+              }, this)
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+              lineNumber: 163,
+              columnNumber: 15
+            },
+            this
+          ),
+          /* @__PURE__ */ jsxDEV(
+            Route,
+            {
+              path: "local-designs/:designId",
+              element: /* @__PURE__ */ jsxDEV(AdminLocalDesignForm, {}, void 0, false, {
+                fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+                lineNumber: 169,
+                columnNumber: 28
+              }, this)
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+              lineNumber: 167,
+              columnNumber: 15
+            },
+            this
+          ),
+          /* @__PURE__ */ jsxDEV(
+            Route,
+            {
+              path: "community-designs",
+              element: /* @__PURE__ */ jsxDEV(AdminCommunityDesigns, {}, void 0, false, {
+                fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+                lineNumber: 173,
+                columnNumber: 28
+              }, this)
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+              lineNumber: 171,
+              columnNumber: 15
+            },
+            this
+          ),
+          /* @__PURE__ */ jsxDEV(
+            Route,
+            {
+              path: "community-designs/:designId",
+              element: /* @__PURE__ */ jsxDEV(AdminCommunityDesignDetail, {}, void 0, false, {
+                fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+                lineNumber: 177,
+                columnNumber: 28
+              }, this)
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+              lineNumber: 175,
+              columnNumber: 15
+            },
+            this
+          ),
+          /* @__PURE__ */ jsxDEV(Route, { path: "mmf-overrides", element: /* @__PURE__ */ jsxDEV(AdminMmfOverrides, {}, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 179,
+            columnNumber: 52
+          }, this) }, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 179,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV(Route, { path: "design-taxonomy", element: /* @__PURE__ */ jsxDEV(AdminDesignTaxonomy, {}, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 180,
+            columnNumber: 54
+          }, this) }, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 180,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV(Route, { path: "materials", element: /* @__PURE__ */ jsxDEV(AdminMaterials, {}, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 181,
+            columnNumber: 48
+          }, this) }, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 181,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV(Route, { path: "slicer-profiles", element: /* @__PURE__ */ jsxDEV(AdminSlicerProfiles, {}, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 182,
+            columnNumber: 54
+          }, this) }, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 182,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV(Route, { path: "pricing", element: /* @__PURE__ */ jsxDEV(AdminPricingConfig, {}, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 183,
+            columnNumber: 46
+          }, this) }, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 183,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV(
+            Route,
+            {
+              path: "lab-designs/new",
+              element: /* @__PURE__ */ jsxDEV(AdminLocalDesignForm, {}, void 0, false, {
+                fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+                lineNumber: 186,
+                columnNumber: 28
+              }, this)
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+              lineNumber: 184,
+              columnNumber: 15
+            },
+            this
+          ),
+          /* @__PURE__ */ jsxDEV(
+            Route,
+            {
+              path: "lab-designs/:designId",
+              element: /* @__PURE__ */ jsxDEV(AdminLocalDesignForm, {}, void 0, false, {
+                fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+                lineNumber: 190,
+                columnNumber: 28
+              }, this)
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+              lineNumber: 188,
+              columnNumber: 15
+            },
+            this
+          ),
+          /* @__PURE__ */ jsxDEV(Route, { path: "quote-readiness", element: /* @__PURE__ */ jsxDEV(AdminQuoteReadiness, {}, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 192,
+            columnNumber: 54
+          }, this) }, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 192,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV(Route, { path: "printers", element: /* @__PURE__ */ jsxDEV(AdminPrinters, {}, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 193,
+            columnNumber: 47
+          }, this) }, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 193,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV(Route, { path: "maintenance", element: /* @__PURE__ */ jsxDEV(AdminMaintenance, {}, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 194,
+            columnNumber: 50
+          }, this) }, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 194,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV(Route, { path: "status", element: /* @__PURE__ */ jsxDEV(SystemStatus, {}, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 195,
+            columnNumber: 45
+          }, this) }, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 195,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV(Route, { path: "users", element: /* @__PURE__ */ jsxDEV(AdminUsers, {}, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 196,
+            columnNumber: 44
+          }, this) }, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 196,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV(Route, { path: "audit", element: /* @__PURE__ */ jsxDEV(AdminAudit, {}, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 197,
+            columnNumber: 44
+          }, this) }, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 197,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV(Route, { path: "content", element: /* @__PURE__ */ jsxDEV(AdminContent, {}, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 198,
+            columnNumber: 46
+          }, this) }, void 0, false, {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+            lineNumber: 198,
+            columnNumber: 15
+          }, this)
+        ]
+      },
+      void 0,
+      true,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+        lineNumber: 147,
+        columnNumber: 13
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(
+      Route,
+      {
+        path: "/requests/:requestId",
+        element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(PrintRequestDetail, {}, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 204,
+          columnNumber: 19
+        }, this) }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 203,
+          columnNumber: 17
+        }, this)
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+        lineNumber: 200,
+        columnNumber: 13
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(
+      Route,
+      {
+        path: "/requests",
+        element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(PrintRequests, {}, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 212,
+          columnNumber: 19
+        }, this) }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 211,
+          columnNumber: 17
+        }, this)
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+        lineNumber: 208,
+        columnNumber: 13
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(Route, { path: "/designs", element: /* @__PURE__ */ jsxDEV(DesignLibrary, {}, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 216,
+      columnNumber: 45
+    }, this) }, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 216,
+      columnNumber: 13
+    }, this),
+    /* @__PURE__ */ jsxDEV(
+      Route,
+      {
+        path: "/my-designs",
+        element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(MyDesigns, {}, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 221,
+          columnNumber: 19
+        }, this) }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 220,
+          columnNumber: 17
+        }, this)
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+        lineNumber: 217,
+        columnNumber: 13
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(
+      Route,
+      {
+        path: "/saved-designs",
+        element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(SavedDesigns, {}, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 229,
+          columnNumber: 19
+        }, this) }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 228,
+          columnNumber: 17
+        }, this)
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+        lineNumber: 225,
+        columnNumber: 13
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(
+      Route,
+      {
+        path: "/my-designs/new",
+        element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(MyDesignForm, {}, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 237,
+          columnNumber: 19
+        }, this) }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 236,
+          columnNumber: 17
+        }, this)
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+        lineNumber: 233,
+        columnNumber: 13
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(
+      Route,
+      {
+        path: "/my-designs/:designId",
+        element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(MyDesignForm, {}, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 245,
+          columnNumber: 19
+        }, this) }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 244,
+          columnNumber: 17
+        }, this)
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+        lineNumber: 241,
+        columnNumber: 13
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(
+      Route,
+      {
+        path: "/designs/local/:designId",
+        element: /* @__PURE__ */ jsxDEV(LocalDesignDetail, {}, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 251,
+          columnNumber: 26
+        }, this)
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+        lineNumber: 249,
+        columnNumber: 13
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(
+      Route,
+      {
+        path: "/designs/mmf/:objectId",
+        element: /* @__PURE__ */ jsxDEV(MmfDesignDetail, {}, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+          lineNumber: 255,
+          columnNumber: 26
+        }, this)
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+        lineNumber: 253,
+        columnNumber: 13
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(Route, { path: "*", element: /* @__PURE__ */ jsxDEV(NotFound, {}, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 257,
+      columnNumber: 38
+    }, this) }, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+      lineNumber: 257,
+      columnNumber: 13
+    }, this)
+  ] }, void 0, true, {
+    fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+    lineNumber: 80,
+    columnNumber: 11
+  }, this) }, void 0, false, {
+    fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+    lineNumber: 79,
+    columnNumber: 9
+  }, this) }, void 0, false, {
+    fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+    lineNumber: 78,
+    columnNumber: 7
+  }, this) }, void 0, false, {
+    fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+    lineNumber: 77,
+    columnNumber: 7
+  }, this) }, void 0, false, {
+    fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx",
+    lineNumber: 76,
+    columnNumber: 5
+  }, this);
+}
+_c = App;
+var _c;
+$RefreshReg$(_c, "App");
+if (import.meta.hot && !inWebWorker) {
+  window.$RefreshReg$ = prevRefreshReg;
+  window.$RefreshSig$ = prevRefreshSig;
+}
+if (import.meta.hot && !inWebWorker) {
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("C:/Users/Kent Christian/Documents/UniFab/frontend/src/App.jsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+
+//# sourceMappingURL=data:application/json;base64,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QUEsSUFFL0IsdUJBQUMsU0FBTSxNQUFLLEtBQUksU0FBUyx1QkFBQyxjQUFEO0FBQUE7QUFBQTtBQUFBO0FBQUEsV0FBUyxLQUFsQztBQUFBO0FBQUE7QUFBQTtBQUFBLFdBQXNDO0FBQUEsT0FqTHhDO0FBQUE7QUFBQTtBQUFBO0FBQUEsU0FrTEEsS0FuTEY7QUFBQTtBQUFBO0FBQUE7QUFBQSxTQW9MQSxLQXJMRjtBQUFBO0FBQUE7QUFBQTtBQUFBLFNBc0xBLEtBdkxBO0FBQUE7QUFBQTtBQUFBO0FBQUEsU0F3TEEsS0F6TEY7QUFBQTtBQUFBO0FBQUE7QUFBQSxTQTBMQTtBQUVKO0FBQUNDLEtBOUx1QkQ7QUFBRyxJQUFBQztBQUFBLGFBQUFBLElBQUEiLCJuYW1lcyI6WyJCcm93c2VyUm91dGVyIiwiUm91dGVzIiwiUm91dGUiLCJBdXRoUHJvdmlkZXIiLCJDYXJ0UHJvdmlkZXIiLCJBcHBMYXlvdXQiLCJIb21lIiwiVXBsb2FkUXVvdGUiLCJRdW90ZVJldmlldyIsIkxvZ2luIiwiUmVnaXN0ZXIiLCJGb3Jnb3RQYXNzd29yZCIsIlJlc2V0UGFzc3dvcmQiLCJBY2NvdW50U2V0dGluZ3MiLCJWZXJpZnlFbWFpbCIsIlZlcmlmeVJlcXVpcmVkIiwiVGVybXMiLCJDYXJ0IiwiUHJpbnRSZXF1ZXN0U3VibWlzc2lvbiIsIkNsaWVudERhc2hib2FyZCIsIkFkbWluTGF5b3V0IiwiQWRtaW5EYXNoYm9hcmQiLCJBZG1pblByaW50UmVxdWVzdHMiLCJBZG1pblByaW50UmVxdWVzdERldGFpbCIsIkFkbWluTG9jYWxEZXNpZ25zIiwiQWRtaW5Mb2NhbERlc2lnbkZvcm0iLCJBZG1pbkNvbW11bml0eURlc2lnbnMiLCJBZG1pbkNvbW11bml0eURlc2lnbkRldGFpbCIsIkFkbWluTW1mT3ZlcnJpZGVzIiwiQWRtaW5NYXRlcmlhbHMiLCJBZG1pblNsaWNlclByb2ZpbGVzIiwiQWRtaW5QcmljaW5nQ29uZmlnIiwiQWRtaW5NYWludGVuYW5jZSIsIkFkbWluUHJpbnRlcnMiLCJBZG1pblF1b3RlUmVhZGluZXNzIiwiQWRtaW5EZXNpZ25UYXhvbm9teSIsIkFkbWluVXNlcnMiLCJBZG1pbkF1ZGl0IiwiQWRtaW5Db250ZW50IiwiUHJvdGVjdGVkUm91dGUiLCJBZG1pblJvdXRlIiwiUHJpbnRSZXF1ZXN0RGV0YWlsIiwiUHJpbnRSZXF1ZXN0cyIsIkRlc2lnbkxpYnJhcnkiLCJMb2NhbERlc2lnbkRldGFpbCIsIk1tZkRlc2lnbkRldGFpbCIsIk5vdEZvdW5kIiwiUHJpbnRlcnMiLCJTeXN0ZW1TdGF0dXMiLCJNeURlc2lnbnMiLCJNeURlc2lnbkZvcm0iLCJTYXZlZERlc2lnbnMiLCJBcHAiLCJfYyJdLCJpZ25vcmVMaXN0IjpbXSwic291cmNlcyI6WyJBcHAuanN4Il0sInNvdXJjZXNDb250ZW50IjpbImltcG9ydCB7IEJyb3dzZXJSb3V0ZXIsIFJvdXRlcywgUm91dGUgfSBmcm9tIFwicmVhY3Qtcm91dGVyLWRvbVwiO1xyXG5cclxuaW1wb3J0IHsgQXV0aFByb3ZpZGVyIH0gZnJvbSBcIi4vY29udGV4dC9BdXRoQ29udGV4dFwiO1xuaW1wb3J0IHsgQ2FydFByb3ZpZGVyIH0gZnJvbSBcIi4vY29udGV4dC9DYXJ0Q29udGV4dFwiO1xuaW1wb3J0IEFwcExheW91dCBmcm9tIFwiLi9jb21wb25lbnRzL2xheW91dC9BcHBMYXlvdXRcIjtcclxuaW1wb3J0IEhvbWUgZnJvbSBcIi4vcGFnZXMvSG9tZVwiO1xyXG5pbXBvcnQgVXBsb2FkUXVvdGUgZnJvbSBcIi4vcGFnZXMvVXBsb2FkUXVvdGVcIjtcclxuaW1wb3J0IFF1b3RlUmV2aWV3IGZyb20gXCIuL3BhZ2VzL1F1b3RlUmV2aWV3XCI7XHJcbmltcG9ydCBMb2dpbiBmcm9tIFwiLi9wYWdlcy9Mb2dpblwiO1xyXG5pbXBvcnQgUmVnaXN0ZXIgZnJvbSBcIi4vcGFnZXMvUmVnaXN0ZXJcIjtcclxuaW1wb3J0IEZvcmdvdFBhc3N3b3JkIGZyb20gXCIuL3BhZ2VzL0ZvcmdvdFBhc3N3b3JkXCI7XHJcbmltcG9ydCBSZXNldFBhc3N3b3JkIGZyb20gXCIuL3BhZ2VzL1Jlc2V0UGFzc3dvcmRcIjtcclxuaW1wb3J0IEFjY291bnRTZXR0aW5ncyBmcm9tIFwiLi9wYWdlcy9BY2NvdW50U2V0dGluZ3NcIjtcbmltcG9ydCBWZXJpZnlFbWFpbCBmcm9tIFwiLi9wYWdlcy9WZXJpZnlFbWFpbFwiO1xuaW1wb3J0IFZlcmlmeVJlcXVpcmVkIGZyb20gXCIuL3BhZ2VzL1ZlcmlmeVJlcXVpcmVkXCI7XG5pbXBvcnQgVGVybXMgZnJvbSBcIi4vcGFnZXMvVGVybXNcIjtcbmltcG9ydCBDYXJ0IGZyb20gXCIuL3BhZ2VzL0NhcnRcIjtcbmltcG9ydCBQcmludFJlcXVlc3RTdWJtaXNzaW9uIGZyb20gXCIuL3BhZ2VzL1ByaW50UmVxdWVzdFN1Ym1pc3Npb25cIjtcblxyXG5pbXBvcnQgQ2xpZW50RGFzaGJvYXJkIGZyb20gXCIuL3BhZ2VzL0NsaWVudERhc2hib2FyZFwiO1xuaW1wb3J0IEFkbWluTGF5b3V0IGZyb20gXCIuL3BhZ2VzL2FkbWluL0FkbWluTGF5b3V0XCI7XG5pbXBvcnQgQWRtaW5EYXNoYm9hcmQgZnJvbSBcIi4vcGFnZXMvYWRtaW4vQWRtaW5EYXNoYm9hcmRcIjtcbmltcG9ydCBBZG1pblByaW50UmVxdWVzdHMgZnJvbSBcIi4vcGFnZXMvYWRtaW4vQWRtaW5QcmludFJlcXVlc3RzXCI7XG5pbXBvcnQgQWRtaW5QcmludFJlcXVlc3REZXRhaWwgZnJvbSBcIi4vcGFnZXMvYWRtaW4vQWRtaW5QcmludFJlcXVlc3REZXRhaWxcIjtcbmltcG9ydCBBZG1pbkxvY2FsRGVzaWducyBmcm9tIFwiLi9wYWdlcy9hZG1pbi9BZG1pbkxvY2FsRGVzaWduc1wiO1xuaW1wb3J0IEFkbWluTG9jYWxEZXNpZ25Gb3JtIGZyb20gXCIuL3BhZ2VzL2FkbWluL0FkbWluTG9jYWxEZXNpZ25Gb3JtXCI7XHJcbmltcG9ydCBBZG1pbkNvbW11bml0eURlc2lnbnMgZnJvbSBcIi4vcGFnZXMvYWRtaW4vQWRtaW5Db21tdW5pdHlEZXNpZ25zXCI7XHJcbmltcG9ydCBBZG1pbkNvbW11bml0eURlc2lnbkRldGFpbCBmcm9tIFwiLi9wYWdlcy9hZG1pbi9BZG1pbkNvbW11bml0eURlc2lnbkRldGFpbFwiO1xyXG5pbXBvcnQgQWRtaW5NbWZPdmVycmlkZXMgZnJvbSBcIi4vcGFnZXMvYWRtaW4vQWRtaW5NbWZPdmVycmlkZXNcIjtcclxuaW1wb3J0IEFkbWluTWF0ZXJpYWxzIGZyb20gXCIuL3BhZ2VzL2FkbWluL0FkbWluTWF0ZXJpYWxzXCI7XHJcbmltcG9ydCBBZG1pblNsaWNlclByb2ZpbGVzIGZyb20gXCIuL3BhZ2VzL2FkbWluL0FkbWluU2xpY2VyUHJvZmlsZXNcIjtcclxuaW1wb3J0IEFkbWluUHJpY2luZ0NvbmZpZyBmcm9tIFwiLi9wYWdlcy9hZG1pbi9BZG1pblByaWNpbmdDb25maWdcIjtcbmltcG9ydCBBZG1pbk1haW50ZW5hbmNlIGZyb20gXCIuL3BhZ2VzL2FkbWluL0FkbWluTWFpbnRlbmFuY2VcIjtcbmltcG9ydCBBZG1pblByaW50ZXJzIGZyb20gXCIuL3BhZ2VzL2FkbWluL0FkbWluUHJpbnRlcnNcIjtcbmltcG9ydCBBZG1pblF1b3RlUmVhZGluZXNzIGZyb20gXCIuL3BhZ2VzL2FkbWluL0FkbWluUXVvdGVSZWFkaW5lc3NcIjtcbmltcG9ydCBBZG1pbkRlc2lnblRheG9ub215IGZyb20gXCIuL3BhZ2VzL2FkbWluL0FkbWluRGVzaWduVGF4b25vbXlcIjtcbmltcG9ydCBBZG1pblVzZXJzIGZyb20gXCIuL3BhZ2VzL2FkbWluL0FkbWluVXNlcnNcIjtcbmltcG9ydCBBZG1pbkF1ZGl0IGZyb20gXCIuL3BhZ2VzL2FkbWluL0FkbWluQXVkaXRcIjtcbmltcG9ydCBBZG1pbkNvbnRlbnQgZnJvbSBcIi4vcGFnZXMvYWRtaW4vQWRtaW5Db250ZW50XCI7XG5cclxuaW1wb3J0IFByb3RlY3RlZFJvdXRlIGZyb20gXCIuL2NvbXBvbmVudHMvcm91dGVzL1Byb3RlY3RlZFJvdXRlXCI7XG5pbXBvcnQgQWRtaW5Sb3V0ZSBmcm9tIFwiLi9jb21wb25lbnRzL3JvdXRlcy9BZG1pblJvdXRlXCI7XG5pbXBvcnQgUHJpbnRSZXF1ZXN0RGV0YWlsIGZyb20gXCIuL3BhZ2VzL1ByaW50UmVxdWVzdERldGFpbFwiO1xuaW1wb3J0IFByaW50UmVxdWVzdHMgZnJvbSBcIi4vcGFnZXMvUHJpbnRSZXF1ZXN0c1wiO1xuaW1wb3J0IERlc2lnbkxpYnJhcnkgZnJvbSBcIi4vcGFnZXMvRGVzaWduTGlicmFyeVwiO1xuaW1wb3J0IExvY2FsRGVzaWduRGV0YWlsIGZyb20gXCIuL3BhZ2VzL0xvY2FsRGVzaWduRGV0YWlsXCI7XHJcbmltcG9ydCBNbWZEZXNpZ25EZXRhaWwgZnJvbSBcIi4vcGFnZXMvTW1mRGVzaWduRGV0YWlsXCI7XHJcbmltcG9ydCBOb3RGb3VuZCBmcm9tIFwiLi9wYWdlcy9Ob3RGb3VuZFwiO1xyXG5pbXBvcnQgUHJpbnRlcnMgZnJvbSBcIi4vcGFnZXMvUHJpbnRlcnNcIjtcclxuaW1wb3J0IFN5c3RlbVN0YXR1cyBmcm9tIFwiLi9wYWdlcy9TeXN0ZW1TdGF0dXNcIjtcbmltcG9ydCBNeURlc2lnbnMgZnJvbSBcIi4vcGFnZXMvTXlEZXNpZ25zXCI7XG5pbXBvcnQgTXlEZXNpZ25Gb3JtIGZyb20gXCIuL3BhZ2VzL015RGVzaWduRm9ybVwiO1xuaW1wb3J0IFNhdmVkRGVzaWducyBmcm9tIFwiLi9wYWdlcy9TYXZlZERlc2lnbnNcIjtcblxyXG5leHBvcnQgZGVmYXVsdCBmdW5jdGlvbiBBcHAoKSB7XHJcbiAgcmV0dXJuIChcclxuICAgIDxBdXRoUHJvdmlkZXI+XHJcbiAgICAgIDxDYXJ0UHJvdmlkZXI+XG4gICAgICA8QnJvd3NlclJvdXRlcj5cbiAgICAgICAgPFJvdXRlcz5cclxuICAgICAgICAgIDxSb3V0ZSBlbGVtZW50PXs8QXBwTGF5b3V0IC8+fT5cclxuICAgICAgICAgICAgPFJvdXRlIHBhdGg9XCIvXCIgZWxlbWVudD17PEhvbWUgLz59IC8+XHJcbiAgICAgICAgICAgIDxSb3V0ZSBwYXRoPVwiL3F1b3RlXCIgZWxlbWVudD17PFVwbG9hZFF1b3RlIC8+fSAvPlxyXG4gICAgICAgICAgICA8Um91dGUgcGF0aD1cIi9xdW90ZS86cXVvdGVUb2tlblwiIGVsZW1lbnQ9ezxRdW90ZVJldmlldyAvPn0gLz5cbiAgICAgICAgICAgIDxSb3V0ZSBwYXRoPVwiL3ByaW50ZXJzXCIgZWxlbWVudD17PFByaW50ZXJzIC8+fSAvPlxuICAgICAgICAgICAgPFJvdXRlIHBhdGg9XCIvdGVybXNcIiBlbGVtZW50PXs8VGVybXMgLz59IC8+XG4gICAgICAgICAgICA8Um91dGVcbiAgICAgICAgICAgICAgcGF0aD1cIi9jYXJ0XCJcbiAgICAgICAgICAgICAgZWxlbWVudD17XG4gICAgICAgICAgICAgICAgPFByb3RlY3RlZFJvdXRlPlxuICAgICAgICAgICAgICAgICAgPENhcnQgLz5cbiAgICAgICAgICAgICAgICA8L1Byb3RlY3RlZFJvdXRlPlxuICAgICAgICAgICAgICB9XG4gICAgICAgICAgICAvPlxuICAgICAgICAgICAgPFJvdXRlXG4gICAgICAgICAgICAgIHBhdGg9XCIvcmVxdWVzdHMvbmV3XCJcbiAgICAgICAgICAgICAgZWxlbWVudD17XG4gICAgICAgICAgICAgICAgPFByb3RlY3RlZFJvdXRlPlxuICAgICAgICAgICAgICAgICAgPFByaW50UmVxdWVzdFN1Ym1pc3Npb24gLz5cbiAgICAgICAgICAgICAgICA8L1Byb3RlY3RlZFJvdXRlPlxuICAgICAgICAgICAgICB9XG4gICAgICAgICAgICAvPlxuICAgICAgICAgICAgPFJvdXRlXG4gICAgICAgICAgICAgIHBhdGg9XCIvcmVxdWVzdHMvbmV3LzpkcmFmdFRva2VuXCJcbiAgICAgICAgICAgICAgZWxlbWVudD17XG4gICAgICAgICAgICAgICAgPFByb3RlY3RlZFJvdXRlPlxuICAgICAgICAgICAgICAgICAgPFByaW50UmVxdWVzdFN1Ym1pc3Npb24gLz5cbiAgICAgICAgICAgICAgICA8L1Byb3RlY3RlZFJvdXRlPlxuICAgICAgICAgICAgICB9XG4gICAgICAgICAgICAvPlxuXHJcbiAgICAgICAgICAgIDxSb3V0ZSBwYXRoPVwiL2xvZ2luXCIgZWxlbWVudD17PExvZ2luIC8+fSAvPlxyXG4gICAgICAgICAgICA8Um91dGUgcGF0aD1cIi9yZWdpc3RlclwiIGVsZW1lbnQ9ezxSZWdpc3RlciAvPn0gLz5cclxuICAgICAgICAgICAgPFJvdXRlIHBhdGg9XCIvZm9yZ290LXBhc3N3b3JkXCIgZWxlbWVudD17PEZvcmdvdFBhc3N3b3JkIC8+fSAvPlxyXG4gICAgICAgICAgICA8Um91dGVcclxuICAgICAgICAgICAgICBwYXRoPVwiL3Jlc2V0LWZvcmdvdC1wYXNzd29yZC86cmVzZXRUb2tlblwiXHJcbiAgICAgICAgICAgICAgZWxlbWVudD17PFJlc2V0UGFzc3dvcmQgLz59XHJcbiAgICAgICAgICAgIC8+XHJcbiAgICAgICAgICAgIDxSb3V0ZVxyXG4gICAgICAgICAgICAgIHBhdGg9XCIvYWNjb3VudC1zZXR0aW5nc1wiXHJcbiAgICAgICAgICAgICAgZWxlbWVudD17XHJcbiAgICAgICAgICAgICAgICA8UHJvdGVjdGVkUm91dGU+XHJcbiAgICAgICAgICAgICAgICAgIDxBY2NvdW50U2V0dGluZ3MgLz5cclxuICAgICAgICAgICAgICAgIDwvUHJvdGVjdGVkUm91dGU+XHJcbiAgICAgICAgICAgICAgfVxyXG4gICAgICAgICAgICAvPlxyXG4gICAgICAgICAgICA8Um91dGVcbiAgICAgICAgICAgICAgcGF0aD1cIi92ZXJpZnktZW1haWwvOnZlcmlmaWNhdGlvblRva2VuXCJcbiAgICAgICAgICAgICAgZWxlbWVudD17PFZlcmlmeUVtYWlsIC8+fVxuICAgICAgICAgICAgLz5cbiAgICAgICAgICAgIDxSb3V0ZVxuICAgICAgICAgICAgICBwYXRoPVwiL3ZlcmlmeS1yZXF1aXJlZFwiXG4gICAgICAgICAgICAgIGVsZW1lbnQ9e1xuICAgICAgICAgICAgICAgIDxQcm90ZWN0ZWRSb3V0ZSByZXF1aXJlVmVyaWZpZWQ9e2ZhbHNlfT5cbiAgICAgICAgICAgICAgICAgIDxWZXJpZnlSZXF1aXJlZCAvPlxuICAgICAgICAgICAgICAgIDwvUHJvdGVjdGVkUm91dGU+XG4gICAgICAgICAgICAgIH1cbiAgICAgICAgICAgIC8+XG5cclxuICAgICAgICAgICAgPFJvdXRlXHJcbiAgICAgICAgICAgICAgcGF0aD1cIi9kYXNoYm9hcmRcIlxyXG4gICAgICAgICAgICAgIGVsZW1lbnQ9e1xyXG4gICAgICAgICAgICAgICAgPFByb3RlY3RlZFJvdXRlPlxyXG4gICAgICAgICAgICAgICAgICA8Q2xpZW50RGFzaGJvYXJkIC8+XHJcbiAgICAgICAgICAgICAgICA8L1Byb3RlY3RlZFJvdXRlPlxyXG4gICAgICAgICAgICAgIH1cclxuICAgICAgICAgICAgLz5cclxuICAgICAgICAgICAgPFJvdXRlXG4gICAgICAgICAgICAgIHBhdGg9XCIvYWRtaW5cIlxuICAgICAgICAgICAgICBlbGVtZW50PXtcbiAgICAgICAgICAgICAgICA8QWRtaW5Sb3V0ZT5cbiAgICAgICAgICAgICAgICAgIDxBZG1pbkxheW91dCAvPlxuICAgICAgICAgICAgICAgIDwvQWRtaW5Sb3V0ZT5cbiAgICAgICAgICAgICAgfVxuICAgICAgICAgICAgPlxuICAgICAgICAgICAgICA8Um91dGUgaW5kZXggZWxlbWVudD17PEFkbWluRGFzaGJvYXJkIC8+fSAvPlxuICAgICAgICAgICAgICA8Um91dGUgcGF0aD1cInByaW50LXJlcXVlc3RzXCIgZWxlbWVudD17PEFkbWluUHJpbnRSZXF1ZXN0cyAvPn0gLz5cbiAgICAgICAgICAgICAgPFJvdXRlXG4gICAgICAgICAgICAgICAgcGF0aD1cInByaW50LXJlcXVlc3RzLzpyZXF1ZXN0SWRcIlxuICAgICAgICAgICAgICAgIGVsZW1lbnQ9ezxBZG1pblByaW50UmVxdWVzdERldGFpbCAvPn1cbiAgICAgICAgICAgICAgLz5cbiAgICAgICAgICAgICAgPFJvdXRlIHBhdGg9XCJsb2NhbC1kZXNpZ25zXCIgZWxlbWVudD17PEFkbWluTG9jYWxEZXNpZ25zIC8+fSAvPlxuICAgICAgICAgICAgICA8Um91dGUgcGF0aD1cImxhYi1kZXNpZ25zXCIgZWxlbWVudD17PEFkbWluTG9jYWxEZXNpZ25zIC8+fSAvPlxuICAgICAgICAgICAgICA8Um91dGVcbiAgICAgICAgICAgICAgICBwYXRoPVwibG9jYWwtZGVzaWducy9uZXdcIlxuICAgICAgICAgICAgICAgIGVsZW1lbnQ9ezxBZG1pbkxvY2FsRGVzaWduRm9ybSAvPn1cbiAgICAgICAgICAgICAgLz5cbiAgICAgICAgICAgICAgPFJvdXRlXG4gICAgICAgICAgICAgICAgcGF0aD1cImxvY2FsLWRlc2lnbnMvOmRlc2lnbklkXCJcbiAgICAgICAgICAgICAgICBlbGVtZW50PXs8QWRtaW5Mb2NhbERlc2lnbkZvcm0gLz59XG4gICAgICAgICAgICAgIC8+XG4gICAgICAgICAgICAgIDxSb3V0ZVxuICAgICAgICAgICAgICAgIHBhdGg9XCJjb21tdW5pdHktZGVzaWduc1wiXG4gICAgICAgICAgICAgICAgZWxlbWVudD17PEFkbWluQ29tbXVuaXR5RGVzaWducyAvPn1cbiAgICAgICAgICAgICAgLz5cbiAgICAgICAgICAgICAgPFJvdXRlXG4gICAgICAgICAgICAgICAgcGF0aD1cImNvbW11bml0eS1kZXNpZ25zLzpkZXNpZ25JZFwiXG4gICAgICAgICAgICAgICAgZWxlbWVudD17PEFkbWluQ29tbXVuaXR5RGVzaWduRGV0YWlsIC8+fVxuICAgICAgICAgICAgICAvPlxuICAgICAgICAgICAgICA8Um91dGUgcGF0aD1cIm1tZi1vdmVycmlkZXNcIiBlbGVtZW50PXs8QWRtaW5NbWZPdmVycmlkZXMgLz59IC8+XG4gICAgICAgICAgICAgIDxSb3V0ZSBwYXRoPVwiZGVzaWduLXRheG9ub215XCIgZWxlbWVudD17PEFkbWluRGVzaWduVGF4b25vbXkgLz59IC8+XG4gICAgICAgICAgICAgIDxSb3V0ZSBwYXRoPVwibWF0ZXJpYWxzXCIgZWxlbWVudD17PEFkbWluTWF0ZXJpYWxzIC8+fSAvPlxuICAgICAgICAgICAgICA8Um91dGUgcGF0aD1cInNsaWNlci1wcm9maWxlc1wiIGVsZW1lbnQ9ezxBZG1pblNsaWNlclByb2ZpbGVzIC8+fSAvPlxuICAgICAgICAgICAgICA8Um91dGUgcGF0aD1cInByaWNpbmdcIiBlbGVtZW50PXs8QWRtaW5QcmljaW5nQ29uZmlnIC8+fSAvPlxuICAgICAgICAgICAgICA8Um91dGVcbiAgICAgICAgICAgICAgICBwYXRoPVwibGFiLWRlc2lnbnMvbmV3XCJcbiAgICAgICAgICAgICAgICBlbGVtZW50PXs8QWRtaW5Mb2NhbERlc2lnbkZvcm0gLz59XG4gICAgICAgICAgICAgIC8+XG4gICAgICAgICAgICAgIDxSb3V0ZVxuICAgICAgICAgICAgICAgIHBhdGg9XCJsYWItZGVzaWducy86ZGVzaWduSWRcIlxuICAgICAgICAgICAgICAgIGVsZW1lbnQ9ezxBZG1pbkxvY2FsRGVzaWduRm9ybSAvPn1cbiAgICAgICAgICAgICAgLz5cbiAgICAgICAgICAgICAgPFJvdXRlIHBhdGg9XCJxdW90ZS1yZWFkaW5lc3NcIiBlbGVtZW50PXs8QWRtaW5RdW90ZVJlYWRpbmVzcyAvPn0gLz5cbiAgICAgICAgICAgICAgPFJvdXRlIHBhdGg9XCJwcmludGVyc1wiIGVsZW1lbnQ9ezxBZG1pblByaW50ZXJzIC8+fSAvPlxuICAgICAgICAgICAgICA8Um91dGUgcGF0aD1cIm1haW50ZW5hbmNlXCIgZWxlbWVudD17PEFkbWluTWFpbnRlbmFuY2UgLz59IC8+XG4gICAgICAgICAgICAgIDxSb3V0ZSBwYXRoPVwic3RhdHVzXCIgZWxlbWVudD17PFN5c3RlbVN0YXR1cyAvPn0gLz5cbiAgICAgICAgICAgICAgPFJvdXRlIHBhdGg9XCJ1c2Vyc1wiIGVsZW1lbnQ9ezxBZG1pblVzZXJzIC8+fSAvPlxuICAgICAgICAgICAgICA8Um91dGUgcGF0aD1cImF1ZGl0XCIgZWxlbWVudD17PEFkbWluQXVkaXQgLz59IC8+XG4gICAgICAgICAgICAgIDxSb3V0ZSBwYXRoPVwiY29udGVudFwiIGVsZW1lbnQ9ezxBZG1pbkNvbnRlbnQgLz59IC8+XG4gICAgICAgICAgICA8L1JvdXRlPlxuICAgICAgICAgICAgPFJvdXRlXHJcbiAgICAgICAgICAgICAgcGF0aD1cIi9yZXF1ZXN0cy86cmVxdWVzdElkXCJcclxuICAgICAgICAgICAgICBlbGVtZW50PXtcclxuICAgICAgICAgICAgICAgIDxQcm90ZWN0ZWRSb3V0ZT5cclxuICAgICAgICAgICAgICAgICAgPFByaW50UmVxdWVzdERldGFpbCAvPlxyXG4gICAgICAgICAgICAgICAgPC9Qcm90ZWN0ZWRSb3V0ZT5cclxuICAgICAgICAgICAgICB9XHJcbiAgICAgICAgICAgIC8+XHJcbiAgICAgICAgICAgIDxSb3V0ZVxyXG4gICAgICAgICAgICAgIHBhdGg9XCIvcmVxdWVzdHNcIlxyXG4gICAgICAgICAgICAgIGVsZW1lbnQ9e1xyXG4gICAgICAgICAgICAgICAgPFByb3RlY3RlZFJvdXRlPlxyXG4gICAgICAgICAgICAgICAgICA8UHJpbnRSZXF1ZXN0cyAvPlxyXG4gICAgICAgICAgICAgICAgPC9Qcm90ZWN0ZWRSb3V0ZT5cclxuICAgICAgICAgICAgICB9XHJcbiAgICAgICAgICAgIC8+XHJcbiAgICAgICAgICAgIDxSb3V0ZSBwYXRoPVwiL2Rlc2lnbnNcIiBlbGVtZW50PXs8RGVzaWduTGlicmFyeSAvPn0gLz5cbiAgICAgICAgICAgIDxSb3V0ZVxuICAgICAgICAgICAgICBwYXRoPVwiL215LWRlc2lnbnNcIlxuICAgICAgICAgICAgICBlbGVtZW50PXtcclxuICAgICAgICAgICAgICAgIDxQcm90ZWN0ZWRSb3V0ZT5cclxuICAgICAgICAgICAgICAgICAgPE15RGVzaWducyAvPlxyXG4gICAgICAgICAgICAgICAgPC9Qcm90ZWN0ZWRSb3V0ZT5cclxuICAgICAgICAgICAgICB9XG4gICAgICAgICAgICAvPlxuICAgICAgICAgICAgPFJvdXRlXG4gICAgICAgICAgICAgIHBhdGg9XCIvc2F2ZWQtZGVzaWduc1wiXG4gICAgICAgICAgICAgIGVsZW1lbnQ9e1xuICAgICAgICAgICAgICAgIDxQcm90ZWN0ZWRSb3V0ZT5cbiAgICAgICAgICAgICAgICAgIDxTYXZlZERlc2lnbnMgLz5cbiAgICAgICAgICAgICAgICA8L1Byb3RlY3RlZFJvdXRlPlxuICAgICAgICAgICAgICB9XG4gICAgICAgICAgICAvPlxuICAgICAgICAgICAgPFJvdXRlXHJcbiAgICAgICAgICAgICAgcGF0aD1cIi9teS1kZXNpZ25zL25ld1wiXHJcbiAgICAgICAgICAgICAgZWxlbWVudD17XHJcbiAgICAgICAgICAgICAgICA8UHJvdGVjdGVkUm91dGU+XHJcbiAgICAgICAgICAgICAgICAgIDxNeURlc2lnbkZvcm0gLz5cclxuICAgICAgICAgICAgICAgIDwvUHJvdGVjdGVkUm91dGU+XHJcbiAgICAgICAgICAgICAgfVxyXG4gICAgICAgICAgICAvPlxyXG4gICAgICAgICAgICA8Um91dGVcclxuICAgICAgICAgICAgICBwYXRoPVwiL215LWRlc2lnbnMvOmRlc2lnbklkXCJcclxuICAgICAgICAgICAgICBlbGVtZW50PXtcclxuICAgICAgICAgICAgICAgIDxQcm90ZWN0ZWRSb3V0ZT5cclxuICAgICAgICAgICAgICAgICAgPE15RGVzaWduRm9ybSAvPlxyXG4gICAgICAgICAgICAgICAgPC9Qcm90ZWN0ZWRSb3V0ZT5cclxuICAgICAgICAgICAgICB9XHJcbiAgICAgICAgICAgIC8+XHJcbiAgICAgICAgICAgIDxSb3V0ZVxyXG4gICAgICAgICAgICAgIHBhdGg9XCIvZGVzaWducy9sb2NhbC86ZGVzaWduSWRcIlxyXG4gICAgICAgICAgICAgIGVsZW1lbnQ9ezxMb2NhbERlc2lnbkRldGFpbCAvPn1cclxuICAgICAgICAgICAgLz5cclxuICAgICAgICAgICAgPFJvdXRlXHJcbiAgICAgICAgICAgICAgcGF0aD1cIi9kZXNpZ25zL21tZi86b2JqZWN0SWRcIlxyXG4gICAgICAgICAgICAgIGVsZW1lbnQ9ezxNbWZEZXNpZ25EZXRhaWwgLz59XHJcbiAgICAgICAgICAgIC8+XHJcbiAgICAgICAgICAgIDxSb3V0ZSBwYXRoPVwiKlwiIGVsZW1lbnQ9ezxOb3RGb3VuZCAvPn0gLz5cclxuICAgICAgICAgIDwvUm91dGU+XHJcbiAgICAgICAgPC9Sb3V0ZXM+XHJcbiAgICAgIDwvQnJvd3NlclJvdXRlcj5cbiAgICAgIDwvQ2FydFByb3ZpZGVyPlxuICAgIDwvQXV0aFByb3ZpZGVyPlxyXG4gICk7XHJcbn1cclxuIl0sImZpbGUiOiJDOi9Vc2Vycy9LZW50IENocmlzdGlhbi9Eb2N1bWVudHMvVW5pRmFiL2Zyb250ZW5kL3NyYy9BcHAuanN4In0=

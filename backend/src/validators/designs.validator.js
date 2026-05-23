@@ -1,10 +1,12 @@
 import { body, query, param } from "express-validator";
 import {
   LOCAL_DESIGN_FILE_UPLOAD_FIELD,
+  LOCAL_DESIGN_FILES_UPLOAD_FIELD,
   LOCAL_DESIGN_THUMBNAIL_UPLOAD_FIELD,
+  LOCAL_DESIGN_THUMBNAILS_UPLOAD_FIELD,
 } from "../middlewares/local-design-upload.middleware.js";
 
-const ALLOWED_SORT_VALUES = ["visits", "date", "popularity"];
+const ALLOWED_SORT_VALUES = ["relevance", "visits", "date", "popularity"];
 const ALLOWED_ORDER_VALUES = ["asc", "desc"];
 const ALLOWED_DESIGN_TAB_VALUES = ["local", "mmf"];
 const ALLOWED_LOCAL_SORT_VALUES = [
@@ -18,6 +20,90 @@ const ALLOWED_LOCAL_SORT_VALUES = [
 function hasText(value) {
   return value !== undefined && value !== null && String(value).trim() !== "";
 }
+
+const categoryIdValidator = () =>
+  body("categoryId")
+    .optional({ nullable: true, checkFalsy: true })
+    .isInt({ min: 1 })
+    .withMessage("Category ID must be a positive integer");
+
+const categoryNameValidator = () =>
+  body("categoryName")
+    .optional({ nullable: true, checkFalsy: true })
+    .custom(() => {
+      throw new Error(
+        "Category must be selected from the approved Design Library taxonomy",
+      );
+    });
+
+const tagIdsValidator = () =>
+  body("tagIds")
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      if (Array.isArray(value)) {
+        return value.every(
+          (item) => Number.isInteger(Number(item)) && Number(item) > 0,
+        );
+      }
+
+      if (typeof value === "string") {
+        return value
+          .split(",")
+          .filter(Boolean)
+          .every((item) => Number.isInteger(Number(item)) && Number(item) > 0);
+      }
+
+      throw new Error("Tag IDs must be an array or comma-separated list");
+    });
+
+const tagNamesValidator = () =>
+  body("tagNames")
+    .optional({ nullable: true, checkFalsy: true })
+    .custom(() => {
+      throw new Error(
+        "Tags must be selected from the approved Design Library taxonomy",
+      );
+    });
+
+const optionalIdListValidator = (fieldName, label) =>
+  body(fieldName)
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      if (Array.isArray(value)) {
+        return value.every(
+          (item) => Number.isInteger(Number(item)) && Number(item) > 0,
+        );
+      }
+
+      if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (!trimmed) return true;
+
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) {
+            return parsed.every(
+              (item) => Number.isInteger(Number(item)) && Number(item) > 0,
+            );
+          }
+        } catch {
+          // Fall back to comma-separated parsing below.
+        }
+
+        return trimmed
+          .split(",")
+          .filter(Boolean)
+          .every((item) => Number.isInteger(Number(item)) && Number(item) > 0);
+      }
+
+      throw new Error(`${label} must be an array or comma-separated list`);
+    });
+
+const optionalAssetIdValidator = (fieldName, label) =>
+  body(fieldName)
+    .optional({ nullable: true, checkFalsy: true })
+    .isInt({ min: 1 })
+    .withMessage(`${label} must be a positive integer`);
 
 const searchDesignLibraryValidator = () => {
   return [
@@ -68,7 +154,7 @@ const searchDesignLibraryValidator = () => {
       })
       .bail()
       .isIn(ALLOWED_SORT_VALUES)
-      .withMessage("Sort must be one of: visits, date, popularity"),
+      .withMessage("Sort must be one of: relevance, visits, date, popularity"),
 
     query("order")
       .optional()
@@ -155,7 +241,9 @@ const searchDesignLibraryValidator = () => {
       })
       .bail()
       .isIn(ALLOWED_SORT_VALUES)
-      .withMessage("MMF sort must be one of: visits, date, popularity"),
+      .withMessage(
+        "MMF sort must be one of: relevance, visits, date, popularity",
+      ),
 
     query("mmfOrder")
       .optional()
@@ -184,6 +272,59 @@ const localDesignIdValidator = () => {
     param("designId")
       .isInt({ min: 1 })
       .withMessage("Design ID must be a positive integer"),
+  ];
+};
+
+const taxonomyCategoryIdValidator = () => {
+  return [
+    param("categoryId")
+      .isInt({ min: 1 })
+      .withMessage("Category ID must be a positive integer"),
+  ];
+};
+
+const taxonomyTagIdValidator = () => {
+  return [
+    param("tagId")
+      .isInt({ min: 1 })
+      .withMessage("Tag ID must be a positive integer"),
+  ];
+};
+
+const upsertDesignCategoryValidator = () => {
+  return [
+    body("name")
+      .trim()
+      .notEmpty()
+      .withMessage("Category name is required")
+      .bail()
+      .isLength({ max: 100 })
+      .withMessage("Category name must not exceed 100 characters"),
+    body("description")
+      .optional({ nullable: true })
+      .trim()
+      .isLength({ max: 500 })
+      .withMessage("Category description must not exceed 500 characters"),
+    body("isActive")
+      .optional()
+      .isIn(["true", "false", "1", "0", "yes", "no", true, false])
+      .withMessage("isActive must be a valid boolean"),
+  ];
+};
+
+const upsertDesignTagValidator = () => {
+  return [
+    body("name")
+      .trim()
+      .notEmpty()
+      .withMessage("Tag name is required")
+      .bail()
+      .isLength({ max: 100 })
+      .withMessage("Tag name must not exceed 100 characters"),
+    body("isActive")
+      .optional()
+      .isIn(["true", "false", "1", "0", "yes", "no", true, false])
+      .withMessage("isActive must be a valid boolean"),
   ];
 };
 
@@ -233,51 +374,20 @@ const createLocalDesignValidator = () => {
       .isLength({ max: 255 })
       .withMessage("License type must not exceed 255 characters"),
 
-    body("categoryId")
+    body("ownershipConfirmed")
       .optional()
-      .isInt({ min: 1 })
-      .withMessage("Category ID must be a positive integer"),
+      .isIn(["true", "false", "1", "0", "yes", "no"])
+      .withMessage("ownershipConfirmed must be a valid boolean"),
 
-    body("categoryName")
-      .optional({ checkFalsy: true })
-      .trim()
-      .isLength({ min: 1, max: 100 })
-      .withMessage("Category name must be between 1 and 100 characters"),
-
-    body("tagIds")
+    body("policyAcknowledged")
       .optional()
-      .custom((value) => {
-        if (Array.isArray(value)) {
-          return value.every(
-            (item) => Number.isInteger(Number(item)) && Number(item) > 0,
-          );
-        }
+      .isIn(["true", "false", "1", "0", "yes", "no"])
+      .withMessage("policyAcknowledged must be a valid boolean"),
 
-        if (typeof value === "string") {
-          return value
-            .split(",")
-            .filter(Boolean)
-            .every(
-              (item) => Number.isInteger(Number(item)) && Number(item) > 0,
-            );
-        }
-
-        throw new Error("Tag IDs must be an array or comma-separated list");
-      }),
-
-    body("tagNames")
-      .optional()
-      .custom((value) => {
-        const tagNames = Array.isArray(value)
-          ? value
-          : String(value)
-              .split(",")
-              .map((item) => item.trim())
-              .filter(Boolean);
-
-        return tagNames.every((item) => item.length >= 1 && item.length <= 100);
-      })
-      .withMessage("Each tag name must be between 1 and 100 characters"),
+    categoryIdValidator(),
+    categoryNameValidator(),
+    tagIdsValidator(),
+    tagNamesValidator(),
   ];
 };
 
@@ -335,51 +445,10 @@ const createMyDesignValidator = () => {
       .isIn(["true", "false", "1", "0", "yes", "no"])
       .withMessage("policyAcknowledged must be a valid boolean"),
 
-    body("categoryId")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("Category ID must be a positive integer"),
-
-    body("categoryName")
-      .optional({ checkFalsy: true })
-      .trim()
-      .isLength({ min: 1, max: 100 })
-      .withMessage("Category name must be between 1 and 100 characters"),
-
-    body("tagIds")
-      .optional()
-      .custom((value) => {
-        if (Array.isArray(value)) {
-          return value.every(
-            (item) => Number.isInteger(Number(item)) && Number(item) > 0,
-          );
-        }
-
-        if (typeof value === "string") {
-          return value
-            .split(",")
-            .filter(Boolean)
-            .every(
-              (item) => Number.isInteger(Number(item)) && Number(item) > 0,
-            );
-        }
-
-        throw new Error("Tag IDs must be an array or comma-separated list");
-      }),
-
-    body("tagNames")
-      .optional()
-      .custom((value) => {
-        const tagNames = Array.isArray(value)
-          ? value
-          : String(value)
-              .split(",")
-              .map((item) => item.trim())
-              .filter(Boolean);
-
-        return tagNames.every((item) => item.length >= 1 && item.length <= 100);
-      })
-      .withMessage("Each tag name must be between 1 and 100 characters"),
+    categoryIdValidator(),
+    categoryNameValidator(),
+    tagIdsValidator(),
+    tagNamesValidator(),
   ];
 };
 
@@ -429,51 +498,18 @@ const updateLocalDesignValidator = () => {
       .isLength({ max: 255 })
       .withMessage("License type must not exceed 255 characters"),
 
-    body("categoryId")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("Category ID must be a positive integer"),
-
-    body("categoryName")
-      .optional({ checkFalsy: true })
-      .trim()
-      .isLength({ min: 1, max: 100 })
-      .withMessage("Category name must be between 1 and 100 characters"),
-
-    body("tagIds")
-      .optional()
-      .custom((value) => {
-        if (Array.isArray(value)) {
-          return value.every(
-            (item) => Number.isInteger(Number(item)) && Number(item) > 0,
-          );
-        }
-
-        if (typeof value === "string") {
-          return value
-            .split(",")
-            .filter(Boolean)
-            .every(
-              (item) => Number.isInteger(Number(item)) && Number(item) > 0,
-            );
-        }
-
-        throw new Error("Tag IDs must be an array or comma-separated list");
-      }),
-
-    body("tagNames")
-      .optional()
-      .custom((value) => {
-        const tagNames = Array.isArray(value)
-          ? value
-          : String(value)
-              .split(",")
-              .map((item) => item.trim())
-              .filter(Boolean);
-
-        return tagNames.every((item) => item.length >= 1 && item.length <= 100);
-      })
-      .withMessage("Each tag name must be between 1 and 100 characters"),
+    categoryIdValidator(),
+    categoryNameValidator(),
+    tagIdsValidator(),
+    tagNamesValidator(),
+    optionalIdListValidator("removeFileIds", "Removed file IDs"),
+    optionalIdListValidator("removeImageIds", "Removed image IDs"),
+    optionalAssetIdValidator("replaceFileId", "Replacement file ID"),
+    optionalAssetIdValidator("replaceImageId", "Replacement image ID"),
+    optionalAssetIdValidator("primaryFileId", "Primary file ID"),
+    optionalAssetIdValidator("primaryImageId", "Primary image ID"),
+    optionalIdListValidator("fileOrder", "File order"),
+    optionalIdListValidator("imageOrder", "Image order"),
 
     body("isActive")
       .optional()
@@ -487,19 +523,31 @@ const updateLocalDesignValidator = () => {
         Object.prototype.hasOwnProperty.call(req.body, "material") ||
         Object.prototype.hasOwnProperty.call(req.body, "dimensions") ||
         Object.prototype.hasOwnProperty.call(req.body, "licenseType") ||
+        Object.prototype.hasOwnProperty.call(req.body, "ownershipConfirmed") ||
+        Object.prototype.hasOwnProperty.call(req.body, "policyAcknowledged") ||
         Object.prototype.hasOwnProperty.call(req.body, "categoryId") ||
-        Object.prototype.hasOwnProperty.call(req.body, "categoryName") ||
         Object.prototype.hasOwnProperty.call(req.body, "tagIds") ||
-        Object.prototype.hasOwnProperty.call(req.body, "tagNames") ||
-        Object.prototype.hasOwnProperty.call(req.body, "isActive");
+        Object.prototype.hasOwnProperty.call(req.body, "isActive") ||
+        Object.prototype.hasOwnProperty.call(req.body, "removeFileIds") ||
+        Object.prototype.hasOwnProperty.call(req.body, "removeImageIds") ||
+        Object.prototype.hasOwnProperty.call(req.body, "replaceFileId") ||
+        Object.prototype.hasOwnProperty.call(req.body, "replaceImageId") ||
+        Object.prototype.hasOwnProperty.call(req.body, "primaryFileId") ||
+        Object.prototype.hasOwnProperty.call(req.body, "primaryImageId") ||
+        Object.prototype.hasOwnProperty.call(req.body, "fileOrder") ||
+        Object.prototype.hasOwnProperty.call(req.body, "imageOrder");
 
       const hasUploadedDesignFile =
-        Array.isArray(req.files?.[LOCAL_DESIGN_FILE_UPLOAD_FIELD]) &&
-        req.files[LOCAL_DESIGN_FILE_UPLOAD_FIELD].length > 0;
+        (Array.isArray(req.files?.[LOCAL_DESIGN_FILE_UPLOAD_FIELD]) &&
+          req.files[LOCAL_DESIGN_FILE_UPLOAD_FIELD].length > 0) ||
+        (Array.isArray(req.files?.[LOCAL_DESIGN_FILES_UPLOAD_FIELD]) &&
+          req.files[LOCAL_DESIGN_FILES_UPLOAD_FIELD].length > 0);
 
       const hasUploadedThumbnail =
-        Array.isArray(req.files?.[LOCAL_DESIGN_THUMBNAIL_UPLOAD_FIELD]) &&
-        req.files[LOCAL_DESIGN_THUMBNAIL_UPLOAD_FIELD].length > 0;
+        (Array.isArray(req.files?.[LOCAL_DESIGN_THUMBNAIL_UPLOAD_FIELD]) &&
+          req.files[LOCAL_DESIGN_THUMBNAIL_UPLOAD_FIELD].length > 0) ||
+        (Array.isArray(req.files?.[LOCAL_DESIGN_THUMBNAILS_UPLOAD_FIELD]) &&
+          req.files[LOCAL_DESIGN_THUMBNAILS_UPLOAD_FIELD].length > 0);
 
       if (!hasAnyBodyField && !hasUploadedDesignFile && !hasUploadedThumbnail) {
         throw new Error(
@@ -553,6 +601,20 @@ const createDesignOverrideValidator = () => {
       .isInt({ min: 1 })
       .withMessage("Linked local design ID must be a positive integer"),
 
+    body("selectedMmfFileId")
+      .optional({ nullable: true, checkFalsy: true })
+      .isInt({ min: 1 })
+      .withMessage("Selected MMF file ID must be a positive integer"),
+
+    body("selectedArchiveEntryPath")
+      .optional({ nullable: true, checkFalsy: true })
+      .trim()
+      .isString()
+      .withMessage("Selected archive entry path must be a string")
+      .bail()
+      .isLength({ max: 1000 })
+      .withMessage("Selected archive entry path must not exceed 1000 characters"),
+
     body("clientNote")
       .optional()
       .trim()
@@ -561,6 +623,22 @@ const createDesignOverrideValidator = () => {
       .bail()
       .isLength({ max: 2000 })
       .withMessage("Client note must not exceed 2000 characters"),
+
+    body("verificationConfirmed")
+      .optional()
+      .isIn(["true", "false", "1", "0", "yes", "no", true, false])
+      .withMessage(
+        "verificationConfirmed must be one of: true, false, 1, 0, yes, no",
+      ),
+
+    body("verificationNote")
+      .optional()
+      .trim()
+      .isString()
+      .withMessage("Verification note must be a string")
+      .bail()
+      .isLength({ max: 2000 })
+      .withMessage("Verification note must not exceed 2000 characters"),
 
     body().custom((_, { req }) => {
       const hasMeaningfulOverride =
@@ -616,6 +694,20 @@ const updateDesignOverrideValidator = () => {
       .isInt({ min: 1 })
       .withMessage("Linked local design ID must be a positive integer"),
 
+    body("selectedMmfFileId")
+      .optional({ nullable: true, checkFalsy: true })
+      .isInt({ min: 1 })
+      .withMessage("Selected MMF file ID must be a positive integer"),
+
+    body("selectedArchiveEntryPath")
+      .optional({ nullable: true, checkFalsy: true })
+      .trim()
+      .isString()
+      .withMessage("Selected archive entry path must be a string")
+      .bail()
+      .isLength({ max: 1000 })
+      .withMessage("Selected archive entry path must not exceed 1000 characters"),
+
     body("clientNote")
       .optional()
       .trim()
@@ -625,12 +717,33 @@ const updateDesignOverrideValidator = () => {
       .isLength({ max: 2000 })
       .withMessage("Client note must not exceed 2000 characters"),
 
+    body("verificationConfirmed")
+      .optional()
+      .isIn(["true", "false", "1", "0", "yes", "no", true, false])
+      .withMessage(
+        "verificationConfirmed must be one of: true, false, 1, 0, yes, no",
+      ),
+
+    body("verificationNote")
+      .optional()
+      .trim()
+      .isString()
+      .withMessage("Verification note must be a string")
+      .bail()
+      .isLength({ max: 2000 })
+      .withMessage("Verification note must not exceed 2000 characters"),
+
     body().custom((_, { req }) => {
       const hasAnyUpdatableField =
         Object.prototype.hasOwnProperty.call(req.body, "isHidden") ||
         Object.prototype.hasOwnProperty.call(req.body, "isPinned") ||
         Object.prototype.hasOwnProperty.call(req.body, "isPrintReady") ||
         Object.prototype.hasOwnProperty.call(req.body, "linkedLocalDesignId") ||
+        Object.prototype.hasOwnProperty.call(req.body, "selectedMmfFileId") ||
+        Object.prototype.hasOwnProperty.call(
+          req.body,
+          "selectedArchiveEntryPath",
+        ) ||
         Object.prototype.hasOwnProperty.call(req.body, "clientNote");
 
       if (!hasAnyUpdatableField) {
@@ -673,11 +786,95 @@ const updateLocalDesignPrintReadyValidator = () => {
       .bail()
       .isIn(["true", "false", "1", "0", "yes", "no"])
       .withMessage("isPrintReady must be a valid boolean"),
+
+    body("designFileId")
+      .optional({ nullable: true, checkFalsy: true })
+      .isInt({ min: 1 })
+      .withMessage("Design file ID must be a positive integer"),
+
+    body("verificationConfirmed")
+      .optional()
+      .isIn(["true", "false", "1", "0", "yes", "no", true, false])
+      .withMessage(
+        "verificationConfirmed must be one of: true, false, 1, 0, yes, no",
+      ),
+
+    body("verificationNote")
+      .optional()
+      .trim()
+      .isString()
+      .withMessage("Verification note must be a string")
+      .bail()
+      .isLength({ max: 2000 })
+      .withMessage("Verification note must not exceed 2000 characters"),
   ];
 };
 
+const updateLocalDesignLibraryCurationValidator = () => {
+  return [
+    ...localDesignIdValidator(),
+    body("isFeatured")
+      .optional()
+      .isBoolean()
+      .withMessage("isFeatured must be true or false"),
+    body("featuredRank")
+      .optional({ nullable: true })
+      .isInt({ min: 0, max: 9999 })
+      .withMessage("featuredRank must be a number between 0 and 9999"),
+    body("libraryNote")
+      .optional({ nullable: true })
+      .trim()
+      .isLength({ max: 1000 })
+      .withMessage("libraryNote must be 1000 characters or fewer"),
+    body("isLibraryHidden")
+      .optional()
+      .isBoolean()
+      .withMessage("isLibraryHidden must be true or false"),
+  ];
+};
+
+const recheckLocalDesignValidator = () => {
+  return [...localDesignIdValidator()];
+};
+
+const listAdminLocalDesignsValidator = () => [
+  query("page")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("Page must be a positive integer"),
+  query("limit")
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage("Limit must be between 1 and 100"),
+  query("sourceKind")
+    .optional()
+    .isIn(["lab", "community"])
+    .withMessage("sourceKind must be either lab or community"),
+  query("archived")
+    .optional()
+    .trim()
+    .isIn(["true", "false", "1", "0", "yes", "no"])
+    .withMessage("Archived must be true or false"),
+  query("status")
+    .optional()
+    .trim()
+    .isLength({ max: 240 })
+    .withMessage("Status filter is too long"),
+  query("search")
+    .optional()
+    .trim()
+    .isLength({ max: 120 })
+    .withMessage("Search must not exceed 120 characters"),
+  query("printReady")
+    .optional()
+    .trim()
+    .isIn(["true", "false", "1", "0", "yes", "no"])
+    .withMessage("printReady must be true or false"),
+];
+
 export {
   searchDesignLibraryValidator,
+  listAdminLocalDesignsValidator,
   mmfObjectIdValidator,
   localDesignIdValidator,
   createLocalDesignValidator,
@@ -688,5 +885,11 @@ export {
   updateDesignOverrideValidator,
   createMyDesignValidator,
   moderateLocalDesignValidator,
+  recheckLocalDesignValidator,
   updateLocalDesignPrintReadyValidator,
+  updateLocalDesignLibraryCurationValidator,
+  taxonomyCategoryIdValidator,
+  taxonomyTagIdValidator,
+  upsertDesignCategoryValidator,
+  upsertDesignTagValidator,
 };

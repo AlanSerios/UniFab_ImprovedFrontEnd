@@ -3,6 +3,16 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
+const TOKEN_TYPES = {
+  REFRESH: "refresh",
+  EMAIL_VERIFICATION: "email_verification",
+  FORGOT_PASSWORD: "forgot_password",
+};
+
+function hashToken(token) {
+  return crypto.createHash("sha256").update(String(token)).digest("hex");
+}
+
 async function createUser(firstName, lastName, email, password, userType) {
   const sql = `
     INSERT INTO users (
@@ -11,14 +21,9 @@ async function createUser(firstName, lastName, email, password, userType) {
       email,
       password,
       user_type,
-      is_email_verified,
-      refresh_token,
-      forgot_password_token,
-      forgot_password_expiry,
-      email_verification_token,
-      email_verification_expiry
+      is_email_verified
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?)
   `;
 
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -30,11 +35,6 @@ async function createUser(firstName, lastName, email, password, userType) {
     hashedPassword,
     userType,
     false,
-    null,
-    null,
-    null,
-    null,
-    null,
   ]);
 
   return result;
@@ -47,16 +47,34 @@ async function findUserByEmail(email) {
 }
 
 async function findUserByEmailVerificationToken(token) {
-  const sql =
-    "SELECT * FROM users WHERE email_verification_token = ? AND email_verification_expiry > NOW() LIMIT 1";
-  const [rows] = await pool.query(sql, [token]);
+  const sql = `
+    SELECT u.*
+    FROM user_tokens ut
+    INNER JOIN users u ON u.id = ut.user_id
+    WHERE ut.token_type = ?
+      AND ut.token_hash = ?
+      AND ut.expires_at > NOW()
+      AND ut.consumed_at IS NULL
+      AND ut.revoked_at IS NULL
+    LIMIT 1
+  `;
+  const [rows] = await pool.query(sql, [TOKEN_TYPES.EMAIL_VERIFICATION, token]);
   return rows[0] || null;
 }
 
 async function findUserByForgotPasswordToken(token) {
-  const sql =
-    "SELECT * FROM users WHERE forgot_password_token = ? AND forgot_password_expiry > NOW() LIMIT 1";
-  const [rows] = await pool.query(sql, [token]);
+  const sql = `
+    SELECT u.*
+    FROM user_tokens ut
+    INNER JOIN users u ON u.id = ut.user_id
+    WHERE ut.token_type = ?
+      AND ut.token_hash = ?
+      AND ut.expires_at > NOW()
+      AND ut.consumed_at IS NULL
+      AND ut.revoked_at IS NULL
+    LIMIT 1
+  `;
+  const [rows] = await pool.query(sql, [TOKEN_TYPES.FORGOT_PASSWORD, token]);
   return rows[0] || null;
 }
 
@@ -113,8 +131,62 @@ function generateTemporaryToken() {
 }
 
 async function saveRefreshToken(userId, refreshToken) {
-  const sql = "UPDATE users SET refresh_token = ? WHERE id = ?";
-  const [result] = await pool.query(sql, [refreshToken, userId]);
+  await revokeUserTokens(userId, TOKEN_TYPES.REFRESH);
+  const decodedToken = jwt.decode(refreshToken);
+  const expiresAt =
+    decodedToken?.exp && Number.isFinite(Number(decodedToken.exp))
+      ? new Date(Number(decodedToken.exp) * 1000)
+      : null;
+  const [result] = await pool.query(
+    `
+      INSERT INTO user_tokens (user_id, token_type, token_hash, expires_at)
+      VALUES (?, ?, ?, ?)
+    `,
+    [userId, TOKEN_TYPES.REFRESH, hashToken(refreshToken), expiresAt],
+  );
+  return result;
+}
+
+async function isRefreshTokenActive(userId, refreshToken) {
+  const [rows] = await pool.query(
+    `
+      SELECT id
+      FROM user_tokens
+      WHERE user_id = ?
+        AND token_type = ?
+        AND token_hash = ?
+        AND (expires_at IS NULL OR expires_at > NOW())
+        AND consumed_at IS NULL
+        AND revoked_at IS NULL
+      LIMIT 1
+    `,
+    [userId, TOKEN_TYPES.REFRESH, hashToken(refreshToken)],
+  );
+
+  return Boolean(rows[0]);
+}
+
+async function revokeUserTokens(userId, tokenType = null) {
+  const params = [userId];
+  let typeCondition = "";
+
+  if (tokenType) {
+    typeCondition = "AND token_type = ?";
+    params.push(tokenType);
+  }
+
+  const [result] = await pool.query(
+    `
+      UPDATE user_tokens
+      SET revoked_at = NOW()
+      WHERE user_id = ?
+        ${typeCondition}
+        AND revoked_at IS NULL
+        AND consumed_at IS NULL
+    `,
+    params,
+  );
+
   return result;
 }
 
@@ -123,16 +195,14 @@ async function saveForgotPasswordToken(
   forgotPasswordToken,
   forgotPasswordExpiry,
 ) {
-  const sql = `
-    UPDATE users
-    SET forgot_password_token = ?, forgot_password_expiry = ?
-    WHERE id = ?
-  `;
-  const [result] = await pool.query(sql, [
-    forgotPasswordToken,
-    forgotPasswordExpiry,
-    userId,
-  ]);
+  await revokeUserTokens(userId, TOKEN_TYPES.FORGOT_PASSWORD);
+  const [result] = await pool.query(
+    `
+      INSERT INTO user_tokens (user_id, token_type, token_hash, expires_at)
+      VALUES (?, ?, ?, ?)
+    `,
+    [userId, TOKEN_TYPES.FORGOT_PASSWORD, forgotPasswordToken, forgotPasswordExpiry],
+  );
   return result;
 }
 
@@ -141,29 +211,40 @@ async function saveEmailVerificationToken(
   emailVerificationToken,
   emailVerificationExpiry,
 ) {
-  const sql = `
-    UPDATE users
-    SET email_verification_token = ?, email_verification_expiry = ?
-    WHERE id = ?
-  `;
-  const [result] = await pool.query(sql, [
-    emailVerificationToken,
-    emailVerificationExpiry,
-    userId,
-  ]);
+  await revokeUserTokens(userId, TOKEN_TYPES.EMAIL_VERIFICATION);
+  const [result] = await pool.query(
+    `
+      INSERT INTO user_tokens (user_id, token_type, token_hash, expires_at)
+      VALUES (?, ?, ?, ?)
+    `,
+    [
+      userId,
+      TOKEN_TYPES.EMAIL_VERIFICATION,
+      emailVerificationToken,
+      emailVerificationExpiry,
+    ],
+  );
   return result;
 }
 
 async function markEmailAsVerified(userId) {
   const sql = `
     UPDATE users
-    SET
-      is_email_verified = true,
-      email_verification_token = NULL,
-      email_verification_expiry = NULL
+    SET is_email_verified = true
     WHERE id = ?
   `;
   const [result] = await pool.query(sql, [userId]);
+  await pool.query(
+    `
+      UPDATE user_tokens
+      SET consumed_at = NOW()
+      WHERE user_id = ?
+        AND token_type = ?
+        AND consumed_at IS NULL
+        AND revoked_at IS NULL
+    `,
+    [userId, TOKEN_TYPES.EMAIL_VERIFICATION],
+  );
   return result;
 }
 
@@ -172,22 +253,18 @@ async function updatePassword(userId, newPassword) {
 
   const sql = `
     UPDATE users
-    SET
-      password = ?,
-      refresh_token = NULL,
-      forgot_password_token = NULL,
-      forgot_password_expiry = NULL
+    SET password = ?
     WHERE id = ?
   `;
 
   const [result] = await pool.query(sql, [hashedPassword, userId]);
+  await revokeUserTokens(userId, TOKEN_TYPES.REFRESH);
+  await revokeUserTokens(userId, TOKEN_TYPES.FORGOT_PASSWORD);
   return result;
 }
 
 async function clearRefreshToken(userId) {
-  const sql = "UPDATE users SET refresh_token = NULL WHERE id = ?";
-  const [result] = await pool.query(sql, [userId]);
-  return result;
+  return revokeUserTokens(userId, TOKEN_TYPES.REFRESH);
 }
 
 export {
@@ -200,6 +277,7 @@ export {
   generateAccessToken,
   generateRefreshToken,
   generateTemporaryToken,
+  isRefreshTokenActive,
   saveRefreshToken,
   saveForgotPasswordToken,
   saveEmailVerificationToken,

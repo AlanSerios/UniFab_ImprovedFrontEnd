@@ -1,42 +1,60 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { verifyEmail } from "../api/auth";
 import { ButtonLink } from "../components/ui/Button";
 import { Alert } from "../components/ui/Feedback";
 import { PageHeader, PageShell, Panel } from "../components/ui/Page";
+import { useAuth } from "../context/AuthContext";
+import { consumeVerifiedDestination } from "../utils/verification-destination";
 
 export default function VerifyEmail() {
+  const navigate = useNavigate();
   const { verificationToken } = useParams();
+  const { isAuthenticated, reloadCurrentUser } = useAuth();
 
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [verifiedDestination, setVerifiedDestination] = useState("/dashboard");
 
   useEffect(() => {
     let shouldIgnore = false;
 
-    verifyEmail(verificationToken)
-      .then((response) => {
+    async function confirmEmail() {
+      try {
+        const response = await verifyEmail(verificationToken);
+
         if (!shouldIgnore) {
           setMessage(response.message || "Email verified successfully.");
         }
-      })
-      .catch((err) => {
+
+        if (isAuthenticated) {
+          const destination = consumeVerifiedDestination("/dashboard");
+          setVerifiedDestination(destination);
+          await reloadCurrentUser();
+
+          if (!shouldIgnore) {
+            navigate(destination, { replace: true });
+          }
+        }
+      } catch (err) {
         if (!shouldIgnore) {
           setError(err.message || "We could not verify your email.");
         }
-      })
-      .finally(() => {
+      } finally {
         if (!shouldIgnore) {
           setIsLoading(false);
         }
-      });
+      }
+    }
+
+    confirmEmail();
 
     return () => {
       shouldIgnore = true;
     };
-  }, [verificationToken]);
+  }, [isAuthenticated, navigate, reloadCurrentUser, verificationToken]);
 
   return (
     <PageShell size="sm">
@@ -61,7 +79,9 @@ export default function VerifyEmail() {
         </Alert>
 
         <div className="mt-6 flex justify-center">
-          <ButtonLink to="/login">Go to login</ButtonLink>
+          <ButtonLink to={isAuthenticated ? verifiedDestination : "/login"}>
+            {isAuthenticated ? "Continue" : "Go to login"}
+          </ButtonLink>
         </div>
 
         {error && (

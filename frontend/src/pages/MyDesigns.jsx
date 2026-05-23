@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { API_BASE_URL } from "../api/client";
 import { getMyDesigns, publishMyDesign } from "../api/designs";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { Alert, EmptyState, StatusBadge } from "../components/ui/Feedback";
@@ -25,6 +27,13 @@ const PUBLISHABLE_STATUSES = new Set([
   "auto_rejected",
   "admin_rejected",
 ]);
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
+
+function assetUrl(path) {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${API_ORIGIN}${path}`;
+}
 
 function matchesFilter(design, filter) {
   if (!filter) return true;
@@ -147,55 +156,101 @@ export default function MyDesigns() {
         )}
 
         {visibleDesigns.length > 0 && (
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {visibleDesigns.map((design) => (
               <article
                 key={design.id}
-                className="rounded-lg border border-slate-200 bg-white p-5"
+                className="group flex h-full min-h-[360px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="font-semibold text-slate-950">
+                <Link
+                  to={`/designs/local/${design.id}?returnTo=${encodeURIComponent("/my-designs")}`}
+                  className="block"
+                >
+                  <div className="relative flex h-36 items-center justify-center overflow-hidden border-b border-slate-200 bg-slate-100">
+                    {design.thumbnailUrl ? (
+                      <img
+                        src={assetUrl(design.thumbnailUrl)}
+                        alt={design.title || "Design thumbnail"}
+                        className="h-full w-full object-contain p-2 transition duration-200 group-hover:scale-[1.03]"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-slate-500">
+                        No thumbnail
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-4 pb-0">
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      <StatusBadge>Community</StatusBadge>
+                      <StatusBadge
+                        tone={getModerationStatusTone(
+                          design.moderationStatus,
+                        )}
+                      >
+                        {getModerationStatusLabel(design.moderationStatus)}
+                      </StatusBadge>
+                    </div>
+
+                    <h2 className="line-clamp-2 font-semibold text-slate-950">
                       {design.title || "Untitled design"}
                     </h2>
-                    <p className="mt-1 text-sm text-slate-500">
+
+                    <p className="mt-2 text-xs text-slate-500">
                       Updated{" "}
                       {design.updatedAt
                         ? new Date(design.updatedAt).toLocaleDateString()
                         : "-"}
                     </p>
+
+                    <p className="mt-2 line-clamp-2 min-h-[3rem] text-sm leading-6 text-slate-600">
+                      {getOwnerModerationMessage(design) ||
+                        design.description ||
+                        "No description provided."}
+                    </p>
                   </div>
+                </Link>
 
-                  <StatusBadge
-                    tone={getModerationStatusTone(design.moderationStatus)}
-                  >
-                    {getModerationStatusLabel(design.moderationStatus)}
-                  </StatusBadge>
-                </div>
-
-                {getOwnerModerationMessage(design) && (
-                  <p className="mt-4 text-sm leading-6 text-slate-600">
-                    {getOwnerModerationMessage(design)}
-                  </p>
-                )}
-
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-auto border-t border-slate-200 p-4">
                   <ButtonLink
-                    to={`/my-designs/${design.id}`}
+                    to={`/designs/local/${design.id}?returnTo=${encodeURIComponent("/my-designs")}`}
                     variant="secondary"
+                    className="w-full"
                   >
-                    Edit
+                    View Details
                   </ButtonLink>
 
-                  {PUBLISHABLE_STATUSES.has(design.moderationStatus) && (
-                    <Button
-                      type="button"
-                      onClick={() => handlePublish(design.id)}
-                      disabled={publishingId === design.id}
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <ButtonLink
+                      to={`/my-designs/${design.id}`}
+                      variant="secondary"
+                      className="w-full"
                     >
-                      {publishingId === design.id ? "Publishing..." : "Publish"}
-                    </Button>
-                  )}
+                      Edit
+                    </ButtonLink>
+
+                    {PUBLISHABLE_STATUSES.has(design.moderationStatus) ? (
+                      <Button
+                        type="button"
+                        onClick={() => handlePublish(design.id)}
+                        disabled={publishingId === design.id}
+                        className="w-full"
+                      >
+                        {publishingId === design.id
+                          ? "Publishing..."
+                          : "Publish"}
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled
+                        className="w-full"
+                      >
+                        No publish action
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </article>
             ))}

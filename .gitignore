@@ -19,3 +19,5 @@ frontend/.env
 backend/storage/
 backend/temp/
 backend/db/backups/
+
+.codex_temp

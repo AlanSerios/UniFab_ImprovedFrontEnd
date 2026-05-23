@@ -1,14 +1,4 @@
-import { apiRequest } from "./client";
-
-export function submitPrintRequestFromQuote(quoteToken, payload = {}) {
-  return apiRequest("/requests", {
-    method: "POST",
-    body: JSON.stringify({
-      quoteToken,
-      ...payload,
-    }),
-  });
-}
+import { apiBlobRequest, apiRequest } from "./client";
 
 export function getMyPrintRequests() {
   return apiRequest("/requests");
@@ -39,9 +29,81 @@ export function updateAdminPrintRequestStatus(requestId, payload) {
   });
 }
 
-export function undoAdminPrintRequestStatus(requestId) {
+export function undoAdminPrintRequestStatus(requestId, payload) {
   return apiRequest(`/requests/admin/${requestId}/undo`, {
     method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function submitPrintRequestFromCart(payload = {}) {
+  return apiRequest("/requests", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function previewPrintRequestSubmission(payload = {}) {
+  return apiRequest("/requests/preview", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function createRequestDraft(payload = {}) {
+  return apiRequest("/requests/drafts", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getRequestDraftPreview(draftToken) {
+  return apiRequest(`/requests/drafts/${draftToken}/preview`);
+}
+
+export function submitRequestDraft(draftToken, payload = {}) {
+  return apiRequest(`/requests/drafts/${draftToken}/submit`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchAdminPrintRequestModel(requestId, options = {}) {
+  const searchParams = new URLSearchParams();
+
+  if (options.download) {
+    searchParams.set("download", "true");
+  }
+
+  const queryString = searchParams.toString();
+  return apiBlobRequest(
+    `/requests/admin/${requestId}/model${queryString ? `?${queryString}` : ""}`,
+  );
+}
+
+export async function fetchAdminPrintRequestItemModel(
+  requestId,
+  itemId,
+  options = {},
+) {
+  const searchParams = new URLSearchParams();
+
+  if (options.download) {
+    searchParams.set("download", "true");
+  }
+
+  const queryString = searchParams.toString();
+  return apiBlobRequest(
+    `/requests/admin/${requestId}/items/${itemId}/model${
+      queryString ? `?${queryString}` : ""
+    }`,
+  );
+}
+
+export function cancelPrintRequest(requestId, payload) {
+  return apiRequest(`/requests/${requestId}/cancel`, {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 

@@ -1,0 +1,246 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/pages/VerifyRequired.jsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=45caa8ea"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+let prevRefreshReg;
+let prevRefreshSig;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  prevRefreshReg = window.$RefreshReg$;
+  prevRefreshSig = window.$RefreshSig$;
+  window.$RefreshReg$ = RefreshRuntime.getRefreshReg("C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx");
+  window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+}
+var _s = $RefreshSig$();
+import __vite__cjsImport3_react from "/node_modules/.vite/deps/react.js?v=45caa8ea"; const useEffect = __vite__cjsImport3_react["useEffect"]; const useMemo = __vite__cjsImport3_react["useMemo"]; const useState = __vite__cjsImport3_react["useState"];
+import { Navigate, useLocation, useNavigate } from "/node_modules/.vite/deps/react-router-dom.js?v=45caa8ea";
+import { resendVerificationEmail } from "/src/api/auth.js";
+import { Button, ButtonLink } from "/src/components/ui/Button.jsx";
+import { Alert } from "/src/components/ui/Feedback.jsx";
+import { PageHeader, PageShell, Panel } from "/src/components/ui/Page.jsx";
+import { useAuth } from "/src/context/AuthContext.jsx";
+import {
+  consumeVerifiedDestination,
+  getSafeDestination,
+  rememberVerifiedDestination
+} from "/src/utils/verification-destination.js";
+export default function VerifyRequired() {
+  _s();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout, reloadCurrentUser } = useAuth();
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [isSendingVerification, setIsSendingVerification] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const intendedDestination = useMemo(
+    () => getSafeDestination(location.state?.from || "/dashboard"),
+    [location.state?.from]
+  );
+  useEffect(() => {
+    rememberVerifiedDestination(intendedDestination);
+  }, [intendedDestination]);
+  async function handleResendVerification() {
+    try {
+      setIsSendingVerification(true);
+      setMessage("");
+      setError("");
+      const response = await resendVerificationEmail();
+      setMessage(response.message || "Verification email sent successfully.");
+    } catch (err) {
+      setError(err.message || "We could not send the verification email.");
+    } finally {
+      setIsSendingVerification(false);
+    }
+  }
+  async function handleRefreshStatus() {
+    try {
+      setIsRefreshing(true);
+      setMessage("");
+      setError("");
+      const currentUser = await reloadCurrentUser();
+      if (currentUser?.isEmailVerified) {
+        navigate(consumeVerifiedDestination(intendedDestination), {
+          replace: true
+        });
+        return;
+      }
+      setMessage("Your account is still waiting for email verification.");
+    } catch (err) {
+      setError(err.message || "We could not refresh your verification status.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
+  async function handleLogout() {
+    await logout();
+    navigate("/", { replace: true });
+  }
+  if (user?.isEmailVerified) {
+    return /* @__PURE__ */ jsxDEV(
+      Navigate,
+      {
+        to: consumeVerifiedDestination(intendedDestination),
+        replace: true
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx",
+        lineNumber: 95,
+        columnNumber: 7
+      },
+      this
+    );
+  }
+  return /* @__PURE__ */ jsxDEV(PageShell, { size: "sm", children: /* @__PURE__ */ jsxDEV(Panel, { children: [
+    /* @__PURE__ */ jsxDEV(
+      PageHeader,
+      {
+        title: "Verify your email",
+        description: "Your UniFab account is created, but it is not fully active until your email address is verified."
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx",
+        lineNumber: 105,
+        columnNumber: 9
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV("div", { className: "mt-6 space-y-4 text-sm leading-6 text-slate-600", children: [
+      /* @__PURE__ */ jsxDEV("p", { children: [
+        "We sent a verification link to",
+        " ",
+        /* @__PURE__ */ jsxDEV("span", { className: "font-semibold text-slate-950", children: user?.email }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx",
+          lineNumber: 113,
+          columnNumber: 13
+        }, this),
+        ". After verification, you can continue to your dashboard, submit print requests, and manage your designs."
+      ] }, void 0, true, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx",
+        lineNumber: 111,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV("p", { children: "You can keep reviewing public quotes, and your account cart will be available after verification." }, void 0, false, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx",
+        lineNumber: 117,
+        columnNumber: 11
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx",
+      lineNumber: 110,
+      columnNumber: 9
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "mt-6 space-y-3", children: [
+      message && /* @__PURE__ */ jsxDEV(Alert, { type: "success", children: message }, void 0, false, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx",
+        lineNumber: 124,
+        columnNumber: 23
+      }, this),
+      error && /* @__PURE__ */ jsxDEV(Alert, { type: "error", children: error }, void 0, false, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx",
+        lineNumber: 125,
+        columnNumber: 21
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx",
+      lineNumber: 123,
+      columnNumber: 9
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "mt-6 flex flex-col gap-3", children: [
+      /* @__PURE__ */ jsxDEV(
+        Button,
+        {
+          type: "button",
+          onClick: handleResendVerification,
+          disabled: isSendingVerification,
+          children: isSendingVerification ? "Sending..." : "Resend verification email"
+        },
+        void 0,
+        false,
+        {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx",
+          lineNumber: 129,
+          columnNumber: 11
+        },
+        this
+      ),
+      /* @__PURE__ */ jsxDEV(
+        Button,
+        {
+          type: "button",
+          variant: "secondary",
+          onClick: handleRefreshStatus,
+          disabled: isRefreshing,
+          children: isRefreshing ? "Checking..." : "I already verified"
+        },
+        void 0,
+        false,
+        {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx",
+          lineNumber: 136,
+          columnNumber: 11
+        },
+        this
+      ),
+      /* @__PURE__ */ jsxDEV(Button, { type: "button", variant: "secondary", onClick: handleLogout, children: "Logout" }, void 0, false, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx",
+        lineNumber: 144,
+        columnNumber: 11
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx",
+      lineNumber: 128,
+      columnNumber: 9
+    }, this),
+    /* @__PURE__ */ jsxDEV("p", { className: "mt-6 text-center text-sm text-slate-500", children: [
+      "Need to change accounts?",
+      " ",
+      /* @__PURE__ */ jsxDEV(ButtonLink, { to: "/login", variant: "subtle", size: "sm", children: "Go to login" }, void 0, false, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx",
+        lineNumber: 151,
+        columnNumber: 11
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx",
+      lineNumber: 149,
+      columnNumber: 9
+    }, this)
+  ] }, void 0, true, {
+    fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx",
+    lineNumber: 104,
+    columnNumber: 7
+  }, this) }, void 0, false, {
+    fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx",
+    lineNumber: 103,
+    columnNumber: 5
+  }, this);
+}
+_s(VerifyRequired, "h12HkomQMtZYGfZw0uJzcNxgLR8=", false, function() {
+  return [useLocation, useNavigate, useAuth];
+});
+_c = VerifyRequired;
+var _c;
+$RefreshReg$(_c, "VerifyRequired");
+if (import.meta.hot && !inWebWorker) {
+  window.$RefreshReg$ = prevRefreshReg;
+  window.$RefreshSig$ = prevRefreshSig;
+}
+if (import.meta.hot && !inWebWorker) {
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/VerifyRequired.jsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+
+//# sourceMappingURL=data:application/json;base64,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QUVBO0FBQUEsU0FsQkY7QUFBQTtBQUFBO0FBQUE7QUFBQSxXQW1CQTtBQUFBLElBRUEsdUJBQUMsT0FBRSxXQUFVLDJDQUF5QztBQUFBO0FBQUEsTUFDM0I7QUFBQSxNQUN6Qix1QkFBQyxjQUFXLElBQUcsVUFBUyxTQUFRLFVBQVMsTUFBSyxNQUFJLDJCQUFsRDtBQUFBO0FBQUE7QUFBQTtBQUFBLGFBRUE7QUFBQSxTQUpGO0FBQUE7QUFBQTtBQUFBO0FBQUEsV0FLQTtBQUFBLE9BbERGO0FBQUE7QUFBQTtBQUFBO0FBQUEsU0FtREEsS0FwREY7QUFBQTtBQUFBO0FBQUE7QUFBQSxTQXFEQTtBQUVKO0FBQUN4QixHQTVIdUJELGdCQUFjO0FBQUEsVUFDbkJiLGFBQ0FDLGFBQzJCUSxPQUFPO0FBQUE7QUFBQSxLQUg3Qkk7QUFBYyxJQUFBMkI7QUFBQSxhQUFBQSxJQUFBIiwibmFtZXMiOlsidXNlRWZmZWN0IiwidXNlTWVtbyIsInVzZVN0YXRlIiwiTmF2aWdhdGUiLCJ1c2VMb2NhdGlvbiIsInVzZU5hdmlnYXRlIiwicmVzZW5kVmVyaWZpY2F0aW9uRW1haWwiLCJCdXR0b24iLCJCdXR0b25MaW5rIiwiQWxlcnQiLCJQYWdlSGVhZGVyIiwiUGFnZVNoZWxsIiwiUGFuZWwiLCJ1c2VBdXRoIiwiY29uc3VtZVZlcmlmaWVkRGVzdGluYXRpb24iLCJnZXRTYWZlRGVzdGluYXRpb24iLCJyZW1lbWJlclZlcmlmaWVkRGVzdGluYXRpb24iLCJWZXJpZnlSZXF1aXJlZCIsIl9zIiwibG9jYXRpb24iLCJuYXZpZ2F0ZSIsInVzZXIiLCJsb2dvdXQiLCJyZWxvYWRDdXJyZW50VXNlciIsIm1lc3NhZ2UiLCJzZXRNZXNzYWdlIiwiZXJyb3IiLCJzZXRFcnJvciIsImlzU2VuZGluZ1ZlcmlmaWNhdGlvbiIsInNldElzU2VuZGluZ1ZlcmlmaWNhdGlvbiIsImlzUmVmcmVzaGluZyIsInNldElzUmVmcmVzaGluZyIsImludGVuZGVkRGVzdGluYXRpb24iLCJzdGF0ZSIsImZyb20iLCJoYW5kbGVSZXNlbmRWZXJpZmljYXRpb24iLCJyZXNwb25zZSIsImVyciIsImhhbmRsZVJlZnJlc2hTdGF0dXMiLCJjdXJyZW50VXNlciIsImlzRW1haWxWZXJpZmllZCIsInJlcGxhY2UiLCJoYW5kbGVMb2dvdXQiLCJlbWFpbCIsIl9jIl0sImlnbm9yZUxpc3QiOltdLCJzb3VyY2VzIjpbIlZlcmlmeVJlcXVpcmVkLmpzeCJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyB1c2VFZmZlY3QsIHVzZU1lbW8sIHVzZVN0YXRlIH0gZnJvbSBcInJlYWN0XCI7XG5pbXBvcnQgeyBOYXZpZ2F0ZSwgdXNlTG9jYXRpb24sIHVzZU5hdmlnYXRlIH0gZnJvbSBcInJlYWN0LXJvdXRlci1kb21cIjtcblxuaW1wb3J0IHsgcmVzZW5kVmVyaWZpY2F0aW9uRW1haWwgfSBmcm9tIFwiLi4vYXBpL2F1dGhcIjtcbmltcG9ydCB7IEJ1dHRvbiwgQnV0dG9uTGluayB9IGZyb20gXCIuLi9jb21wb25lbnRzL3VpL0J1dHRvblwiO1xuaW1wb3J0IHsgQWxlcnQgfSBmcm9tIFwiLi4vY29tcG9uZW50cy91aS9GZWVkYmFja1wiO1xuaW1wb3J0IHsgUGFnZUhlYWRlciwgUGFnZVNoZWxsLCBQYW5lbCB9IGZyb20gXCIuLi9jb21wb25lbnRzL3VpL1BhZ2VcIjtcbmltcG9ydCB7IHVzZUF1dGggfSBmcm9tIFwiLi4vY29udGV4dC9BdXRoQ29udGV4dFwiO1xuaW1wb3J0IHtcbiAgY29uc3VtZVZlcmlmaWVkRGVzdGluYXRpb24sXG4gIGdldFNhZmVEZXN0aW5hdGlvbixcbiAgcmVtZW1iZXJWZXJpZmllZERlc3RpbmF0aW9uLFxufSBmcm9tIFwiLi4vdXRpbHMvdmVyaWZpY2F0aW9uLWRlc3RpbmF0aW9uXCI7XG5cbmV4cG9ydCBkZWZhdWx0IGZ1bmN0aW9uIFZlcmlmeVJlcXVpcmVkKCkge1xuICBjb25zdCBsb2NhdGlvbiA9IHVzZUxvY2F0aW9uKCk7XG4gIGNvbnN0IG5hdmlnYXRlID0gdXNlTmF2aWdhdGUoKTtcbiAgY29uc3QgeyB1c2VyLCBsb2dvdXQsIHJlbG9hZEN1cnJlbnRVc2VyIH0gPSB1c2VBdXRoKCk7XG4gIGNvbnN0IFttZXNzYWdlLCBzZXRNZXNzYWdlXSA9IHVzZVN0YXRlKFwiXCIpO1xuICBjb25zdCBbZXJyb3IsIHNldEVycm9yXSA9IHVzZVN0YXRlKFwiXCIpO1xuICBjb25zdCBbaXNTZW5kaW5nVmVyaWZpY2F0aW9uLCBzZXRJc1NlbmRpbmdWZXJpZmljYXRpb25dID0gdXNlU3RhdGUoZmFsc2UpO1xuICBjb25zdCBbaXNSZWZyZXNoaW5nLCBzZXRJc1JlZnJlc2hpbmddID0gdXNlU3RhdGUoZmFsc2UpO1xuICBjb25zdCBpbnRlbmRlZERlc3RpbmF0aW9uID0gdXNlTWVtbyhcbiAgICAoKSA9PiBnZXRTYWZlRGVzdGluYXRpb24obG9jYXRpb24uc3RhdGU/LmZyb20gfHwgXCIvZGFzaGJvYXJkXCIpLFxuICAgIFtsb2NhdGlvbi5zdGF0ZT8uZnJvbV0sXG4gICk7XG5cbiAgdXNlRWZmZWN0KCgpID0+IHtcbiAgICByZW1lbWJlclZlcmlmaWVkRGVzdGluYXRpb24oaW50ZW5kZWREZXN0aW5hdGlvbik7XG4gIH0sIFtpbnRlbmRlZERlc3RpbmF0aW9uXSk7XG5cbiAgYXN5bmMgZnVuY3Rpb24gaGFuZGxlUmVzZW5kVmVyaWZpY2F0aW9uKCkge1xuICAgIHRyeSB7XG4gICAgICBzZXRJc1NlbmRpbmdWZXJpZmljYXRpb24odHJ1ZSk7XG4gICAgICBzZXRNZXNzYWdlKFwiXCIpO1xuICAgICAgc2V0RXJyb3IoXCJcIik7XG4gICAgICBjb25zdCByZXNwb25zZSA9IGF3YWl0IHJlc2VuZFZlcmlmaWNhdGlvbkVtYWlsKCk7XG5cbiAgICAgIHNldE1lc3NhZ2UocmVzcG9uc2UubWVzc2FnZSB8fCBcIlZlcmlmaWNhdGlvbiBlbWFpbCBzZW50IHN1Y2Nlc3NmdWxseS5cIik7XG4gICAgfSBjYXRjaCAoZXJyKSB7XG4gICAgICBzZXRFcnJvcihlcnIubWVzc2FnZSB8fCBcIldlIGNvdWxkIG5vdCBzZW5kIHRoZSB2ZXJpZmljYXRpb24gZW1haWwuXCIpO1xuICAgIH0gZmluYWxseSB7XG4gICAgICBzZXRJc1NlbmRpbmdWZXJpZmljYXRpb24oZmFsc2UpO1xuICAgIH1cbiAgfVxuXG4gIGFzeW5jIGZ1bmN0aW9uIGhhbmRsZVJlZnJlc2hTdGF0dXMoKSB7XG4gICAgdHJ5IHtcbiAgICAgIHNldElzUmVmcmVzaGluZyh0cnVlKTtcbiAgICAgIHNldE1lc3NhZ2UoXCJcIik7XG4gICAgICBzZXRFcnJvcihcIlwiKTtcbiAgICAgIGNvbnN0IGN1cnJlbnRVc2VyID0gYXdhaXQgcmVsb2FkQ3VycmVudFVzZXIoKTtcblxuICAgICAgaWYgKGN1cnJlbnRVc2VyPy5pc0VtYWlsVmVyaWZpZWQpIHtcbiAgICAgICAgbmF2aWdhdGUoY29uc3VtZVZlcmlmaWVkRGVzdGluYXRpb24oaW50ZW5kZWREZXN0aW5hdGlvbiksIHtcbiAgICAgICAgICByZXBsYWNlOiB0cnVlLFxuICAgICAgICB9KTtcbiAgICAgICAgcmV0dXJuO1xuICAgICAgfVxuXG4gICAgICBzZXRNZXNzYWdlKFwiWW91ciBhY2NvdW50IGlzIHN0aWxsIHdhaXRpbmcgZm9yIGVtYWlsIHZlcmlmaWNhdGlvbi5cIik7XG4gICAgfSBjYXRjaCAoZXJyKSB7XG4gICAgICBzZXRFcnJvcihlcnIubWVzc2FnZSB8fCBcIldlIGNvdWxkIG5vdCByZWZyZXNoIHlvdXIgdmVyaWZpY2F0aW9uIHN0YXR1cy5cIik7XG4gICAgfSBmaW5hbGx5IHtcbiAgICAgIHNldElzUmVmcmVzaGluZyhmYWxzZSk7XG4gICAgfVxuICB9XG5cbiAgYXN5bmMgZnVuY3Rpb24gaGFuZGxlTG9nb3V0KCkge1xuICAgIGF3YWl0IGxvZ291dCgpO1xuICAgIG5hdmlnYXRlKFwiL1wiLCB7IHJlcGxhY2U6IHRydWUgfSk7XG4gIH1cblxuICBpZiAodXNlcj8uaXNFbWFpbFZlcmlmaWVkKSB7XG4gICAgcmV0dXJuIChcbiAgICAgIDxOYXZpZ2F0ZVxuICAgICAgICB0bz17Y29uc3VtZVZlcmlmaWVkRGVzdGluYXRpb24oaW50ZW5kZWREZXN0aW5hdGlvbil9XG4gICAgICAgIHJlcGxhY2VcbiAgICAgIC8+XG4gICAgKTtcbiAgfVxuXG4gIHJldHVybiAoXG4gICAgPFBhZ2VTaGVsbCBzaXplPVwic21cIj5cbiAgICAgIDxQYW5lbD5cbiAgICAgICAgPFBhZ2VIZWFkZXJcbiAgICAgICAgICB0aXRsZT1cIlZlcmlmeSB5b3VyIGVtYWlsXCJcbiAgICAgICAgICBkZXNjcmlwdGlvbj1cIllvdXIgVW5pRmFiIGFjY291bnQgaXMgY3JlYXRlZCwgYnV0IGl0IGlzIG5vdCBmdWxseSBhY3RpdmUgdW50aWwgeW91ciBlbWFpbCBhZGRyZXNzIGlzIHZlcmlmaWVkLlwiXG4gICAgICAgIC8+XG5cbiAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJtdC02IHNwYWNlLXktNCB0ZXh0LXNtIGxlYWRpbmctNiB0ZXh0LXNsYXRlLTYwMFwiPlxuICAgICAgICAgIDxwPlxuICAgICAgICAgICAgV2Ugc2VudCBhIHZlcmlmaWNhdGlvbiBsaW5rIHRve1wiIFwifVxuICAgICAgICAgICAgPHNwYW4gY2xhc3NOYW1lPVwiZm9udC1zZW1pYm9sZCB0ZXh0LXNsYXRlLTk1MFwiPnt1c2VyPy5lbWFpbH08L3NwYW4+LlxuICAgICAgICAgICAgQWZ0ZXIgdmVyaWZpY2F0aW9uLCB5b3UgY2FuIGNvbnRpbnVlIHRvIHlvdXIgZGFzaGJvYXJkLCBzdWJtaXQgcHJpbnRcbiAgICAgICAgICAgIHJlcXVlc3RzLCBhbmQgbWFuYWdlIHlvdXIgZGVzaWducy5cbiAgICAgICAgICA8L3A+XG4gICAgICAgICAgPHA+XG4gICAgICAgICAgICBZb3UgY2FuIGtlZXAgcmV2aWV3aW5nIHB1YmxpYyBxdW90ZXMsIGFuZCB5b3VyIGFjY291bnQgY2FydCB3aWxsIGJlXG4gICAgICAgICAgICBhdmFpbGFibGUgYWZ0ZXIgdmVyaWZpY2F0aW9uLlxuICAgICAgICAgIDwvcD5cbiAgICAgICAgPC9kaXY+XG5cbiAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJtdC02IHNwYWNlLXktM1wiPlxuICAgICAgICAgIHttZXNzYWdlICYmIDxBbGVydCB0eXBlPVwic3VjY2Vzc1wiPnttZXNzYWdlfTwvQWxlcnQ+fVxuICAgICAgICAgIHtlcnJvciAmJiA8QWxlcnQgdHlwZT1cImVycm9yXCI+e2Vycm9yfTwvQWxlcnQ+fVxuICAgICAgICA8L2Rpdj5cblxuICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cIm10LTYgZmxleCBmbGV4LWNvbCBnYXAtM1wiPlxuICAgICAgICAgIDxCdXR0b25cbiAgICAgICAgICAgIHR5cGU9XCJidXR0b25cIlxuICAgICAgICAgICAgb25DbGljaz17aGFuZGxlUmVzZW5kVmVyaWZpY2F0aW9ufVxuICAgICAgICAgICAgZGlzYWJsZWQ9e2lzU2VuZGluZ1ZlcmlmaWNhdGlvbn1cbiAgICAgICAgICA+XG4gICAgICAgICAgICB7aXNTZW5kaW5nVmVyaWZpY2F0aW9uID8gXCJTZW5kaW5nLi4uXCIgOiBcIlJlc2VuZCB2ZXJpZmljYXRpb24gZW1haWxcIn1cbiAgICAgICAgICA8L0J1dHRvbj5cbiAgICAgICAgICA8QnV0dG9uXG4gICAgICAgICAgICB0eXBlPVwiYnV0dG9uXCJcbiAgICAgICAgICAgIHZhcmlhbnQ9XCJzZWNvbmRhcnlcIlxuICAgICAgICAgICAgb25DbGljaz17aGFuZGxlUmVmcmVzaFN0YXR1c31cbiAgICAgICAgICAgIGRpc2FibGVkPXtpc1JlZnJlc2hpbmd9XG4gICAgICAgICAgPlxuICAgICAgICAgICAge2lzUmVmcmVzaGluZyA/IFwiQ2hlY2tpbmcuLi5cIiA6IFwiSSBhbHJlYWR5IHZlcmlmaWVkXCJ9XG4gICAgICAgICAgPC9CdXR0b24+XG4gICAgICAgICAgPEJ1dHRvbiB0eXBlPVwiYnV0dG9uXCIgdmFyaWFudD1cInNlY29uZGFyeVwiIG9uQ2xpY2s9e2hhbmRsZUxvZ291dH0+XG4gICAgICAgICAgICBMb2dvdXRcbiAgICAgICAgICA8L0J1dHRvbj5cbiAgICAgICAgPC9kaXY+XG5cbiAgICAgICAgPHAgY2xhc3NOYW1lPVwibXQtNiB0ZXh0LWNlbnRlciB0ZXh0LXNtIHRleHQtc2xhdGUtNTAwXCI+XG4gICAgICAgICAgTmVlZCB0byBjaGFuZ2UgYWNjb3VudHM/e1wiIFwifVxuICAgICAgICAgIDxCdXR0b25MaW5rIHRvPVwiL2xvZ2luXCIgdmFyaWFudD1cInN1YnRsZVwiIHNpemU9XCJzbVwiPlxuICAgICAgICAgICAgR28gdG8gbG9naW5cbiAgICAgICAgICA8L0J1dHRvbkxpbms+XG4gICAgICAgIDwvcD5cbiAgICAgIDwvUGFuZWw+XG4gICAgPC9QYWdlU2hlbGw+XG4gICk7XG59XG4iXSwiZmlsZSI6IkM6L1VzZXJzL0tlbnQgQ2hyaXN0aWFuL0RvY3VtZW50cy9VbmlGYWIvZnJvbnRlbmQvc3JjL3BhZ2VzL1ZlcmlmeVJlcXVpcmVkLmpzeCJ9

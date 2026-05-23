@@ -11,6 +11,14 @@ import { getMaterialByKey } from "../models/materials.model.js";
 const PRUSA_SLICER_EXECUTABLE =
   process.env.PRUSA_SLICER_PATH ||
   "C:\\Program Files\\Prusa3D\\PrusaSlicer\\prusa-slicer-console.exe";
+const PROFILE_DRY_RUN_MODEL_PATH = path.resolve(
+  process.cwd(),
+  "postman",
+  "fixtures",
+  "sample-cube.stl",
+);
+const PRUSA_SLICER_TIMEOUT_MS =
+  Number(process.env.PRUSA_SLICER_TIMEOUT_MS) || 120000;
 
 async function runSliceEstimate({
   modelPath,
@@ -169,6 +177,54 @@ async function resolveQuoteProfile(material, quality) {
   };
 }
 
+async function runProfileDryRun({ configPath, infill = 20 }) {
+  if (!configPath) {
+    throw new ApiError(400, "Profile config path is required");
+  }
+
+  if (!fs.existsSync(configPath)) {
+    throw new ApiError(400, "Profile config file does not exist");
+  }
+
+  if (!fs.existsSync(PROFILE_DRY_RUN_MODEL_PATH)) {
+    throw new ApiError(
+      500,
+      "Profile dry-run fixture is missing. Cannot validate slicer profile.",
+    );
+  }
+
+  const outputGcodePath = createTempGcodePath();
+
+  try {
+    const commandArgs = buildPrusaSlicerArgs({
+      modelPath: PROFILE_DRY_RUN_MODEL_PATH,
+      outputPath: outputGcodePath,
+      profile: { configPath },
+      infill: Number(infill),
+      quantity: 1,
+    });
+
+    await executePrusaSlicer({
+      executablePath: PRUSA_SLICER_EXECUTABLE,
+      args: commandArgs,
+    });
+
+    if (!fs.existsSync(outputGcodePath)) {
+      throw new ApiError(422, "Dry-run did not generate G-code output");
+    }
+
+    const gcodeText = readGeneratedGcode(outputGcodePath);
+    const summary = parseGcodeSummary(gcodeText);
+
+    return {
+      ...summary,
+      buildVolumeMm: parseProfileBuildVolume(configPath),
+    };
+  } finally {
+    await cleanupFile(outputGcodePath);
+  }
+}
+
 function buildPrusaSlicerArgs({
   modelPath,
   outputPath,
@@ -198,6 +254,23 @@ async function executePrusaSlicer({ executablePath, args }) {
 
     let stdout = "";
     let stderr = "";
+    let didSettle = false;
+    const timeout = setTimeout(() => {
+      if (didSettle) {
+        return;
+      }
+
+      didSettle = true;
+      child.kill();
+      reject(
+        new ApiError(
+          504,
+          `PrusaSlicer timed out after ${Math.round(
+            PRUSA_SLICER_TIMEOUT_MS / 1000,
+          )} seconds`,
+        ),
+      );
+    }, PRUSA_SLICER_TIMEOUT_MS);
 
     child.stdout.on("data", (data) => {
       stdout += data.toString();
@@ -208,12 +281,25 @@ async function executePrusaSlicer({ executablePath, args }) {
     });
 
     child.on("error", (error) => {
+      if (didSettle) {
+        return;
+      }
+
+      didSettle = true;
+      clearTimeout(timeout);
       reject(
         new ApiError(500, `Failed to start PrusaSlicer: ${error.message}`),
       );
     });
 
     child.on("close", (code) => {
+      if (didSettle) {
+        return;
+      }
+
+      didSettle = true;
+      clearTimeout(timeout);
+
       if (code !== 0) {
         reject(
           new ApiError(
@@ -895,6 +981,7 @@ function readGeneratedGcode(filePath) {
 
 export {
   runSliceEstimate,
+  runProfileDryRun,
   parseModelDimensionsFromFile as __parseModelDimensionsFromFileForTest,
   parseProfileBuildVolume as __parseProfileBuildVolumeForTest,
   assertModelFitsBuildVolume as __assertModelFitsBuildVolumeForTest,

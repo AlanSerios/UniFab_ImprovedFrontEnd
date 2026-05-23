@@ -22,16 +22,16 @@ const MODERATION_STATUS_TONES = {
 
 const DECISION_SOURCE_LABELS = {
   none: "None",
-  rules: "Rules",
   ai: "AI",
+  ai_policy: "AI Policy",
   render: "Render",
   admin: "Admin",
 };
 
 const DECISION_SOURCE_TONES = {
   none: "neutral",
-  rules: "warning",
   ai: "warning",
+  ai_policy: "warning",
   render: "warning",
   admin: "success",
 };
@@ -45,12 +45,15 @@ const SEVERITY_TONES = {
 };
 
 const MODERATION_FLAG_LABELS = {
+  ai_screening_queued: "AI screening queued",
   ai_no_text_flags: "AI text check passed",
   ai_flagged_content: "AI text check flagged content",
   ai_moderation_disabled: "AI moderation disabled",
   ai_moderation_unavailable: "AI moderation unavailable",
   ai_moderation_request_failed: "AI moderation request failed",
   ai_moderation_unexpected_response: "AI moderation response mismatch",
+  ai_moderation_failed: "AI screening failed",
+  policy_needs_review: "Policy review needed",
 
   image_no_flags: "Thumbnail image check passed",
   image_flagged_content: "Thumbnail image flagged content",
@@ -63,17 +66,15 @@ const MODERATION_FLAG_LABELS = {
   render_moderation_failed: "3D render generation failed",
   render_no_flags: "3D render check passed",
   render_flagged_content: "3D render flagged content",
-
-  inappropriate_language: "Inappropriate language",
-  prohibited_content: "Prohibited content",
-  needs_context: "Needs admin context",
 };
 
 const MODERATION_FLAG_DESCRIPTIONS = {
+  ai_screening_queued:
+    "The design is waiting for the automated AI moderation worker.",
   ai_no_text_flags:
-    "The AI text moderation check did not find flagged title, description, tag, or metadata content.",
+    "The AI moderation check did not find flagged text content.",
   ai_flagged_content:
-    "The AI text moderation check found content that needs FabLab review.",
+    "The AI moderation check found content that needs FabLab review.",
   ai_moderation_disabled:
     "AI text moderation is turned off in the backend environment.",
   ai_moderation_unavailable:
@@ -82,6 +83,10 @@ const MODERATION_FLAG_DESCRIPTIONS = {
     "The AI text moderation request failed, so the design was routed safely to review.",
   ai_moderation_unexpected_response:
     "The AI moderation API did not return one result for each checked field, so the design was routed safely to review.",
+  ai_moderation_failed:
+    "Automated AI screening could not complete, so the design was routed safely to review.",
+  policy_needs_review:
+    "The UniFab policy classifier found an issue or ambiguity that needs FabLab review.",
 
   image_no_flags:
     "The thumbnail image moderation check did not find flagged content.",
@@ -104,11 +109,6 @@ const MODERATION_FLAG_DESCRIPTIONS = {
     "Generated 3D render moderation did not find flagged model preview content.",
   render_flagged_content:
     "Generated 3D render moderation found content that needs FabLab review.",
-
-  inappropriate_language:
-    "A local rules check found profanity or abusive language in the submission metadata.",
-  prohibited_content: "A local rules check found a prohibited term.",
-  needs_context: "A local rules check found a term that needs admin review.",
 };
 
 function getModerationFlagLabel(category) {
@@ -153,13 +153,13 @@ function getOwnerModerationMessage(design) {
     case "draft":
       return "This design is still private. Publish it when it is ready for screening.";
     case "screening":
-      return "Your design is being checked before public visibility.";
+      return "Your design is queued for automated AI screening before public visibility.";
     case "auto_approved":
-      return "Automated screening found no obvious concerns. This design may appear publicly, but Print Ready still requires FabLab verification.";
+      return "Automated AI screening found no obvious concerns. This design may appear publicly, but Print Ready still requires FabLab verification.";
     case "needs_admin_review":
       return "This design is waiting for FabLab review before it can appear publicly.";
     case "auto_rejected":
-      return "Automated screening found a policy concern. Review the feedback, edit the design, and publish again if this was a mistake.";
+      return "Automated AI screening found a policy concern. Review the feedback, edit the design, and publish again if this was a mistake.";
     case "admin_approved":
       return "FabLab approved this design for public visibility.";
     case "admin_rejected":
@@ -174,15 +174,30 @@ function getOwnerModerationMessage(design) {
 function getPublishResultMessage(design) {
   switch (design?.moderationStatus) {
     case "auto_approved":
-      return "Design published. Automated screening approved it for public visibility.";
+      return "Design published. Automated AI screening approved it for public visibility.";
     case "needs_admin_review":
       return "Design submitted. It needs FabLab review before public visibility.";
     case "auto_rejected":
-      return "Design submitted, but automated screening found a policy concern. Review the feedback and edit the design if needed.";
+      return "Design submitted, but automated AI screening found a policy concern. Review the feedback and edit the design if needed.";
     case "screening":
-      return "Design submitted for automated screening.";
+      return "Design submitted for automated AI screening.";
     default:
       return "Design submitted for screening.";
+  }
+}
+
+function getSaveResultMessage(design) {
+  switch (design?.moderationStatus) {
+    case "auto_approved":
+      return "Design saved. Automated AI screening approved it for public visibility.";
+    case "needs_admin_review":
+      return "Design saved. This edit needs FabLab review before public visibility.";
+    case "auto_rejected":
+      return "Design saved, but automated AI screening found a policy concern. Review the feedback and edit again if needed.";
+    case "screening":
+      return "Design saved and submitted for automated AI screening.";
+    default:
+      return "Design saved successfully.";
   }
 }
 
@@ -210,6 +225,7 @@ export {
   getModerationStatusTone,
   getOwnerModerationMessage,
   getPublishResultMessage,
+  getSaveResultMessage,
   getSeverityTone,
   parseModerationFlags,
 };

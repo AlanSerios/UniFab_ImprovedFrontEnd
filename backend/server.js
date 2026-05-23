@@ -12,12 +12,21 @@ import pricingConfigRoutes from "./src/routes/pricing-config.routes.js";
 import materialsRoutes from "./src/routes/materials.routes.js";
 import healthCheckRoutes from "./src/routes/healthcheck.routes.js";
 import designsRoutes from "./src/routes/designs.routes.js";
-import designRequestRoutes from "./src/routes/design-requests.routes.js";
+import adminRoutes from "./src/routes/admin.routes.js";
+import adminFileRegistryRoutes from "./src/routes/admin-file-registry.routes.js";
 import printRequestRoutes from "./src/routes/print-request.routes.js";
+import cartRoutes from "./src/routes/cart.routes.js";
 import printersRoutes from "./src/routes/printers.routes.js";
-import { DESIGN_AI_MODERATION_SERVICE_VERSION } from "./src/services/design-ai-moderation.service.js";
+import filesRoutes from "./src/routes/files.routes.js";
+import {
+  DESIGN_AI_MODERATION_SERVICE_VERSION,
+  startDesignModerationWorker,
+} from "./src/services/design-ai-moderation-orchestrator.service.js";
+import { startDesignFileCleanupJob } from "./src/services/design-file-cleanup.service.js";
+import { startDatabaseRetentionCleanupJob } from "./src/services/db-retention-cleanup.service.js";
 import { startExpiredQuoteCleanupJob } from "./src/services/quote-cleanup.service.js";
 import { ApiError } from "./src/utils/api-error.js";
+import { resolveStoragePath } from "./src/utils/storage-root.util.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,6 +35,41 @@ dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 const app = express();
 
+function warnProductionReadinessGaps() {
+  if (process.env.NODE_ENV !== "production") {
+    return;
+  }
+
+  const requiredFlags = [
+    "PROD_DB_BACKUPS_CONFIRMED",
+    "PROD_DB_PITR_CONFIRMED",
+    "PROD_DB_RESTORE_DRILL_CONFIRMED",
+    "MYSQL_SLOW_QUERY_LOGS_CONFIRMED",
+    "FILE_STORAGE_BACKUP_CONFIRMED",
+  ];
+  const cleanupVars = [
+    "QUOTE_CLEANUP_INTERVAL_MINUTES",
+    "DESIGN_FILE_CLEANUP_INTERVAL_MINUTES",
+    "DB_RETENTION_CLEANUP_INTERVAL_MINUTES",
+  ];
+
+  for (const name of requiredFlags) {
+    if (process.env[name] !== "true") {
+      console.warn(
+        `Production readiness warning: ${name}=true is required before launch.`,
+      );
+    }
+  }
+
+  for (const name of cleanupVars) {
+    if (!process.env[name]) {
+      console.warn(
+        `Production readiness warning: ${name} is not set; using default cleanup interval.`,
+      );
+    }
+  }
+}
+
 // ─── Middleware ───────────────────────────────────────────────
 app.use(express.json());
 app.use(cookieParser());
@@ -33,12 +77,13 @@ app.use(
   cors({
     origin: process.env.CORS_ORIGIN || "http://localhost:5173",
     credentials: true,
+    exposedHeaders: ["Content-Disposition"],
   }),
 );
 
 app.use(
-  "/storage/local-designs",
-  express.static(path.resolve(process.cwd(), "storage", "local-designs"), {
+  "/storage/local-designs/thumbnails",
+  express.static(resolveStoragePath("local-designs", "thumbnails"), {
     fallthrough: false,
     index: false,
     etag: true,
@@ -51,65 +96,31 @@ app.use(
 );
 
 app.use(
-  "/storage/print-requests/models",
-  express.static(
-    path.resolve(process.cwd(), "storage", "print-requests", "models"),
-    {
-      fallthrough: false,
-      index: false,
-      etag: true,
-      immutable: true,
-      maxAge: "7d",
-      setHeaders(res) {
-        res.setHeader("X-Content-Type-Options", "nosniff");
-      },
+  "/storage/mmf-print-ready/thumbnails",
+  express.static(resolveStoragePath("mmf-print-ready", "thumbnails"), {
+    fallthrough: false,
+    index: false,
+    etag: true,
+    immutable: true,
+    maxAge: "7d",
+    setHeaders(res) {
+      res.setHeader("X-Content-Type-Options", "nosniff");
     },
-  ),
+  }),
 );
 
 // ─── Routes ───────────────────────────────────────────────────
-app.use(
-  "/storage/print-requests/payment-slips",
-  express.static(
-    path.resolve(process.cwd(), "storage", "print-requests", "payment-slips"),
-    {
-      fallthrough: false,
-      index: false,
-      etag: true,
-      immutable: true,
-      maxAge: "7d",
-      setHeaders(res) {
-        res.setHeader("X-Content-Type-Options", "nosniff");
-      },
-    },
-  ),
-);
-
-app.use(
-  "/storage/design-requests/references",
-  express.static(
-    path.resolve(process.cwd(), "storage", "design-requests", "references"),
-    {
-      fallthrough: false,
-      index: false,
-      etag: true,
-      immutable: true,
-      maxAge: "7d",
-      setHeaders(res) {
-        res.setHeader("X-Content-Type-Options", "nosniff");
-      },
-    },
-  ),
-);
-
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/quotes", quoteRoutes);
 app.use("/api/v1/pricing-config", pricingConfigRoutes);
 app.use("/api/v1/materials", materialsRoutes);
 app.use("/api/v1/designs", designsRoutes);
-app.use("/api/v1/design-requests", designRequestRoutes);
+app.use("/api/v1/admin", adminRoutes);
+app.use("/api/v1/admin/files", adminFileRegistryRoutes);
 app.use("/api/v1/requests", printRequestRoutes);
+app.use("/api/v1/cart", cartRoutes);
 app.use("/api/v1/printers", printersRoutes);
+app.use("/api/v1/files", filesRoutes);
 app.use("/api/v1/healthcheck", healthCheckRoutes);
 
 app.use("/api", (req, res, next) => {
@@ -156,7 +167,19 @@ const port = process.env.PORT || 5000;
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
   console.log(
-    `Design moderation: ai=${process.env.DESIGN_AI_MODERATION_ENABLED === "true" ? "on" : "off"}, image=${process.env.DESIGN_IMAGE_MODERATION_ENABLED === "true" ? "on" : "off"}, render=${process.env.DESIGN_RENDER_MODERATION_ENABLED === "true" ? "on" : "off"}, aiService=${DESIGN_AI_MODERATION_SERVICE_VERSION}`,
+    `Design moderation: provider=openai, mode=full-ai, aiService=${DESIGN_AI_MODERATION_SERVICE_VERSION}`,
   );
+  warnProductionReadinessGaps();
   startExpiredQuoteCleanupJob();
+  startDesignFileCleanupJob();
+  startDatabaseRetentionCleanupJob();
+  startDesignModerationWorker()
+    .then((queuedCount) => {
+      if (queuedCount > 0) {
+        console.log(`Queued ${queuedCount} pending design moderation run(s).`);
+      }
+    })
+    .catch((error) => {
+      console.error("Failed to start design moderation worker:", error);
+    });
 });

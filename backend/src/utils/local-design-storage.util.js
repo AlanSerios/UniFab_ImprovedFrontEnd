@@ -1,11 +1,8 @@
 import fs from "fs";
 import path from "path";
+import { resolveStoragePath } from "./storage-root.util.js";
 
-const LOCAL_DESIGN_STORAGE_ROOT = path.resolve(
-  process.cwd(),
-  "storage",
-  "local-designs",
-);
+const LOCAL_DESIGN_STORAGE_ROOT = resolveStoragePath("local-designs");
 
 const LOCAL_DESIGN_FILES_ROOT = path.join(LOCAL_DESIGN_STORAGE_ROOT, "files");
 const LOCAL_DESIGN_THUMBNAILS_ROOT = path.join(
@@ -47,6 +44,10 @@ function getManagedLocalDesignAbsolutePath(publicPath, assetType) {
   return path.resolve(baseDir, fileName);
 }
 
+function buildLocalDesignThumbnailPublicPath(fileName) {
+  return `/storage/local-designs/thumbnails/${path.basename(fileName)}`;
+}
+
 async function removeManagedLocalDesignFile(publicPath, assetType) {
   const absolutePath = getManagedLocalDesignAbsolutePath(publicPath, assetType);
 
@@ -66,6 +67,7 @@ export {
   LOCAL_DESIGN_STORAGE_ROOT,
   LOCAL_DESIGN_FILES_ROOT,
   LOCAL_DESIGN_THUMBNAILS_ROOT,
+  buildLocalDesignThumbnailPublicPath,
   getManagedLocalDesignAbsolutePath,
   removeManagedLocalDesignFile,
 };

@@ -6,7 +6,10 @@ import {
   listPublicPrinterInfo,
   updateAdminPrinter,
 } from "../controllers/printers.controller.js";
-import { verifyJWT } from "../middlewares/auth.middleware.js";
+import {
+  verifyEmailVerified,
+  verifyJWT,
+} from "../middlewares/auth.middleware.js";
 import { verifyAdmin } from "../middlewares/role.middleware.js";
 import { validate } from "../middlewares/validator.middleware.js";
 import {
@@ -24,7 +27,7 @@ const router = express.Router();
 
 router.route("/").get(publicReadRateLimiter, listPublicPrinterInfo);
 
-router.use(verifyJWT, verifyAdmin);
+router.use(verifyJWT, verifyEmailVerified, verifyAdmin);
 
 router
   .route("/admin")

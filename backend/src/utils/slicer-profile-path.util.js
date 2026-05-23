@@ -1,9 +1,8 @@
 import fs from "fs";
 import path from "path";
+import { resolveStoragePath } from "./storage-root.util.js";
 
-const SLICER_PROFILE_STORAGE_DIR = path.resolve(
-  process.cwd(),
-  "storage",
+const SLICER_PROFILE_STORAGE_DIR = resolveStoragePath(
   "slicer-profiles",
   "library",
 );

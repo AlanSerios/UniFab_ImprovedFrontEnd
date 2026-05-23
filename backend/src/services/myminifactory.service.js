@@ -1,16 +1,30 @@
 import { ApiError } from "../utils/api-error.js";
+import jwt from "jsonwebtoken";
+import { decryptText, encryptText } from "../utils/encryption.util.js";
+import {
+  deleteIntegrationToken,
+  getIntegrationToken,
+  upsertIntegrationToken,
+} from "../models/integration-token.model.js";
 import {
   getCachedSearchResult,
   setCachedSearchResult,
   getCachedObject,
   setCachedObject,
 } from "../utils/mmf-cache.util.js";
+import { listPrintableZipEntries } from "../utils/zip-file.util.js";
 
-const MMF_API_BASE_URL = process.env.MMF_API_BASE_URL;
+const MMF_PROVIDER = "myminifactory";
+const MMF_API_BASE_URL =
+  process.env.MMF_API_BASE_URL || "https://www.myminifactory.com/api/v2";
+const MMF_AUTH_BASE_URL =
+  process.env.MMF_AUTH_BASE_URL || "https://auth.myminifactory.com";
 
-const MMF_REQUEST_TIMEOUT_MS = Number(process.env.MMF_REQUEST_TIMEOUT_MS);
+const MMF_REQUEST_TIMEOUT_MS = Number(process.env.MMF_REQUEST_TIMEOUT_MS) || 15000;
 const MAX_MMF_FILE_DOWNLOAD_BYTES = 50 * 1024 * 1024;
+const MAX_MMF_ZIP_INSPECTION_BYTES = 100 * 1024 * 1024;
 const SUPPORTED_MMF_MODEL_EXTENSIONS = new Set([".stl", ".obj", ".3mf"]);
+const SUPPORTED_MMF_ARCHIVE_EXTENSIONS = new Set([".zip"]);
 
 function getApiKey() {
   const apiKey = process.env.MMF_API_KEY;
@@ -59,15 +73,20 @@ function createTimeoutSignal(timeoutMs) {
   };
 }
 
-async function fetchMmfJson(url) {
+async function fetchMmfJson(url, options = {}) {
   const { signal, clear } = createTimeoutSignal(MMF_REQUEST_TIMEOUT_MS);
+  const headers = {
+    Accept: "application/json",
+  };
+
+  if (options.accessToken) {
+    headers.Authorization = `Bearer ${options.accessToken}`;
+  }
 
   try {
     const response = await fetch(url.toString(), {
       method: "GET",
-      headers: {
-        Accept: "application/json",
-      },
+      headers,
       signal,
     });
 
@@ -192,6 +211,8 @@ function normalizeMmfFile(file) {
     name,
     extension,
     downloadUrl,
+    viewerUrl: file.viewer_url || file.viewerUrl || null,
+    thumbnailUrl: file.thumbnail_url || file.thumbnailUrl || null,
     size: file.size || file.filesize || file.file_size || null,
     mimeType: file.mime_type || file.mimeType || file.content_type || null,
   };
@@ -220,7 +241,7 @@ function collectMmfFiles(object) {
     for (const file of files) {
       const normalizedFile = normalizeMmfFile(file);
 
-      if (normalizedFile?.downloadUrl) {
+      if (normalizedFile?.id || normalizedFile?.name || normalizedFile?.downloadUrl) {
         normalizedFiles.push(normalizedFile);
       }
     }
@@ -330,9 +351,60 @@ function buildDownloadUrl(file) {
   const url = new URL(file.downloadUrl);
   const apiBaseUrl = new URL(MMF_API_BASE_URL);
 
-  if (url.hostname === apiBaseUrl.hostname && !url.searchParams.has("key")) {
+  if (
+    !file.requiresOAuthDownload &&
+    url.hostname === apiBaseUrl.hostname &&
+    !url.searchParams.has("key")
+  ) {
     url.searchParams.set("key", getApiKey());
   }
+
+  return url;
+}
+
+function isMmfApiDownloadUrl(url) {
+  const apiBaseUrl = new URL(MMF_API_BASE_URL);
+
+  return url.hostname === apiBaseUrl.hostname;
+}
+
+function cloneUrlWithApiKey(url) {
+  const nextUrl = new URL(url.toString());
+
+  if (!nextUrl.searchParams.has("key")) {
+    nextUrl.searchParams.set("key", getApiKey());
+  }
+
+  return nextUrl;
+}
+
+async function fetchMmfDownloadAttempt(url, { accessToken, useBearer, signal }) {
+  const headers = {
+    Accept: "*/*",
+    "User-Agent": "UniFab/1.0 MyMiniFactoryFileMapper",
+    Referer: "https://www.myminifactory.com/",
+  };
+
+  if (useBearer && accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+
+  return fetch(url, {
+    method: "GET",
+    headers,
+    redirect: "follow",
+    signal,
+  });
+}
+
+function buildMmfOAuthUrl(pathname, queryParams = {}) {
+  const url = new URL(`${MMF_API_BASE_URL}${pathname}`);
+
+  Object.entries(queryParams).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      url.searchParams.set(key, String(value));
+    }
+  });
 
   return url;
 }
@@ -354,18 +426,55 @@ async function downloadMmfFile(file) {
   const { signal, clear } = createTimeoutSignal(MMF_REQUEST_TIMEOUT_MS);
 
   try {
-    const response = await fetch(buildDownloadUrl(file), {
-      method: "GET",
-      headers: {
-        Accept: "application/octet-stream",
-      },
-      signal,
-    });
+    const downloadUrl = buildDownloadUrl(file);
+    const isApiUrl = isMmfApiDownloadUrl(downloadUrl);
+    const accessToken = file.requiresOAuthDownload
+      ? await getMmfOAuthAccessToken()
+      : null;
+    const attempts = [];
+    let response = null;
+
+    if (isApiUrl && accessToken) {
+      attempts.push({
+        url: downloadUrl,
+        useBearer: true,
+      });
+      attempts.push({
+        url: cloneUrlWithApiKey(downloadUrl),
+        useBearer: false,
+      });
+    } else {
+      attempts.push({
+        url: downloadUrl,
+        useBearer: false,
+      });
+
+      if (accessToken) {
+        attempts.push({
+          url: downloadUrl,
+          useBearer: true,
+        });
+      }
+    }
+
+    for (const attempt of attempts) {
+      response = await fetchMmfDownloadAttempt(attempt.url, {
+        accessToken,
+        useBearer: attempt.useBearer,
+        signal,
+      });
+
+      if (response.ok || response.status !== 403) {
+        break;
+      }
+    }
 
     if (!response.ok) {
       throw new ApiError(
         response.status || 502,
-        "Unable to download printable file from MyMiniFactory",
+        response.status === 403
+          ? "Unable to download printable file from MyMiniFactory (403). The connected MMF account may not have permission to download this file, or MMF may require downloading this object from the website first."
+          : `Unable to download printable file from MyMiniFactory (${response.status})`,
       );
     }
 
@@ -403,13 +512,382 @@ async function downloadMmfFile(file) {
   }
 }
 
+async function getObjectFileById(fileId) {
+  const accessToken = await getMmfOAuthAccessToken();
+  const url = buildMmfOAuthUrl(`/files/${fileId}`);
+  const data = await fetchMmfJson(url, { accessToken });
+
+  return {
+    ...normalizeMmfFile(data),
+    requiresOAuthDownload: true,
+  };
+}
+
+async function getObjectFilesByIdWithOAuth(objectId) {
+  const accessToken = await getMmfOAuthAccessToken();
+  const url = buildMmfOAuthUrl(`/objects/${objectId}/files`);
+  const data = await fetchMmfJson(url, { accessToken });
+  const files = Array.isArray(data) ? data : data?.items || data?.files || [];
+
+  return collectMmfFiles({ files }).map((file) => ({
+    ...file,
+    requiresOAuthDownload: true,
+  }));
+}
+
+async function hydrateMmfFileForDownload(file) {
+  if (file?.downloadUrl) {
+    return file;
+  }
+
+  if (!file?.id) {
+    throw new ApiError(400, "MyMiniFactory file is missing a file ID");
+  }
+
+  return getObjectFileById(file.id);
+}
+
+function buildFileCandidate(file) {
+  const isDirectModel = SUPPORTED_MMF_MODEL_EXTENSIONS.has(file.extension);
+  const isArchive = SUPPORTED_MMF_ARCHIVE_EXTENSIONS.has(file.extension);
+
+  return {
+    id: file.id,
+    name: file.name,
+    extension: file.extension,
+    size: file.size,
+    type: isArchive ? "zip" : "model",
+    supported: isDirectModel || isArchive,
+    requiresArchiveEntry: isArchive,
+    archiveEntries: [],
+    thumbnailUrl: file.thumbnailUrl || null,
+    viewerUrl: file.viewerUrl || null,
+  };
+}
+
+async function inspectMmfObjectFiles(objectId) {
+  const files = await getObjectFilesByIdWithOAuth(objectId);
+  const hydratedFiles = await Promise.all(
+    files.map((file) => hydrateMmfFileForDownload(file)),
+  );
+  const candidates = [];
+
+  for (const file of hydratedFiles) {
+    const candidate = buildFileCandidate(file);
+
+    if (!candidate.supported) {
+      continue;
+    }
+
+    if (candidate.type === "zip") {
+      const declaredSize = Number(file.size || 0);
+
+      if (declaredSize > MAX_MMF_ZIP_INSPECTION_BYTES) {
+        candidate.supported = false;
+        candidate.error = "ZIP archive exceeds the 100 MB inspection limit";
+      } else {
+        const archiveBuffer = await downloadMmfFile(file);
+        candidate.archiveEntries = listPrintableZipEntries(archiveBuffer);
+        candidate.supported = candidate.archiveEntries.length > 0;
+
+        if (!candidate.supported) {
+          candidate.error = "No supported STL, OBJ, or 3MF files found in ZIP";
+        }
+      }
+    }
+
+    candidates.push(candidate);
+  }
+
+  const preferredCandidate =
+    candidates.find(
+      (candidate) => candidate.type === "model" && candidate.supported,
+    ) ||
+    candidates.find(
+      (candidate) =>
+        candidate.type === "zip" &&
+        candidate.supported &&
+        candidate.archiveEntries.length > 0,
+    ) ||
+    null;
+
+  return {
+    objectId: Number(objectId),
+    files: candidates,
+    preferredSelection: preferredCandidate
+      ? {
+          selectedMmfFileId: preferredCandidate.id,
+          selectedArchiveEntryPath:
+            preferredCandidate.type === "zip"
+              ? preferredCandidate.archiveEntries[0]?.path || null
+              : null,
+        }
+      : null,
+  };
+}
+
+function getMmfOAuthConfig() {
+  const clientId = process.env.MMF_CLIENT_ID;
+  const clientSecret = process.env.MMF_CLIENT_SECRET;
+  const redirectUri = process.env.MMF_REDIRECT_URI;
+
+  if (!clientId || !clientSecret || !redirectUri) {
+    throw new ApiError(500, "MyMiniFactory OAuth is not configured");
+  }
+
+  return { clientId, clientSecret, redirectUri };
+}
+
+function getMmfOAuthStateSecret() {
+  const secret =
+    process.env.MMF_OAUTH_STATE_SECRET ||
+    process.env.ACCESS_TOKEN_SECRET ||
+    process.env.JWT_ACCESS_TOKEN_SECRET;
+
+  if (!secret) {
+    throw new ApiError(500, "MyMiniFactory OAuth state secret is not configured");
+  }
+
+  return secret;
+}
+
+function normalizeTokenResponse(data) {
+  if (!data?.access_token) {
+    throw new ApiError(502, "MyMiniFactory OAuth did not return an access token");
+  }
+
+  const expiresIn = Number(data.expires_in || 3600);
+
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token || null,
+    tokenType: data.token_type || "Bearer",
+    expiresAt: new Date(Date.now() + Math.max(expiresIn - 60, 60) * 1000),
+    scope: data.scope || null,
+    accountUserId: data.user_id || null,
+  };
+}
+
+function shouldRetryMmfOAuthWithBodyCredentials(response, data) {
+  const message = `${data?.error_description || ""} ${data?.error || ""} ${
+    data?.message || ""
+  }`.toLowerCase();
+
+  return (
+    response.status === 400 ||
+    response.status === 401 ||
+    message.includes("invalid client")
+  );
+}
+
+async function postMmfOAuthToken(bodyParams, authStrategy) {
+  const { clientId, clientSecret } = getMmfOAuthConfig();
+  const { signal, clear } = createTimeoutSignal(MMF_REQUEST_TIMEOUT_MS);
+  const tokenBody = new URLSearchParams(bodyParams);
+  const headers = {
+    Accept: "application/json",
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
+
+  if (authStrategy === "basic") {
+    headers.Authorization = `Basic ${Buffer.from(
+      `${clientId}:${clientSecret}`,
+    ).toString("base64")}`;
+  } else {
+    tokenBody.set("client_id", clientId);
+    tokenBody.set("client_key", clientId);
+    tokenBody.set("client_secret", clientSecret);
+  }
+
+  try {
+    const response = await fetch(`${MMF_AUTH_BASE_URL}/v1/oauth/tokens`, {
+      method: "POST",
+      headers,
+      body: tokenBody,
+      signal,
+    });
+    const data = await parseJsonSafely(response);
+
+    return { response, data };
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new ApiError(504, "MyMiniFactory OAuth request timed out");
+    }
+
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    throw new ApiError(502, "Unable to reach MyMiniFactory OAuth");
+  } finally {
+    clear();
+  }
+}
+
+async function requestMmfOAuthToken(bodyParams) {
+  const firstAttempt = await postMmfOAuthToken(bodyParams, "basic");
+  let tokenResponse = firstAttempt;
+
+  if (
+    !firstAttempt.response.ok &&
+    shouldRetryMmfOAuthWithBodyCredentials(
+      firstAttempt.response,
+      firstAttempt.data,
+    )
+  ) {
+    tokenResponse = await postMmfOAuthToken(bodyParams, "body");
+  }
+
+  if (!tokenResponse.response.ok) {
+    throw new ApiError(
+      tokenResponse.response.status || 502,
+      tokenResponse.data?.error_description ||
+        tokenResponse.data?.message ||
+        tokenResponse.data?.error ||
+        "MyMiniFactory OAuth failed",
+    );
+  }
+
+  return normalizeTokenResponse(tokenResponse.data);
+}
+
+async function storeMmfOAuthToken(
+  tokenData,
+  connectedBy,
+  existingRefreshToken = null,
+) {
+  const refreshToken = tokenData.refreshToken || existingRefreshToken;
+
+  if (!refreshToken) {
+    throw new ApiError(502, "MyMiniFactory OAuth did not return a refresh token");
+  }
+
+  return upsertIntegrationToken({
+    provider: MMF_PROVIDER,
+    accessTokenEncrypted: encryptText(tokenData.accessToken),
+    refreshTokenEncrypted: encryptText(refreshToken),
+    tokenType: tokenData.tokenType,
+    expiresAt: tokenData.expiresAt,
+    scope: tokenData.scope,
+    accountUserId: tokenData.accountUserId,
+    connectedBy,
+  });
+}
+
+function normalizeMmfOAuthStatus(tokenRow) {
+  if (!tokenRow) {
+    return {
+      connected: false,
+      accountUserId: null,
+      expiresAt: null,
+      connectedBy: null,
+      updatedAt: null,
+    };
+  }
+
+  return {
+    connected: true,
+    accountUserId: tokenRow.account_user_id || null,
+    expiresAt: tokenRow.expires_at || null,
+    connectedBy: tokenRow.connected_by || null,
+    updatedAt: tokenRow.updated_at || null,
+  };
+}
+
+async function getMmfOAuthStatus() {
+  return normalizeMmfOAuthStatus(await getIntegrationToken(MMF_PROVIDER));
+}
+
+function buildMmfOAuthAuthorizationUrl(adminUserId) {
+  const { clientId, redirectUri } = getMmfOAuthConfig();
+  const state = jwt.sign(
+    {
+      provider: MMF_PROVIDER,
+      adminUserId,
+    },
+    getMmfOAuthStateSecret(),
+    { expiresIn: "10m" },
+  );
+  const url = new URL(`${MMF_AUTH_BASE_URL}/web/authorize`);
+
+  url.searchParams.set("client_id", clientId);
+  url.searchParams.set("redirect_uri", redirectUri);
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("state", state);
+
+  return url.toString();
+}
+
+async function exchangeMmfOAuthCode({ code, state }) {
+  if (!code) {
+    throw new ApiError(400, "MyMiniFactory OAuth callback is missing code");
+  }
+
+  let decodedState;
+
+  try {
+    decodedState = jwt.verify(state, getMmfOAuthStateSecret());
+  } catch {
+    throw new ApiError(400, "MyMiniFactory OAuth state is invalid or expired");
+  }
+
+  if (decodedState.provider !== MMF_PROVIDER || !decodedState.adminUserId) {
+    throw new ApiError(400, "MyMiniFactory OAuth state is invalid");
+  }
+
+  const { redirectUri } = getMmfOAuthConfig();
+  const tokenData = await requestMmfOAuthToken({
+    grant_type: "authorization_code",
+    code,
+    redirect_uri: redirectUri,
+  });
+
+  return storeMmfOAuthToken(tokenData, decodedState.adminUserId);
+}
+
+async function disconnectMmfOAuth() {
+  return deleteIntegrationToken(MMF_PROVIDER);
+}
+
+async function getMmfOAuthAccessToken() {
+  const tokenRow = await getIntegrationToken(MMF_PROVIDER);
+
+  if (!tokenRow) {
+    throw new ApiError(
+      409,
+      "MyMiniFactory OAuth is not connected. Connect a lab MMF account before inspecting files.",
+    );
+  }
+
+  const expiresAt = tokenRow.expires_at
+    ? new Date(tokenRow.expires_at).getTime()
+    : 0;
+
+  if (expiresAt > Date.now() + 60 * 1000) {
+    return decryptText(tokenRow.access_token_encrypted);
+  }
+
+  const refreshToken = decryptText(tokenRow.refresh_token_encrypted);
+  const tokenData = await requestMmfOAuthToken({
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+  });
+  const storedToken = await storeMmfOAuthToken(
+    tokenData,
+    tokenRow.connected_by,
+    tokenData.refreshToken || refreshToken,
+  );
+
+  return decryptText(storedToken.access_token_encrypted);
+}
+
 async function searchObjects({ q, page, per_page, sort, order }) {
   const cacheParams = {
     q,
     page,
     per_page,
-    sort,
-    order,
+    sort: sort === "relevance" ? undefined : sort,
+    order: sort === "relevance" ? undefined : order,
   };
 
   const cachedResult = getCachedSearchResult(cacheParams);
@@ -463,9 +941,17 @@ async function getObjectFilesById(objectId) {
 }
 
 export {
+  buildMmfOAuthAuthorizationUrl,
+  disconnectMmfOAuth,
+  exchangeMmfOAuthCode,
+  getMmfOAuthStatus,
+  getObjectFileById,
   searchObjects,
   getObjectById,
   getObjectFilesById,
+  getObjectFilesByIdWithOAuth,
+  hydrateMmfFileForDownload,
+  inspectMmfObjectFiles,
   selectPreferredPrintableMmfFile,
   downloadMmfFile,
   SUPPORTED_MMF_MODEL_EXTENSIONS,

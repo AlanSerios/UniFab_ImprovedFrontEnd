@@ -1,7 +1,6 @@
 export const PRINT_REQUEST_SOURCE_TYPES = Object.freeze({
   UPLOAD: "upload",
   LIBRARY: "library",
-  DESIGN_REQUEST: "design_request",
   MMF: "mmf",
 });
 
@@ -18,6 +17,7 @@ export const PRINT_REQUEST_STATUSES = Object.freeze({
   PRINTING: "printing",
   COMPLETED: "completed",
   REJECTED: "rejected",
+  CANCELLED: "cancelled",
 });
 
 export const PRINT_REQUEST_STATUS_VALUES = Object.freeze(
@@ -33,6 +33,7 @@ export const PRINT_REQUEST_STATUS_LABELS = Object.freeze({
   [PRINT_REQUEST_STATUSES.PRINTING]: "Printing",
   [PRINT_REQUEST_STATUSES.COMPLETED]: "Completed",
   [PRINT_REQUEST_STATUSES.REJECTED]: "Rejected",
+  [PRINT_REQUEST_STATUSES.CANCELLED]: "Cancelled",
 });
 
 export const PRINT_REQUEST_STATUS_TRANSITIONS = Object.freeze({
@@ -70,6 +71,8 @@ export const PRINT_REQUEST_STATUS_TRANSITIONS = Object.freeze({
   [PRINT_REQUEST_STATUSES.COMPLETED]: [],
 
   [PRINT_REQUEST_STATUSES.REJECTED]: [],
+
+  [PRINT_REQUEST_STATUSES.CANCELLED]: [],
 });
 
 export const PRINT_QUALITIES = Object.freeze({

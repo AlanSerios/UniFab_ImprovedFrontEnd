@@ -83,6 +83,72 @@ function parseOptionalBoolean(value, fieldName) {
   throw new ApiError(400, `${fieldName} must be a valid boolean value`);
 }
 
+function parseColorOptions(value) {
+  if (value === undefined || value === null || value === "") {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(normalizeColorOption).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsedValue = JSON.parse(value);
+      if (Array.isArray(parsedValue)) {
+        return parsedValue.map(normalizeColorOption).filter(Boolean);
+      }
+    } catch {
+      return value
+        .split(",")
+        .map((item) => normalizeColorOptionFromText(item))
+        .filter(Boolean);
+    }
+  }
+
+  return [];
+}
+
+function normalizeColorOption(item) {
+  if (!item) {
+    return null;
+  }
+
+  if (typeof item === "string") {
+    return normalizeColorOptionFromText(item);
+  }
+
+  const name = String(item.name || item.colorName || "").trim();
+  const hexCode = normalizeHexCode(item.hexCode);
+
+  return name ? { name, hexCode } : null;
+}
+
+function normalizeColorOptionFromText(value) {
+  const text = String(value || "").trim();
+
+  if (!text) {
+    return null;
+  }
+
+  const hexMatch = text.match(/#[0-9a-fA-F]{6}/);
+  const name = text.replace(/#[0-9a-fA-F]{6}/, "").trim();
+
+  return {
+    name: name || text,
+    hexCode: normalizeHexCode(hexMatch?.[0]),
+  };
+}
+
+function normalizeHexCode(value) {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = String(value).trim();
+  return /^#[0-9a-fA-F]{6}$/.test(normalized) ? normalized : null;
+}
+
 function normalizePublicMaterial(material) {
   if (!material) {
     return null;
@@ -91,6 +157,8 @@ function normalizePublicMaterial(material) {
   return {
     materialKey: material.material_key,
     displayName: material.display_name,
+    readyQualities: material.ready_qualities || [],
+    colors: material.colors || [],
   };
 }
 
@@ -155,6 +223,7 @@ const createMaterial = asyncHandler(async (req, res) => {
     displayName,
     materialCostPerGram,
     isActive,
+    colorOptions: parseColorOptions(req.body.colorOptions),
   });
 
   return res
@@ -191,6 +260,7 @@ const updateMaterial = asyncHandler(async (req, res) => {
     displayName,
     materialCostPerGram,
     isActive,
+    colorOptions: parseColorOptions(req.body.colorOptions),
   });
 
   if (!material) {
@@ -256,49 +326,6 @@ const uploadSlicerProfileVersion = asyncHandler(async (req, res) => {
     }
   }
 });
-
-/**
- * Temporary backward-compatible controller for the current POST /materials route.
- * This will be removed after the routes are updated in the next step.
- */
-// const addMaterial = asyncHandler(async (req, res) => {
-//   if (!req.file) {
-//     throw new ApiError(400, "Profile file is required");
-//   }
-
-//   const tempFilePath = req.file.path;
-
-//   try {
-//     const result = await registerMaterialProfile({
-//       materialKey: req.body.materialKey,
-//       displayName: req.body.displayName,
-//       materialCostPerGram: req.body.materialCostPerGram,
-//       isActiveMaterial: req.body.isActiveMaterial,
-//       quality: req.body.quality,
-//       printerName: req.body.printerName,
-//       nozzle: req.body.nozzle,
-//       supportRule: req.body.supportRule,
-//       orientationRule: req.body.orientationRule,
-//       tempFilePath,
-//       originalFileName: req.file.originalname,
-//       uploadedBy: req.user.id,
-//     });
-
-//     return res
-//       .status(201)
-//       .json(
-//         new ApiResponse(
-//           201,
-//           result,
-//           "Material and slicer profile registered successfully",
-//         ),
-//       );
-//   } finally {
-//     if (tempFilePath && fs.existsSync(tempFilePath)) {
-//       await fs.promises.rm(tempFilePath, { force: true });
-//     }
-//   }
-// });
 
 export {
   listActiveMaterials,

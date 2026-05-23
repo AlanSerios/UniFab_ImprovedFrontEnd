@@ -11,6 +11,14 @@ import {
   TableWrap,
 } from "../components/ui/Table";
 
+function getRequestCurrency(request) {
+  return (
+    request?.quoteSnapshot?.pricingConfigSnapshot?.currency ||
+    request?.quoteSnapshot?.quote?.currency ||
+    "PHP"
+  );
+}
+
 export default function PrintRequests() {
   const [printRequests, setPrintRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,6 +77,7 @@ export default function PrintRequests() {
                 <tr>
                   <th className="px-4 py-3 font-medium">Reference</th>
                   <th className="px-4 py-3 font-medium">File</th>
+                  <th className="px-4 py-3 font-medium">Items</th>
                   <th className="px-4 py-3 font-medium">Material</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium">Cost</th>
@@ -86,13 +95,19 @@ export default function PrintRequests() {
                       {request.fileOriginalName || "Model file"}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {request.material}
+                      {request.itemCount || 1}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {[request.material, request.materialColorName]
+                        .filter(Boolean)
+                        .join(" / ")}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
                       {request.status}
                     </td>
                     <td className="px-4 py-3 text-slate-600 tabular-nums">
-                      PHP {Number(request.estimatedCost || 0).toFixed(2)}
+                      {getRequestCurrency(request)}{" "}
+                      {Number(request.estimatedCost || 0).toFixed(2)}
                     </td>
                     <td className="px-4 py-3">
                       <Link

@@ -5,9 +5,6 @@ import path from "path";
 import zlib from "zlib";
 import { randomUUID } from "crypto";
 import { PNG } from "pngjs";
-import { getManagedLocalDesignAbsolutePath } from "../utils/local-design-storage.util.js";
-
-const DEFAULT_MODERATION_MODEL = "omni-moderation-latest";
 const SUPPORTED_MODEL_EXTENSIONS = new Set([".stl", ".obj", ".3mf"]);
 const RENDER_SIZE = 640;
 const MAX_TRIANGLES = 25000;
@@ -16,75 +13,6 @@ const RENDER_VIEWS = [
   { name: "side", mode: "side" },
   { name: "top", mode: "top" },
 ];
-
-function renderModerationSkippedResult(reason) {
-  return {
-    status: "auto_approved",
-    isActive: true,
-    summary: "3D render moderation was skipped.",
-    feedback: null,
-    flags: [
-      {
-        source: "render",
-        severity: "info",
-        category: reason,
-      },
-    ],
-  };
-}
-
-function renderModerationFailedResult({ extension, message }) {
-  return {
-    status: "needs_admin_review",
-    isActive: false,
-    summary: `3D render generation failed for ${extension || "this file"}; admin review is required.`,
-    feedback:
-      "Your design has been submitted for FabLab review before it appears publicly.",
-    flags: [
-      {
-        source: "render",
-        severity: "medium",
-        category: "render_moderation_failed",
-        extension,
-        message,
-      },
-    ],
-  };
-}
-
-function renderModerationFlaggedResult(flag) {
-  return {
-    status: "needs_admin_review",
-    isActive: false,
-    summary: "Generated 3D render moderation flagged this model for review.",
-    feedback: "This design needs FabLab review before it can appear publicly.",
-    flags: [
-      {
-        source: "render",
-        severity: "high",
-        category: "render_flagged_content",
-        ...flag,
-      },
-    ],
-  };
-}
-
-function renderModerationPassedResult(renderedViews) {
-  return {
-    status: "auto_approved",
-    isActive: true,
-    summary: "Generated 3D render moderation found no flagged model content.",
-    feedback: null,
-    flags: [
-      {
-        source: "render",
-        severity: "info",
-        category: "render_no_flags",
-        views: renderedViews.map((view) => view.name),
-      },
-    ],
-  };
-}
 
 function createEmptyBounds() {
   return {
@@ -584,6 +512,18 @@ function projectPoint(point, mode) {
   };
 }
 
+function getProjectionDepth(point, mode) {
+  if (mode === "top") {
+    return point.z;
+  }
+
+  if (mode === "side") {
+    return point.y;
+  }
+
+  return point.x + point.y + point.z;
+}
+
 function calculateProjectedBounds(triangles, mode) {
   const bounds = {
     minX: Infinity,
@@ -649,22 +589,6 @@ function setPixel(png, x, y, color) {
   png.data[index + 3] = color.a;
 }
 
-function drawLine(png, from, to, color) {
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const steps = Math.max(Math.abs(dx), Math.abs(dy), 1);
-
-  for (let step = 0; step <= steps; step += 1) {
-    const ratio = step / steps;
-    const x = from.x + dx * ratio;
-    const y = from.y + dy * ratio;
-
-    setPixel(png, x, y, color);
-    setPixel(png, x + 1, y, color);
-    setPixel(png, x, y + 1, color);
-  }
-}
-
 function fillBackground(png) {
   for (let index = 0; index < png.data.length; index += 4) {
     png.data[index] = 248;
@@ -674,7 +598,111 @@ function fillBackground(png) {
   }
 }
 
-function renderWireframePng(triangles, view) {
+function getTriangleNormal(triangle) {
+  const [a, b, c] = triangle;
+  const ab = {
+    x: b.x - a.x,
+    y: b.y - a.y,
+    z: b.z - a.z,
+  };
+  const ac = {
+    x: c.x - a.x,
+    y: c.y - a.y,
+    z: c.z - a.z,
+  };
+  const normal = {
+    x: ab.y * ac.z - ab.z * ac.y,
+    y: ab.z * ac.x - ab.x * ac.z,
+    z: ab.x * ac.y - ab.y * ac.x,
+  };
+  const length = Math.hypot(normal.x, normal.y, normal.z) || 1;
+
+  return {
+    x: normal.x / length,
+    y: normal.y / length,
+    z: normal.z / length,
+  };
+}
+
+function getTriangleFillColor(triangle) {
+  const normal = getTriangleNormal(triangle);
+  const light = { x: -0.35, y: -0.45, z: 0.82 };
+  const lightLength = Math.hypot(light.x, light.y, light.z);
+  const lightDot = Math.abs(
+    (normal.x * light.x + normal.y * light.y + normal.z * light.z) /
+      lightLength,
+  );
+  const shade = 0.55 + lightDot * 0.35;
+
+  return {
+    r: Math.round(116 * shade),
+    g: Math.round(139 * shade),
+    b: Math.round(170 * shade),
+    a: 255,
+  };
+}
+
+function edgeValue(a, b, point) {
+  return (point.x - a.x) * (b.y - a.y) - (point.y - a.y) * (b.x - a.x);
+}
+
+function fillTriangle(png, points, color, zBuffer) {
+  const minX = Math.max(
+    0,
+    Math.floor(Math.min(points[0].x, points[1].x, points[2].x)),
+  );
+  const maxX = Math.min(
+    RENDER_SIZE - 1,
+    Math.ceil(Math.max(points[0].x, points[1].x, points[2].x)),
+  );
+  const minY = Math.max(
+    0,
+    Math.floor(Math.min(points[0].y, points[1].y, points[2].y)),
+  );
+  const maxY = Math.min(
+    RENDER_SIZE - 1,
+    Math.ceil(Math.max(points[0].y, points[1].y, points[2].y)),
+  );
+  const area = edgeValue(points[0], points[1], points[2]);
+
+  if (Math.abs(area) < 0.001) {
+    return;
+  }
+
+  for (let y = minY; y <= maxY; y += 1) {
+    for (let x = minX; x <= maxX; x += 1) {
+      const point = { x: x + 0.5, y: y + 0.5 };
+      const w0 = edgeValue(points[1], points[2], point);
+      const w1 = edgeValue(points[2], points[0], point);
+      const w2 = edgeValue(points[0], points[1], point);
+      const isInside =
+        (w0 >= 0 && w1 >= 0 && w2 >= 0) ||
+        (w0 <= 0 && w1 <= 0 && w2 <= 0);
+
+      if (!isInside) {
+        continue;
+      }
+
+      const alpha = w0 / area;
+      const beta = w1 / area;
+      const gamma = w2 / area;
+      const depth =
+        points[0].depth * alpha +
+        points[1].depth * beta +
+        points[2].depth * gamma;
+      const zIndex = y * RENDER_SIZE + x;
+
+      if (depth <= zBuffer[zIndex]) {
+        continue;
+      }
+
+      zBuffer[zIndex] = depth;
+      setPixel(png, x, y, color);
+    }
+  }
+}
+
+function renderShadedPng(triangles, view) {
   const projectedBounds = calculateProjectedBounds(triangles, view.mode);
 
   if (!Number.isFinite(projectedBounds.minX)) {
@@ -682,17 +710,20 @@ function renderWireframePng(triangles, view) {
   }
 
   const png = new PNG({ width: RENDER_SIZE, height: RENDER_SIZE });
-  const lineColor = { r: 15, g: 23, b: 42, a: 255 };
+  const zBuffer = new Float64Array(RENDER_SIZE * RENDER_SIZE);
+  zBuffer.fill(Number.NEGATIVE_INFINITY);
   fillBackground(png);
 
   for (const triangle of triangles) {
-    const points = triangle.map((point) =>
-      mapProjectedPoint(projectPoint(point, view.mode), projectedBounds),
-    );
+    const points = triangle.map((point) => {
+      const projected = projectPoint(point, view.mode);
+      return {
+        ...mapProjectedPoint(projected, projectedBounds),
+        depth: getProjectionDepth(point, view.mode),
+      };
+    });
 
-    drawLine(png, points[0], points[1], lineColor);
-    drawLine(png, points[1], points[2], lineColor);
-    drawLine(png, points[2], points[0], lineColor);
+    fillTriangle(png, points, getTriangleFillColor(triangle), zBuffer);
   }
 
   return PNG.sync.write(png);
@@ -728,56 +759,12 @@ async function renderModelPreviews(modelPath) {
 
   for (const view of RENDER_VIEWS) {
     const filePath = path.join(renderDir, `${renderId}-${view.name}.png`);
-    const pngBuffer = renderWireframePng(triangles, view);
+    const pngBuffer = renderShadedPng(triangles, view);
     await fs.writeFile(filePath, pngBuffer);
     renderedViews.push({ name: view.name, filePath });
   }
 
   return renderedViews;
-}
-
-async function pngFileToDataUrl(filePath) {
-  const imageBuffer = await fs.readFile(filePath);
-  return `data:image/png;base64,${imageBuffer.toString("base64")}`;
-}
-
-async function moderateRenderedView(renderedView) {
-  const imageDataUrl = await pngFileToDataUrl(renderedView.filePath);
-  const response = await fetch("https://api.openai.com/v1/moderations", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_MODERATION_MODEL || DEFAULT_MODERATION_MODEL,
-      input: [
-        {
-          type: "image_url",
-          image_url: {
-            url: imageDataUrl,
-          },
-        },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    let errorBody = null;
-
-    try {
-      errorBody = await response.json();
-    } catch {
-      errorBody = null;
-    }
-
-    throw new Error(
-      `Render moderation request failed for ${renderedView.name}: HTTP ${response.status} ${JSON.stringify(errorBody?.error || "")}`,
-    );
-  }
-
-  const data = await response.json();
-  return data.results?.[0] || null;
 }
 
 async function cleanupRenderedViews(renderedViews) {
@@ -786,55 +773,4 @@ async function cleanupRenderedViews(renderedViews) {
   );
 }
 
-async function runDesignRenderModeration(design) {
-  if (process.env.DESIGN_RENDER_MODERATION_ENABLED !== "true") {
-    return renderModerationSkippedResult("render_moderation_disabled");
-  }
-
-  if (!process.env.OPENAI_API_KEY) {
-    return renderModerationFailedResult({
-      extension: null,
-      message: "OPENAI_API_KEY is not configured.",
-    });
-  }
-
-  const modelPath = getManagedLocalDesignAbsolutePath(design.file_url, "design");
-  const extension = path.extname(modelPath || "").toLowerCase();
-
-  if (!modelPath || !SUPPORTED_MODEL_EXTENSIONS.has(extension)) {
-    return renderModerationFailedResult({
-      extension,
-      message: "Design file path could not be resolved.",
-    });
-  }
-
-  let renderedViews = [];
-
-  try {
-    renderedViews = await renderModelPreviews(modelPath);
-
-    for (const renderedView of renderedViews) {
-      const result = await moderateRenderedView(renderedView);
-
-      if (result?.flagged) {
-        return renderModerationFlaggedResult({
-          extension,
-          view: renderedView.name,
-          categories: result.categories,
-          categoryScores: result.category_scores,
-        });
-      }
-    }
-
-    return renderModerationPassedResult(renderedViews);
-  } catch (error) {
-    return renderModerationFailedResult({
-      extension,
-      message: error.message,
-    });
-  } finally {
-    await cleanupRenderedViews(renderedViews);
-  }
-}
-
-export { runDesignRenderModeration };
+export { renderModelPreviews, cleanupRenderedViews };

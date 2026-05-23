@@ -52,6 +52,11 @@ const createMaterialValidator = () => {
       .withMessage(
         "isActiveMaterial must be one of: true, false, 1, 0, yes, no",
       ),
+
+    body("colorOptions")
+      .optional()
+      .custom((value) => Array.isArray(value) || typeof value === "string")
+      .withMessage("Color options must be an array or comma-separated string"),
   ];
 };
 
@@ -79,6 +84,11 @@ const updateMaterialValidator = () => {
       .withMessage(
         "isActiveMaterial must be one of: true, false, 1, 0, yes, no",
       ),
+
+    body("colorOptions")
+      .optional()
+      .custom((value) => Array.isArray(value) || typeof value === "string")
+      .withMessage("Color options must be an array or comma-separated string"),
   ];
 };
 

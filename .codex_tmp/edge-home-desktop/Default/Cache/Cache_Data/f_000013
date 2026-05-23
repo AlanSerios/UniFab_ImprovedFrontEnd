@@ -1,0 +1,284 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/pages/admin/AdminLayout.jsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=45caa8ea"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+let prevRefreshReg;
+let prevRefreshSig;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  prevRefreshReg = window.$RefreshReg$;
+  prevRefreshSig = window.$RefreshSig$;
+  window.$RefreshReg$ = RefreshRuntime.getRefreshReg("C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx");
+  window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+}
+var _s = $RefreshSig$();
+import { Link, NavLink, Outlet, useLocation } from "/node_modules/.vite/deps/react-router-dom.js?v=45caa8ea";
+import { useAuth } from "/src/context/AuthContext.jsx";
+import { ADMIN_NAV_GROUPS, getAdminNavItems } from "/src/pages/admin/adminNavigation.js";
+export default function AdminLayout() {
+  _s();
+  const location = useLocation();
+  const { user } = useAuth();
+  const currentItem = getCurrentAdminItem(location.pathname);
+  return /* @__PURE__ */ jsxDEV("div", { className: "border-t border-slate-200 bg-[#f7f6f3]", children: /* @__PURE__ */ jsxDEV("div", { className: "mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-[92rem] gap-0 lg:grid-cols-[17rem_minmax(0,1fr)]", children: [
+    /* @__PURE__ */ jsxDEV("aside", { className: "hidden border-r border-slate-200 bg-white lg:block", children: /* @__PURE__ */ jsxDEV("div", { className: "sticky top-[4.25rem] flex max-h-[calc(100vh-4.25rem)] flex-col gap-6 overflow-y-auto px-4 py-5", children: [
+      /* @__PURE__ */ jsxDEV(AdminIdentity, { user, currentItem }, void 0, false, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+        lineNumber: 34,
+        columnNumber: 13
+      }, this),
+      /* @__PURE__ */ jsxDEV(AdminNavigation, { orientation: "sidebar", pathname: location.pathname }, void 0, false, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+        lineNumber: 35,
+        columnNumber: 13
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+      lineNumber: 33,
+      columnNumber: 11
+    }, this) }, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+      lineNumber: 32,
+      columnNumber: 9
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "min-w-0", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "border-b border-slate-200 bg-white px-4 py-3 lg:hidden", children: [
+        /* @__PURE__ */ jsxDEV(AdminIdentity, { user, currentItem, compact: true }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+          lineNumber: 41,
+          columnNumber: 13
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "mt-3 overflow-x-auto pb-1", children: /* @__PURE__ */ jsxDEV(AdminNavigation, { orientation: "mobile", pathname: location.pathname }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+          lineNumber: 43,
+          columnNumber: 15
+        }, this) }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+          lineNumber: 42,
+          columnNumber: 13
+        }, this)
+      ] }, void 0, true, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+        lineNumber: 40,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV(Outlet, {}, void 0, false, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+        lineNumber: 47,
+        columnNumber: 11
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+      lineNumber: 39,
+      columnNumber: 9
+    }, this)
+  ] }, void 0, true, {
+    fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+    lineNumber: 31,
+    columnNumber: 7
+  }, this) }, void 0, false, {
+    fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+    lineNumber: 30,
+    columnNumber: 5
+  }, this);
+}
+_s(AdminLayout, "61MB+C3dYYve9OEVsFYuYeM/IOk=", false, function() {
+  return [useLocation, useAuth];
+});
+_c = AdminLayout;
+function AdminIdentity({ user, currentItem, compact = false }) {
+  return /* @__PURE__ */ jsxDEV("div", { className: compact ? "flex items-center justify-between gap-3" : "", children: [
+    /* @__PURE__ */ jsxDEV("div", { children: [
+      /* @__PURE__ */ jsxDEV(
+        Link,
+        {
+          to: "/admin",
+          className: "text-lg font-semibold tracking-tight text-slate-950",
+          children: "UniFab Admin"
+        },
+        void 0,
+        false,
+        {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+          lineNumber: 58,
+          columnNumber: 9
+        },
+        this
+      ),
+      /* @__PURE__ */ jsxDEV("p", { className: "mt-1 text-xs leading-5 text-slate-500", children: currentItem?.title || "Overview" }, void 0, false, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+        lineNumber: 64,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+      lineNumber: 57,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: compact ? "text-right" : "mt-4", children: [
+      /* @__PURE__ */ jsxDEV("p", { className: "text-xs font-medium uppercase tracking-wide text-slate-400", children: "Signed in" }, void 0, false, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+        lineNumber: 69,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("p", { className: "mt-1 truncate text-sm font-medium text-slate-700", children: user?.name || user?.email || "Admin" }, void 0, false, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+        lineNumber: 72,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV(
+        Link,
+        {
+          to: "/",
+          className: "mt-2 inline-flex text-xs font-semibold text-slate-500 underline-offset-4 hover:text-slate-950 hover:underline",
+          children: "Back to site"
+        },
+        void 0,
+        false,
+        {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+          lineNumber: 75,
+          columnNumber: 9
+        },
+        this
+      )
+    ] }, void 0, true, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+      lineNumber: 68,
+      columnNumber: 7
+    }, this)
+  ] }, void 0, true, {
+    fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+    lineNumber: 56,
+    columnNumber: 5
+  }, this);
+}
+_c2 = AdminIdentity;
+function AdminNavigation({ orientation, pathname }) {
+  if (orientation === "mobile") {
+    return /* @__PURE__ */ jsxDEV("div", { className: "flex min-w-max gap-2", children: getAdminNavItems().map(
+      (item) => /* @__PURE__ */ jsxDEV(
+        AdminNavLink,
+        {
+          item,
+          pathname,
+          orientation: "mobile"
+        },
+        item.to,
+        false,
+        {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+          lineNumber: 91,
+          columnNumber: 9
+        },
+        this
+      )
+    ) }, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+      lineNumber: 89,
+      columnNumber: 7
+    }, this);
+  }
+  return /* @__PURE__ */ jsxDEV("nav", { className: "space-y-6", children: ADMIN_NAV_GROUPS.map(
+    (group) => /* @__PURE__ */ jsxDEV("div", { children: [
+      /* @__PURE__ */ jsxDEV("p", { className: "px-2 text-xs font-semibold uppercase tracking-wide text-slate-400", children: group.title }, void 0, false, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+        lineNumber: 106,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "mt-2 space-y-1", children: group.items.map(
+        (item) => /* @__PURE__ */ jsxDEV(AdminNavLink, { item, pathname }, item.to, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+          lineNumber: 111,
+          columnNumber: 11
+        }, this)
+      ) }, void 0, false, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+        lineNumber: 109,
+        columnNumber: 11
+      }, this)
+    ] }, group.title, true, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+      lineNumber: 105,
+      columnNumber: 7
+    }, this)
+  ) }, void 0, false, {
+    fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+    lineNumber: 103,
+    columnNumber: 5
+  }, this);
+}
+_c3 = AdminNavigation;
+function AdminNavLink({ item, pathname, orientation = "sidebar" }) {
+  const matchedByAlias = matchesAdminItem(item, pathname);
+  return /* @__PURE__ */ jsxDEV(
+    NavLink,
+    {
+      to: item.to,
+      end: item.end,
+      className: ({ isActive }) => {
+        const active = isActive || matchedByAlias;
+        if (orientation === "mobile") {
+          return `whitespace-nowrap rounded-md border px-3 py-2 text-sm font-medium transition ${active ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-950"}`;
+        }
+        return `block rounded-md border px-3 py-2 transition ${active ? "border-slate-200 bg-slate-100 text-slate-950" : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-950"}`;
+      },
+      children: [
+        /* @__PURE__ */ jsxDEV("span", { className: "block text-sm font-semibold", children: item.title }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+          lineNumber: 145,
+          columnNumber: 7
+        }, this),
+        orientation !== "mobile" && /* @__PURE__ */ jsxDEV("span", { className: "mt-0.5 block text-xs leading-5 text-slate-500", children: item.description }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+          lineNumber: 147,
+          columnNumber: 7
+        }, this)
+      ]
+    },
+    void 0,
+    true,
+    {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx",
+      lineNumber: 124,
+      columnNumber: 5
+    },
+    this
+  );
+}
+_c4 = AdminNavLink;
+function getCurrentAdminItem(pathname) {
+  return getAdminNavItems().find((item) => matchesAdminItem(item, pathname));
+}
+function matchesAdminItem(item, pathname) {
+  if (item.end) {
+    return pathname === item.to;
+  }
+  return (item.match || [item.to]).some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`)
+  );
+}
+var _c, _c2, _c3, _c4;
+$RefreshReg$(_c, "AdminLayout");
+$RefreshReg$(_c2, "AdminIdentity");
+$RefreshReg$(_c3, "AdminNavigation");
+$RefreshReg$(_c4, "AdminNavLink");
+if (import.meta.hot && !inWebWorker) {
+  window.$RefreshReg$ = prevRefreshReg;
+  window.$RefreshSig$ = prevRefreshSig;
+}
+if (import.meta.hot && !inWebWorker) {
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("C:/Users/Kent Christian/Documents/UniFab/frontend/src/pages/admin/AdminLayout.jsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+
+//# sourceMappingURL=data:application/json;base64,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X05BVl9HUk9VUFMiLCJnZXRBZG1pbk5hdkl0ZW1zIiwiQWRtaW5MYXlvdXQiLCJfcyIsImxvY2F0aW9uIiwidXNlciIsImN1cnJlbnRJdGVtIiwiZ2V0Q3VycmVudEFkbWluSXRlbSIsInBhdGhuYW1lIiwiQWRtaW5JZGVudGl0eSIsImNvbXBhY3QiLCJ0aXRsZSIsIm5hbWUiLCJlbWFpbCIsIl9jMiIsIkFkbWluTmF2aWdhdGlvbiIsIm9yaWVudGF0aW9uIiwibWFwIiwiaXRlbSIsInRvIiwiZ3JvdXAiLCJpdGVtcyIsIl9jMyIsIkFkbWluTmF2TGluayIsIm1hdGNoZWRCeUFsaWFzIiwibWF0Y2hlc0FkbWluSXRlbSIsImVuZCIsImlzQWN0aXZlIiwiYWN0aXZlIiwiZGVzY3JpcHRpb24iLCJfYzQiLCJmaW5kIiwibWF0Y2giLCJzb21lIiwicGF0aCIsInN0YXJ0c1dpdGgiLCJfYyJdLCJpZ25vcmVMaXN0IjpbXSwic291cmNlcyI6WyJBZG1pbkxheW91dC5qc3giXSwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0IHsgTGluaywgTmF2TGluaywgT3V0bGV0LCB1c2VMb2NhdGlvbiB9IGZyb20gXCJyZWFjdC1yb3V0ZXItZG9tXCI7XG5pbXBvcnQgeyB1c2VBdXRoIH0gZnJvbSBcIi4uLy4uL2NvbnRleHQvQXV0aENvbnRleHRcIjtcbmltcG9ydCB7IEFETUlOX05BVl9HUk9VUFMsIGdldEFkbWluTmF2SXRlbXMgfSBmcm9tIFwiLi9hZG1pbk5hdmlnYXRpb25cIjtcblxuZXhwb3J0IGRlZmF1bHQgZnVuY3Rpb24gQWRtaW5MYXlvdXQoKSB7XG4gIGNvbnN0IGxvY2F0aW9uID0gdXNlTG9jYXRpb24oKTtcbiAgY29uc3QgeyB1c2VyIH0gPSB1c2VBdXRoKCk7XG4gIGNvbnN0IGN1cnJlbnRJdGVtID0gZ2V0Q3VycmVudEFkbWluSXRlbShsb2NhdGlvbi5wYXRobmFtZSk7XG5cbiAgcmV0dXJuIChcbiAgICA8ZGl2IGNsYXNzTmFtZT1cImJvcmRlci10IGJvcmRlci1zbGF0ZS0yMDAgYmctWyNmN2Y2ZjNdXCI+XG4gICAgICA8ZGl2IGNsYXNzTmFtZT1cIm14LWF1dG8gZ3JpZCBtaW4taC1bY2FsYygxMDB2aC00cmVtKV0gdy1mdWxsIG1heC13LVs5MnJlbV0gZ2FwLTAgbGc6Z3JpZC1jb2xzLVsxN3JlbV9taW5tYXgoMCwxZnIpXVwiPlxuICAgICAgICA8YXNpZGUgY2xhc3NOYW1lPVwiaGlkZGVuIGJvcmRlci1yIGJvcmRlci1zbGF0ZS0yMDAgYmctd2hpdGUgbGc6YmxvY2tcIj5cbiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cInN0aWNreSB0b3AtWzQuMjVyZW1dIGZsZXggbWF4LWgtW2NhbGMoMTAwdmgtNC4yNXJlbSldIGZsZXgtY29sIGdhcC02IG92ZXJmbG93LXktYXV0byBweC00IHB5LTVcIj5cbiAgICAgICAgICAgIDxBZG1pbklkZW50aXR5IHVzZXI9e3VzZXJ9IGN1cnJlbnRJdGVtPXtjdXJyZW50SXRlbX0gLz5cbiAgICAgICAgICAgIDxBZG1pbk5hdmlnYXRpb24gb3JpZW50YXRpb249XCJzaWRlYmFyXCIgcGF0aG5hbWU9e2xvY2F0aW9uLnBhdGhuYW1lfSAvPlxuICAgICAgICAgIDwvZGl2PlxuICAgICAgICA8L2FzaWRlPlxuXG4gICAgICAgIDxkaXYgY2xhc3NOYW1lPVwibWluLXctMFwiPlxuICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiYm9yZGVyLWIgYm9yZGVyLXNsYXRlLTIwMCBiZy13aGl0ZSBweC00IHB5LTMgbGc6aGlkZGVuXCI+XG4gICAgICAgICAgICA8QWRtaW5JZGVudGl0eSB1c2VyPXt1c2VyfSBjdXJyZW50SXRlbT17Y3VycmVudEl0ZW19IGNvbXBhY3QgLz5cbiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwibXQtMyBvdmVyZmxvdy14LWF1dG8gcGItMVwiPlxuICAgICAgICAgICAgICA8QWRtaW5OYXZpZ2F0aW9uIG9yaWVudGF0aW9uPVwibW9iaWxlXCIgcGF0aG5hbWU9e2xvY2F0aW9uLnBhdGhuYW1lfSAvPlxuICAgICAgICAgICAgPC9kaXY+XG4gICAgICAgICAgPC9kaXY+XG5cbiAgICAgICAgICA8T3V0bGV0IC8+XG4gICAgICAgIDwvZGl2PlxuICAgICAgPC9kaXY+XG4gICAgPC9kaXY+XG4gICk7XG59XG5cbmZ1bmN0aW9uIEFkbWluSWRlbnRpdHkoeyB1c2VyLCBjdXJyZW50SXRlbSwgY29tcGFjdCA9IGZhbHNlIH0pIHtcbiAgcmV0dXJuIChcbiAgICA8ZGl2IGNsYXNzTmFtZT17Y29tcGFjdCA/IFwiZmxleCBpdGVtcy1jZW50ZXIganVzdGlmeS1iZXR3ZWVuIGdhcC0zXCIgOiBcIlwifT5cbiAgICAgIDxkaXY+XG4gICAgICAgIDxMaW5rXG4gICAgICAgICAgdG89XCIvYWRtaW5cIlxuICAgICAgICAgIGNsYXNzTmFtZT1cInRleHQtbGcgZm9udC1zZW1pYm9sZCB0cmFja2luZy10aWdodCB0ZXh0LXNsYXRlLTk1MFwiXG4gICAgICAgID5cbiAgICAgICAgICBVbmlGYWIgQWRtaW5cbiAgICAgICAgPC9MaW5rPlxuICAgICAgICA8cCBjbGFzc05hbWU9XCJtdC0xIHRleHQteHMgbGVhZGluZy01IHRleHQtc2xhdGUtNTAwXCI+XG4gICAgICAgICAge2N1cnJlbnRJdGVtPy50aXRsZSB8fCBcIk92ZXJ2aWV3XCJ9XG4gICAgICAgIDwvcD5cbiAgICAgIDwvZGl2PlxuICAgICAgPGRpdiBjbGFzc05hbWU9e2NvbXBhY3QgPyBcInRleHQtcmlnaHRcIiA6IFwibXQtNFwifT5cbiAgICAgICAgPHAgY2xhc3NOYW1lPVwidGV4dC14cyBmb250LW1lZGl1bSB1cHBlcmNhc2UgdHJhY2tpbmctd2lkZSB0ZXh0LXNsYXRlLTQwMFwiPlxuICAgICAgICAgIFNpZ25lZCBpblxuICAgICAgICA8L3A+XG4gICAgICAgIDxwIGNsYXNzTmFtZT1cIm10LTEgdHJ1bmNhdGUgdGV4dC1zbSBmb250LW1lZGl1bSB0ZXh0LXNsYXRlLTcwMFwiPlxuICAgICAgICAgIHt1c2VyPy5uYW1lIHx8IHVzZXI/LmVtYWlsIHx8IFwiQWRtaW5cIn1cbiAgICAgICAgPC9wPlxuICAgICAgICA8TGlua1xuICAgICAgICAgIHRvPVwiL1wiXG4gICAgICAgICAgY2xhc3NOYW1lPVwibXQtMiBpbmxpbmUtZmxleCB0ZXh0LXhzIGZvbnQtc2VtaWJvbGQgdGV4dC1zbGF0ZS01MDAgdW5kZXJsaW5lLW9mZnNldC00IGhvdmVyOnRleHQtc2xhdGUtOTUwIGhvdmVyOnVuZGVybGluZVwiXG4gICAgICAgID5cbiAgICAgICAgICBCYWNrIHRvIHNpdGVcbiAgICAgICAgPC9MaW5rPlxuICAgICAgPC9kaXY+XG4gICAgPC9kaXY+XG4gICk7XG59XG5cbmZ1bmN0aW9uIEFkbWluTmF2aWdhdGlvbih7IG9yaWVudGF0aW9uLCBwYXRobmFtZSB9KSB7XG4gIGlmIChvcmllbnRhdGlvbiA9PT0gXCJtb2JpbGVcIikge1xuICAgIHJldHVybiAoXG4gICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggbWluLXctbWF4IGdhcC0yXCI+XG4gICAgICAgIHtnZXRBZG1pbk5hdkl0ZW1zKCkubWFwKChpdGVtKSA9PiAoXG4gICAgICAgICAgPEFkbWluTmF2TGlua1xuICAgICAgICAgICAga2V5PXtpdGVtLnRvfVxuICAgICAgICAgICAgaXRlbT17aXRlbX1cbiAgICAgICAgICAgIHBhdGhuYW1lPXtwYXRobmFtZX1cbiAgICAgICAgICAgIG9yaWVudGF0aW9uPVwibW9iaWxlXCJcbiAgICAgICAgICAvPlxuICAgICAgICApKX1cbiAgICAgIDwvZGl2PlxuICAgICk7XG4gIH1cblxuICByZXR1cm4gKFxuICAgIDxuYXYgY2xhc3NOYW1lPVwic3BhY2UteS02XCI+XG4gICAgICB7QURNSU5fTkFWX0dST1VQUy5tYXAoKGdyb3VwKSA9PiAoXG4gICAgICAgIDxkaXYga2V5PXtncm91cC50aXRsZX0+XG4gICAgICAgICAgPHAgY2xhc3NOYW1lPVwicHgtMiB0ZXh0LXhzIGZvbnQtc2VtaWJvbGQgdXBwZXJjYXNlIHRyYWNraW5nLXdpZGUgdGV4dC1zbGF0ZS00MDBcIj5cbiAgICAgICAgICAgIHtncm91cC50aXRsZX1cbiAgICAgICAgICA8L3A+XG4gICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJtdC0yIHNwYWNlLXktMVwiPlxuICAgICAgICAgICAge2dyb3VwLml0ZW1zLm1hcCgoaXRlbSkgPT4gKFxuICAgICAgICAgICAgICA8QWRtaW5OYXZMaW5rIGtleT17aXRlbS50b30gaXRlbT17aXRlbX0gcGF0aG5hbWU9e3BhdGhuYW1lfSAvPlxuICAgICAgICAgICAgKSl9XG4gICAgICAgICAgPC9kaXY+XG4gICAgICAgIDwvZGl2PlxuICAgICAgKSl9XG4gICAgPC9uYXY+XG4gICk7XG59XG5cbmZ1bmN0aW9uIEFkbWluTmF2TGluayh7IGl0ZW0sIHBhdGhuYW1lLCBvcmllbnRhdGlvbiA9IFwic2lkZWJhclwiIH0pIHtcbiAgY29uc3QgbWF0Y2hlZEJ5QWxpYXMgPSBtYXRjaGVzQWRtaW5JdGVtKGl0ZW0sIHBhdGhuYW1lKTtcblxuICByZXR1cm4gKFxuICAgIDxOYXZMaW5rXG4gICAgICB0bz17aXRlbS50b31cbiAgICAgIGVuZD17aXRlbS5lbmR9XG4gICAgICBjbGFzc05hbWU9eyh7IGlzQWN0aXZlIH0pID0+IHtcbiAgICAgICAgY29uc3QgYWN0aXZlID0gaXNBY3RpdmUgfHwgbWF0Y2hlZEJ5QWxpYXM7XG5cbiAgICAgICAgaWYgKG9yaWVudGF0aW9uID09PSBcIm1vYmlsZVwiKSB7XG4gICAgICAgICAgcmV0dXJuIGB3aGl0ZXNwYWNlLW5vd3JhcCByb3VuZGVkLW1kIGJvcmRlciBweC0zIHB5LTIgdGV4dC1zbSBmb250LW1lZGl1bSB0cmFuc2l0aW9uICR7XG4gICAgICAgICAgICBhY3RpdmVcbiAgICAgICAgICAgICAgPyBcImJvcmRlci1zbGF0ZS05NTAgYmctc2xhdGUtOTUwIHRleHQtd2hpdGVcIlxuICAgICAgICAgICAgICA6IFwiYm9yZGVyLXNsYXRlLTIwMCBiZy13aGl0ZSB0ZXh0LXNsYXRlLTYwMCBob3Zlcjpib3JkZXItc2xhdGUtMzAwIGhvdmVyOnRleHQtc2xhdGUtOTUwXCJcbiAgICAgICAgICB9YDtcbiAgICAgICAgfVxuXG4gICAgICAgIHJldHVybiBgYmxvY2sgcm91bmRlZC1tZCBib3JkZXIgcHgtMyBweS0yIHRyYW5zaXRpb24gJHtcbiAgICAgICAgICBhY3RpdmVcbiAgICAgICAgICAgID8gXCJib3JkZXItc2xhdGUtMjAwIGJnLXNsYXRlLTEwMCB0ZXh0LXNsYXRlLTk1MFwiXG4gICAgICAgICAgICA6IFwiYm9yZGVyLXRyYW5zcGFyZW50IHRleHQtc2xhdGUtNjAwIGhvdmVyOmJvcmRlci1zbGF0ZS0yMDAgaG92ZXI6Ymctc2xhdGUtNTAgaG92ZXI6dGV4dC1zbGF0ZS05NTBcIlxuICAgICAgICB9YDtcbiAgICAgIH19XG4gICAgPlxuICAgICAgPHNwYW4gY2xhc3NOYW1lPVwiYmxvY2sgdGV4dC1zbSBmb250LXNlbWlib2xkXCI+e2l0ZW0udGl0bGV9PC9zcGFuPlxuICAgICAge29yaWVudGF0aW9uICE9PSBcIm1vYmlsZVwiICYmIChcbiAgICAgICAgPHNwYW4gY2xhc3NOYW1lPVwibXQtMC41IGJsb2NrIHRleHQteHMgbGVhZGluZy01IHRleHQtc2xhdGUtNTAwXCI+XG4gICAgICAgICAge2l0ZW0uZGVzY3JpcHRpb259XG4gICAgICAgIDwvc3Bhbj5cbiAgICAgICl9XG4gICAgPC9OYXZMaW5rPlxuICApO1xufVxuXG5mdW5jdGlvbiBnZXRDdXJyZW50QWRtaW5JdGVtKHBhdGhuYW1lKSB7XG4gIHJldHVybiBnZXRBZG1pbk5hdkl0ZW1zKCkuZmluZCgoaXRlbSkgPT4gbWF0Y2hlc0FkbWluSXRlbShpdGVtLCBwYXRobmFtZSkpO1xufVxuXG5mdW5jdGlvbiBtYXRjaGVzQWRtaW5JdGVtKGl0ZW0sIHBhdGhuYW1lKSB7XG4gIGlmIChpdGVtLmVuZCkge1xuICAgIHJldHVybiBwYXRobmFtZSA9PT0gaXRlbS50bztcbiAgfVxuXG4gIHJldHVybiAoaXRlbS5tYXRjaCB8fCBbaXRlbS50b10pLnNvbWUoXG4gICAgKHBhdGgpID0+IHBhdGhuYW1lID09PSBwYXRoIHx8IHBhdGhuYW1lLnN0YXJ0c1dpdGgoYCR7cGF0aH0vYCksXG4gICk7XG59XG4iXSwiZmlsZSI6IkM6L1VzZXJzL0tlbnQgQ2hyaXN0aWFuL0RvY3VtZW50cy9VbmlGYWIvZnJvbnRlbmQvc3JjL3BhZ2VzL2FkbWluL0FkbWluTGF5b3V0LmpzeCJ9

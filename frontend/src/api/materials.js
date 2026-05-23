@@ -8,7 +8,26 @@ function toMaterialPayload(payload) {
     delete body.isActive;
   }
 
+  if (body.colorOptionsText !== undefined) {
+    body.colorOptions = parseColorOptionsText(body.colorOptionsText);
+    delete body.colorOptionsText;
+  }
+
   return body;
+}
+
+function parseColorOptionsText(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => {
+      const hexMatch = item.match(/#[0-9a-fA-F]{6}/);
+      return {
+        name: item.replace(/#[0-9a-fA-F]{6}/, "").trim() || item,
+        hexCode: hexMatch?.[0] || null,
+      };
+    });
 }
 
 export function getActiveMaterials() {

@@ -1,7 +1,21 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getPrintRequestById } from "../api/requests";
+import { cancelPrintRequest, getPrintRequestById } from "../api/requests";
+import { ModelSnapshotPreview } from "../components/ui/ModelSnapshotPreview";
 import { Stepper } from "../components/ui/Stepper";
+import { assetUrl } from "../utils/model-preview";
+
+function getSnapshotCurrency(printRequest) {
+  return (
+    printRequest?.quoteSnapshot?.pricingConfigSnapshot?.currency ||
+    printRequest?.quoteSnapshot?.quote?.currency ||
+    "PHP"
+  );
+}
+
+function formatMoney(amount, currency) {
+  return `${currency} ${Number(amount || 0).toFixed(2)}`;
+}
 
 export default function PrintRequestDetail() {
   const { requestId } = useParams();
@@ -12,6 +26,7 @@ export default function PrintRequestDetail() {
     { id: "payment_verified", name: "Payment Verified" },
     { id: "printing", name: "Printing" },
     { id: "completed", name: "Completed" },
+    { id: "cancelled", name: "Cancelled" },
   ];
 
   const getMappedStatus = (status) => {
@@ -21,13 +36,16 @@ export default function PrintRequestDetail() {
 
   const [printRequest, setPrintRequest] = useState(null);
   const [statusHistory, setStatusHistory] = useState([]);
+  const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const quoteSnapshot = printRequest?.quoteSnapshot;
   const quoteMetrics = quoteSnapshot?.quote || quoteSnapshot;
-  const paymentSlipAmount =
-    printRequest?.confirmedCost ?? printRequest?.estimatedCost ?? 0;
+  const currency = getSnapshotCurrency(printRequest);
+  const paymentSlipUrl = assetUrl(printRequest?.paymentSlipUrl);
 
   useEffect(() => {
     async function loadPrintRequest() {
@@ -41,10 +59,12 @@ export default function PrintRequestDetail() {
           data.data?.printRequest || data.printRequest || data.request || data,
         );
         setStatusHistory(data.data?.statusHistory || data.statusHistory || []);
+        setItems(data.data?.items || data.items || []);
       } catch (err) {
         setError(err.message);
         setPrintRequest(null);
         setStatusHistory([]);
+        setItems([]);
       } finally {
         setIsLoading(false);
       }
@@ -52,6 +72,29 @@ export default function PrintRequestDetail() {
 
     loadPrintRequest();
   }, [requestId]);
+
+  async function handleCancelRequest() {
+    if (!cancelReason.trim()) {
+      setError("Please enter a cancellation reason.");
+      return;
+    }
+
+    try {
+      setIsCancelling(true);
+      setError("");
+      const data = await cancelPrintRequest(requestId, {
+        cancellationReason: cancelReason,
+      });
+      setPrintRequest(data.data?.printRequest || data.printRequest);
+      setItems(data.data?.items || data.items || []);
+      setStatusHistory(data.data?.statusHistory || data.statusHistory || []);
+      setCancelReason("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsCancelling(false);
+    }
+  }
 
   return (
     <>
@@ -77,6 +120,8 @@ export default function PrintRequestDetail() {
                   currentStatus={
                     printRequest.status === "rejected"
                       ? "rejected"
+                      : printRequest.status === "cancelled"
+                        ? "cancelled"
                       : getMappedStatus(printRequest.status)
                   }
                 />
@@ -114,6 +159,13 @@ export default function PrintRequestDetail() {
                 </div>
 
                 <div>
+                  <p className="text-sm font-medium text-slate-500">Color</p>
+                  <p className="font-semibold text-slate-950">
+                    {printRequest.materialColorName || "Not specified"}
+                  </p>
+                </div>
+
+                <div>
                   <p className="text-sm font-medium text-slate-500">Quality</p>
                   <p className="font-semibold text-slate-950">
                     {printRequest.printQuality}
@@ -137,7 +189,7 @@ export default function PrintRequestDetail() {
                       Estimated cost
                     </p>
                     <p className="font-semibold text-slate-950">
-                      PHP {Number(printRequest.estimatedCost || 0).toFixed(2)}
+                      {formatMoney(printRequest.estimatedCost, currency)}
                     </p>
                   </div>
 
@@ -165,6 +217,76 @@ export default function PrintRequestDetail() {
                 </div>
               </section>
 
+              {items.length > 0 && (
+                <section className="rounded-lg border border-slate-200 p-4">
+                  <h2 className="text-lg font-semibold">Request items</h2>
+                  <div className="mt-4 grid gap-4">
+                    {items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex gap-4 rounded-md bg-slate-50 p-3 text-sm"
+                      >
+                        <ModelSnapshotPreview
+                          source={{
+                            ...item,
+                            snapshotUrl: item.thumbnailUrl,
+                            fileName:
+                              item.fileOriginalName ||
+                              item.originalFileName ||
+                              item.designSnapshot?.title ||
+                              "Model item",
+                          }}
+                          className="h-20 w-20 shrink-0 rounded border border-slate-200 bg-white"
+                          fallbackClassName="flex h-full w-full items-center justify-center px-1 text-center text-xs text-slate-500"
+                          fallbackLabel="Preview"
+                          viewerClassName="h-80"
+                        />
+                        <div>
+                          <p className="font-semibold text-slate-950">
+                            {item.fileOriginalName ||
+                              item.designSnapshot?.title ||
+                              "Model item"}
+                          </p>
+                          <p className="mt-1 text-slate-600">
+                            {[item.material, item.materialColorName]
+                              .filter(Boolean)
+                              .join(" / ")}{" "}
+                            · {item.printQuality} · {item.infill}% · Qty{" "}
+                            {item.quantity}
+                          </p>
+                          <p className="mt-1 font-semibold tabular-nums text-slate-950">
+                            {formatMoney(item.estimatedCost, currency)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {["pending_review", "design_in_progress"].includes(
+                printRequest.status,
+              ) && (
+                <section className="rounded-lg border border-slate-200 p-4">
+                  <h2 className="text-lg font-semibold">Cancel request</h2>
+                  <textarea
+                    value={cancelReason}
+                    onChange={(event) => setCancelReason(event.target.value)}
+                    rows={3}
+                    className="mt-3 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                    placeholder="Reason for cancellation"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCancelRequest}
+                    disabled={isCancelling}
+                    className="mt-3 rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                  >
+                    {isCancelling ? "Cancelling..." : "Cancel request"}
+                  </button>
+                </section>
+              )}
+
               <section className="rounded-lg border border-slate-200 p-4">
                 <h2 className="text-lg font-semibold">Payment Instructions</h2>
 
@@ -180,8 +302,8 @@ export default function PrintRequestDetail() {
                       </p>
                       <ol className="mt-2 list-decimal pl-5 text-sm text-amber-700 space-y-1">
                         <li>
-                          Generate and print your payment slip using the button
-                          below.
+                          Open and print the payment slip generated by the
+                          FabLab admin.
                         </li>
                         <li>
                           Proceed to the University Cashier (Building A, Room
@@ -196,10 +318,11 @@ export default function PrintRequestDetail() {
 
                     <button
                       type="button"
-                      onClick={() => window.print()}
+                      onClick={() => window.open(paymentSlipUrl, "_blank")}
+                      disabled={!paymentSlipUrl}
                       className="inline-flex items-center justify-center rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
                     >
-                      Print Payment Slip
+                      Open Payment Slip
                     </button>
                     </div>
                     ) : ["payment_verified", "printing", "completed"].includes(printRequest.status) ? (
@@ -209,13 +332,28 @@ export default function PrintRequestDetail() {
                       <p className="mt-1 text-sm text-green-700">
                         Your physical receipt was verified by the FabLab staff.
                       </p>
+                      {printRequest.receiptReferenceNumber && (
+                        <p className="mt-2 text-sm text-green-700">
+                          Receipt/reference no.:{" "}
+                          <strong>{printRequest.receiptReferenceNumber}</strong>
+                        </p>
+                      )}
+                      {printRequest.receiptVerifiedAt && (
+                        <p className="mt-1 text-sm text-green-700">
+                          Verified on{" "}
+                          {new Date(
+                            printRequest.receiptVerifiedAt,
+                          ).toLocaleString()}
+                        </p>
+                      )}
                     </div>
                     <button
                       type="button"
-                      onClick={() => window.print()}
+                      onClick={() => window.open(paymentSlipUrl, "_blank")}
+                      disabled={!paymentSlipUrl}
                       className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                     >
-                      View/Print Payment Slip
+                      Open Payment Slip
                     </button>
                     </div>
                     ) : (
@@ -260,149 +398,6 @@ export default function PrintRequestDetail() {
         </div>
       </main>
 
-      {/* Printable Payment Slip (Hidden on screen, shown on print) */}
-      {printRequest &&
-        ["payment_slip_issued", "payment_verified", "printing", "completed"].includes(printRequest.status) && (
-        <div className="print-only p-12 max-w-3xl mx-auto text-black bg-white min-h-screen font-sans">
-          {/* Header */}
-          <div className="flex justify-between items-start border-b-2 border-slate-800 pb-6 mb-8">
-            <div>
-              <h1 className="text-3xl font-bold uppercase tracking-widest text-slate-900">
-                UniFab
-              </h1>
-              <p className="text-sm font-semibold text-slate-600 tracking-wide mt-1">
-                USTP-CDO FABRICATION LABORATORY
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                C.M. Recto Avenue, Lapasan, Cagayan de Oro City
-              </p>
-            </div>
-            <div className="text-right">
-              <h2 className="text-2xl font-bold text-slate-800 uppercase tracking-widest">
-                Payment Slip
-              </h2>
-              <p className="text-sm font-medium mt-1">
-                Ref No:{" "}
-                <span className="font-bold text-slate-900">
-                  {printRequest.referenceNumber || `#${printRequest.id}`}
-                </span>
-              </p>
-              <p className="text-sm text-slate-600 mt-1">
-                Date:{" "}
-                {new Date().toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </p>
-            </div>
-          </div>
-
-          {/* Client Details */}
-          <div className="mb-10">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-              Billed To
-            </h3>
-            <p className="font-bold text-lg text-slate-900">
-              {printRequest.clientName ||
-                printRequest.userName ||
-                "Student / Client"}
-            </p>
-            <p className="text-sm text-slate-600 mt-1">
-              Status: Approved for Printing
-            </p>
-          </div>
-
-          {/* Order Details Table */}
-          <table className="w-full text-left border-collapse mb-10">
-            <thead>
-              <tr className="border-b border-slate-300">
-                <th className="pb-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-1/2">
-                  Description
-                </th>
-                <th className="pb-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
-                  Material
-                </th>
-                <th className="pb-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
-                  Qty
-                </th>
-                <th className="pb-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
-                  Total (PHP)
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b border-slate-100">
-                <td className="py-4 text-sm font-medium text-slate-900">
-                  {printRequest.fileOriginalName || "3D Model Printing Service"}
-                </td>
-                <td className="py-4 text-sm text-slate-600 text-center">
-                  {printRequest.material}
-                </td>
-                <td className="py-4 text-sm text-slate-600 text-center">
-                  {printRequest.quantity}
-                </td>
-                <td className="py-4 text-lg font-bold text-slate-900 text-right">
-                  {Number(paymentSlipAmount || 0).toFixed(2)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          {/* Totals */}
-          <div className="flex justify-end mb-12">
-            <div className="w-1/2">
-              <div className="flex justify-between border-t-2 border-slate-800 pt-3">
-                <p className="text-sm font-bold uppercase tracking-wider text-slate-600">
-                  Amount Due
-                </p>
-                <p className="text-2xl font-bold text-slate-900">
-                  PHP {Number(paymentSlipAmount || 0).toFixed(2)}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Instructions */}
-          <div className="rounded border border-slate-300 p-6 mb-12 bg-slate-50">
-            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-800 mb-3">
-              Payment Instructions
-            </h4>
-            <ol className="list-decimal pl-5 text-sm text-slate-700 space-y-2">
-              <li>
-                Present this printed slip to the University Cashier (Building A,
-                Room 102).
-              </li>
-              <li>Pay the exact amount shown above.</li>
-              <li>
-                Bring the official physical receipt to the FabLab for in-person
-                verification.
-              </li>
-            </ol>
-          </div>
-
-          {/* Signatures */}
-          <div className="mt-16 pt-8 border-t border-slate-200 grid grid-cols-2 gap-8">
-            <div className="text-center">
-              <div className="border-b border-slate-400 w-48 mx-auto mb-2"></div>
-              <p className="text-xs uppercase tracking-wider font-bold text-slate-500">
-                Student / Client Signature
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="border-b border-slate-400 w-48 mx-auto mb-2"></div>
-              <p className="text-xs uppercase tracking-wider font-bold text-slate-500">
-                Cashier Verification
-              </p>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="mt-auto pt-12 text-center text-xs text-slate-400 uppercase tracking-widest">
-            <p>Generated securely by the UniFab System</p>
-          </div>
-        </div>
-      )}
     </>
   );
 }

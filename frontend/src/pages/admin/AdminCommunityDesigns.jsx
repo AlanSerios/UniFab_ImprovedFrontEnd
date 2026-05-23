@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { getAdminLocalDesigns } from "../../api/designs";
+import { Button } from "../../components/ui/Button";
 import { Alert, EmptyState, StatusBadge } from "../../components/ui/Feedback";
+import { Field, SelectInput, TextInput } from "../../components/ui/Form";
 import { PageHeader, PageShell, Panel } from "../../components/ui/Page";
 import {
   getModerationStatusLabel,
   getModerationStatusTone,
 } from "../../utils/moderation-display";
-import { SelectInput, TextInput } from "../../components/ui/Form";
 
+const DEFAULT_LIMIT = 20;
 const STATUS_TABS = [
   {
     label: "Needs Review",
@@ -33,19 +35,13 @@ const STATUS_TABS = [
   },
 ];
 
-function formatDate(value) {
-  return value ? new Date(value).toLocaleDateString() : "-";
-}
-
 export default function AdminCommunityDesigns() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [designs, setDesigns] = useState([]);
+  const [counts, setCounts] = useState(null);
+  const [pagination, setPagination] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const [searchFilter, setSearchFilter] = useState("");
-  const [decisionSourceFilter, setDecisionSourceFilter] = useState("");
-  const [printReadyFilter, setPrintReadyFilter] = useState("");
 
   const currentTab = searchParams.get("tab") || "needs_review";
   const activeTab = useMemo(
@@ -53,68 +49,72 @@ export default function AdminCommunityDesigns() {
     [currentTab],
   );
 
-  const visibleDesigns = useMemo(() => {
-    const normalizedSearch = searchFilter.trim().toLowerCase();
+  const filters = useMemo(
+    () => ({
+      tab: currentTab,
+      search: searchParams.get("search") || "",
+      printReady: searchParams.get("printReady") || "",
+      page: Number(searchParams.get("page") || 1),
+      limit: Number(searchParams.get("limit") || DEFAULT_LIMIT),
+    }),
+    [currentTab, searchParams],
+  );
 
-    return designs.filter((design) => {
-      const matchesSearch =
-        !normalizedSearch ||
-        [
-          design.title,
-          design.description,
-          design.moderationSummary,
-          design.moderationFeedback,
-          design.uploadedBy ? `user ${design.uploadedBy}` : "",
-        ]
-          .filter(Boolean)
-          .some((value) =>
-            String(value).toLowerCase().includes(normalizedSearch),
-          );
+  function updateFilters(nextValues) {
+    const next = new URLSearchParams(searchParams);
 
-      const matchesDecisionSource =
-        !decisionSourceFilter ||
-        design.moderationDecisionSource === decisionSourceFilter;
-
-      const matchesPrintReady =
-        !printReadyFilter ||
-        (printReadyFilter === "ready" && design.isPrintReady) ||
-        (printReadyFilter === "not_ready" && !design.isPrintReady);
-
-      return matchesSearch && matchesDecisionSource && matchesPrintReady;
+    Object.entries(nextValues).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === "") {
+        next.delete(key);
+      } else {
+        next.set(key, String(value));
+      }
     });
-  }, [designs, searchFilter, decisionSourceFilter, printReadyFilter]);
 
-  const updateTabFilter = (nextTab) => {
-    setSearchParams(nextTab === "needs_review" ? {} : { tab: nextTab });
-  };
+    if (!("page" in nextValues)) {
+      next.set("page", "1");
+    }
+
+    if (next.get("tab") === "needs_review") {
+      next.delete("tab");
+    }
+
+    setSearchParams(next);
+  }
 
   useEffect(() => {
-    let isMounted = true;
+    let ignore = false;
 
     async function loadCommunityDesigns() {
       try {
-        if (isMounted) {
-          setIsLoading(true);
-        }
+        setIsLoading(true);
+        setError("");
 
-        const data = await getAdminLocalDesigns({
+        const response = await getAdminLocalDesigns({
           sourceKind: "community",
           archived: activeTab.archived ? "true" : "",
           status: activeTab.statuses.join(","),
+          search: filters.search,
+          printReady: filters.printReady,
+          page: filters.page,
+          limit: filters.limit,
         });
-        const payload = data.data || data;
+        const payload = response.data || response;
 
-        if (isMounted) {
+        if (!ignore) {
           setDesigns(payload.localDesigns || payload.designs || []);
-          setError("");
+          setCounts(payload.counts || null);
+          setPagination(payload.pagination || null);
         }
       } catch (err) {
-        if (isMounted) {
-          setError(err.message);
+        if (!ignore) {
+          setError(err.message || "Failed to load community designs.");
           setDesigns([]);
+          setCounts(null);
+          setPagination(null);
         }
       } finally {
-        if (isMounted) {
+        if (!ignore) {
           setIsLoading(false);
         }
       }
@@ -123,68 +123,80 @@ export default function AdminCommunityDesigns() {
     loadCommunityDesigns();
 
     return () => {
-      isMounted = false;
+      ignore = true;
     };
-  }, [activeTab]);
+  }, [activeTab, filters.search, filters.printReady, filters.page, filters.limit]);
 
   return (
     <PageShell size="xl">
       <Panel>
         <PageHeader
-          title="Community Designs"
+          title="Community designs"
           description="Review user submissions, moderation results, feedback, and Print Ready separation."
         />
 
         <div className="mt-6 inline-flex flex-wrap rounded-md border border-slate-300 bg-white p-1 text-sm font-medium">
-          {STATUS_TABS.map((tab) => {
-            const isActive = currentTab === tab.value;
+          {STATUS_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => updateFilters({ tab: tab.value })}
+              className={`rounded px-3 py-1.5 ${
+                currentTab === tab.value
+                  ? "bg-slate-950 text-white"
+                  : "text-slate-700 hover:bg-slate-100"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-            return (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => updateTabFilter(tab.value)}
-                className={`rounded px-3 py-1.5 ${
-                  isActive
-                    ? "bg-slate-950 text-white"
-                    : "text-slate-700 hover:bg-slate-100"
-                }`}
+        <div className="mt-4 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_12rem_8rem]">
+          <Field label="Search">
+            <TextInput
+              type="search"
+              value={filters.search}
+              onChange={(event) => updateFilters({ search: event.target.value })}
+              placeholder="Title, description, summary, or owner"
+            />
+          </Field>
+          <Field label="Print Ready">
+            <SelectInput
+              value={filters.printReady}
+              onChange={(event) =>
+                updateFilters({ printReady: event.target.value })
+              }
+            >
+              <option value="">All states</option>
+              <option value="true">Print Ready</option>
+              <option value="false">Not Print Ready</option>
+            </SelectInput>
+          </Field>
+          <Field label="Rows">
+            <SelectInput
+              value={filters.limit}
+              onChange={(event) => updateFilters({ limit: event.target.value })}
+            >
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+            </SelectInput>
+          </Field>
+        </div>
+
+        {counts?.byStatus && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {Object.entries(counts.byStatus).map(([status, count]) => (
+              <StatusBadge
+                key={status}
+                tone={getModerationStatusTone(status) || "neutral"}
               >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <TextInput
-            type="search"
-            value={searchFilter}
-            onChange={(event) => setSearchFilter(event.target.value)}
-            placeholder="Search title, summary, feedback, or owner"
-          />
-
-          <SelectInput
-            value={decisionSourceFilter}
-            onChange={(event) => setDecisionSourceFilter(event.target.value)}
-          >
-            <option value="">All decision sources</option>
-            <option value="rules">Rules</option>
-            <option value="ai">AI</option>
-            <option value="render">Render</option>
-            <option value="admin">Admin</option>
-            <option value="none">None</option>
-          </SelectInput>
-
-          <SelectInput
-            value={printReadyFilter}
-            onChange={(event) => setPrintReadyFilter(event.target.value)}
-          >
-            <option value="">All Print Ready states</option>
-            <option value="ready">Print Ready</option>
-            <option value="not_ready">Not Print Ready</option>
-          </SelectInput>
-        </div>
+                {getModerationStatusLabel(status)}: {count}
+              </StatusBadge>
+            ))}
+          </div>
+        )}
 
         {isLoading && (
           <p className="mt-6 text-slate-600">Loading community designs...</p>
@@ -194,7 +206,7 @@ export default function AdminCommunityDesigns() {
           {error}
         </Alert>
 
-        {!isLoading && !error && visibleDesigns.length === 0 && (
+        {!isLoading && !error && designs.length === 0 && (
           <EmptyState
             className="mt-6"
             title="No community designs found."
@@ -217,7 +229,7 @@ export default function AdminCommunityDesigns() {
               </thead>
 
               <tbody className="divide-y divide-slate-200">
-                {visibleDesigns.map((design) => (
+                {designs.map((design) => (
                   <tr key={design.id}>
                     <td className="px-4 py-3">
                       <p className="font-medium text-slate-950">
@@ -233,7 +245,9 @@ export default function AdminCommunityDesigns() {
                     </td>
 
                     <td className="px-4 py-3 text-slate-600">
-                      User #{design.uploadedBy || "-"}
+                      {design.uploader?.email ||
+                        design.uploadedByEmail ||
+                        `User #${design.uploadedBy || "-"}`}
                     </td>
 
                     <td className="px-4 py-3">
@@ -270,7 +284,49 @@ export default function AdminCommunityDesigns() {
             </table>
           </div>
         )}
+
+        <Pagination
+          pagination={pagination}
+          onPageChange={(page) => updateFilters({ page })}
+        />
       </Panel>
     </PageShell>
   );
+}
+
+function Pagination({ pagination, onPageChange }) {
+  if (!pagination) return null;
+
+  const page = Number(pagination.page || 1);
+  const totalPages = Number(pagination.totalPages || 1);
+
+  return (
+    <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
+      <span>
+        Page {page} of {totalPages} ({pagination.totalCount || 0} designs)
+      </span>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
+          Prev
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function formatDate(value) {
+  return value ? new Date(value).toLocaleDateString() : "-";
 }

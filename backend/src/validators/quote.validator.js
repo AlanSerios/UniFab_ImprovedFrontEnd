@@ -26,6 +26,11 @@ const calculateQuoteValidator = () => {
       .isIn(ALLOWED_QUALITIES)
       .withMessage("Quality must be one of: draft, standard, fine"),
 
+    body("materialColorId")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Material color must be a valid color option"),
+
     body("infill")
       .exists()
       .withMessage("Infill is required")
@@ -47,15 +52,10 @@ const calculateLocalDesignQuoteValidator = () => {
     param("designId")
       .isInt({ min: 1 })
       .withMessage("Design ID must be a positive integer"),
-    ...calculateQuoteValidator(),
-  ];
-};
-
-const calculateDesignRequestQuoteValidator = () => {
-  return [
-    param("requestId")
+    body("designFileId")
+      .optional()
       .isInt({ min: 1 })
-      .withMessage("Design request ID must be a positive integer"),
+      .withMessage("Design file ID must be a positive integer"),
     ...calculateQuoteValidator(),
   ];
 };
@@ -65,6 +65,10 @@ const calculateMmfDesignQuoteValidator = () => {
     param("objectId")
       .isInt({ min: 1 })
       .withMessage("Object ID must be a positive integer"),
+    body("printReadyFileId")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Print Ready file ID must be a positive integer"),
     ...calculateQuoteValidator(),
   ];
 };
@@ -150,12 +154,29 @@ const cleanupExpiredQuotesValidator = () => {
   ];
 };
 
+const listQuoteDiagnosticsValidator = () => {
+  return [
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100"),
+    query("offset")
+      .optional()
+      .isInt({ min: 0 })
+      .withMessage("Offset must be zero or greater"),
+    query("status")
+      .optional()
+      .isIn(["success", "failed"])
+      .withMessage("Status must be success or failed"),
+  ];
+};
+
 export {
   calculateQuoteValidator,
   calculateLocalDesignQuoteValidator,
-  calculateDesignRequestQuoteValidator,
   calculateMmfDesignQuoteValidator,
   updateQuoteValidator,
   quoteTokenValidator,
   cleanupExpiredQuotesValidator,
+  listQuoteDiagnosticsValidator,
 };

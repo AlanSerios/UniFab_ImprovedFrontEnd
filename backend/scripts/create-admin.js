@@ -52,8 +52,7 @@ async function main() {
       password = VALUES(password),
       user_type = VALUES(user_type),
       is_admin = TRUE,
-      is_email_verified = TRUE,
-      refresh_token = NULL
+      is_email_verified = TRUE
   `;
 
   await pool.query(sql, [firstName, lastName, email, hashedPassword, userType]);

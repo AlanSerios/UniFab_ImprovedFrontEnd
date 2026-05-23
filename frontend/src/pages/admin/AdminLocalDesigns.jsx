@@ -1,66 +1,102 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { getAdminLocalDesigns } from "../../api/designs";
+import { getAdminLabDesigns } from "../../api/designs";
+import { Button, ButtonLink } from "../../components/ui/Button";
+import { Alert, EmptyState, StatusBadge } from "../../components/ui/Feedback";
+import { Field, SelectInput, TextInput } from "../../components/ui/Form";
+import { PageHeader, PageShell, Panel } from "../../components/ui/Page";
+
+const DEFAULT_LIMIT = 20;
 
 export default function AdminLocalDesigns() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [localDesigns, setLocalDesigns] = useState([]);
+  const [counts, setCounts] = useState(null);
+  const [pagination, setPagination] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const showArchived = searchParams.get("archived") === "true";
 
-  const updateArchivedFilter = (nextShowArchived) => {
-    setSearchParams(nextShowArchived ? { archived: "true" } : {});
-  };
+  const filters = useMemo(
+    () => ({
+      archived: searchParams.get("archived") || "",
+      search: searchParams.get("search") || "",
+      printReady: searchParams.get("printReady") || "",
+      page: Number(searchParams.get("page") || 1),
+      limit: Number(searchParams.get("limit") || DEFAULT_LIMIT),
+    }),
+    [searchParams],
+  );
+
+  function updateFilters(nextValues) {
+    const next = new URLSearchParams(searchParams);
+
+    Object.entries(nextValues).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === "") {
+        next.delete(key);
+      } else {
+        next.set(key, String(value));
+      }
+    });
+
+    if (!("page" in nextValues)) {
+      next.set("page", "1");
+    }
+
+    setSearchParams(next);
+  }
 
   useEffect(() => {
+    let ignore = false;
+
     async function loadLocalDesigns() {
       try {
         setIsLoading(true);
         setError("");
 
-        const data = await getAdminLocalDesigns({
-          archived: showArchived ? "true" : "",
-        });
-        const payload = data.data || data;
+        const response = await getAdminLabDesigns(filters);
+        const payload = response.data || response;
 
-        setLocalDesigns(payload.localDesigns || payload.designs || []);
+        if (!ignore) {
+          setLocalDesigns(payload.localDesigns || payload.designs || []);
+          setCounts(payload.counts || null);
+          setPagination(payload.pagination || null);
+        }
       } catch (err) {
-        setError(err.message);
-        setLocalDesigns([]);
+        if (!ignore) {
+          setError(err.message || "Failed to load lab designs.");
+          setLocalDesigns([]);
+          setCounts(null);
+          setPagination(null);
+        }
       } finally {
-        setIsLoading(false);
+        if (!ignore) {
+          setIsLoading(false);
+        }
       }
     }
 
     loadLocalDesigns();
-  }, [showArchived]);
+
+    return () => {
+      ignore = true;
+    };
+  }, [filters]);
 
   return (
-    <main className="mx-auto max-w-6xl p-8">
-      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Admin Local Designs</h1>
-            <p className="mt-2 text-slate-600">
-              Manage lab-owned printable designs for the public design library.
-            </p>
-          </div>
-
-          <Link
-            to="/admin/local-designs/new"
-            className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-          >
-            New Local Design
-          </Link>
-        </div>
+    <PageShell size="xl">
+      <Panel>
+        <PageHeader
+          title="Official lab designs"
+          description="Manage lab-owned catalog designs separately from community submissions."
+          action={<ButtonLink to="/admin/lab-designs/new">New Lab Design</ButtonLink>}
+        />
 
         <div className="mt-6 inline-flex rounded-md border border-slate-300 bg-white p-1 text-sm font-medium">
           <button
             type="button"
-            onClick={() => updateArchivedFilter(false)}
+            onClick={() => updateFilters({ archived: "" })}
             className={`rounded px-3 py-1.5 ${
-              !showArchived
+              filters.archived !== "true"
                 ? "bg-slate-950 text-white"
                 : "text-slate-700 hover:bg-slate-100"
             }`}
@@ -69,9 +105,9 @@ export default function AdminLocalDesigns() {
           </button>
           <button
             type="button"
-            onClick={() => updateArchivedFilter(true)}
+            onClick={() => updateFilters({ archived: "true" })}
             className={`rounded px-3 py-1.5 ${
-              showArchived
+              filters.archived === "true"
                 ? "bg-slate-950 text-white"
                 : "text-slate-700 hover:bg-slate-100"
             }`}
@@ -80,27 +116,63 @@ export default function AdminLocalDesigns() {
           </button>
         </div>
 
-        {isLoading && (
-          <p className="mt-6 text-slate-600">Loading local designs...</p>
-        )}
+        <div className="mt-4 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_12rem_8rem]">
+          <Field label="Search">
+            <TextInput
+              type="search"
+              value={filters.search}
+              placeholder="Title, description, or uploader"
+              onChange={(event) => updateFilters({ search: event.target.value })}
+            />
+          </Field>
+          <Field label="Print Ready">
+            <SelectInput
+              value={filters.printReady}
+              onChange={(event) =>
+                updateFilters({ printReady: event.target.value })
+              }
+            >
+              <option value="">All states</option>
+              <option value="true">Print Ready</option>
+              <option value="false">Needs verification</option>
+            </SelectInput>
+          </Field>
+          <Field label="Rows">
+            <SelectInput
+              value={filters.limit}
+              onChange={(event) => updateFilters({ limit: event.target.value })}
+            >
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+            </SelectInput>
+          </Field>
+        </div>
 
-        {error && (
-          <div className="mt-6 rounded-md border border-red-200 bg-red-50 p-4 text-red-700">
-            {error}
+        {counts?.byStatus && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {Object.entries(counts.byStatus).map(([status, count]) => (
+              <StatusBadge key={status} tone="neutral">
+                {formatStatus(status)}: {count}
+              </StatusBadge>
+            ))}
           </div>
         )}
+
+        {isLoading && <p className="mt-6 text-slate-600">Loading lab designs...</p>}
+
+        <Alert className="mt-6" type="error">
+          {error}
+        </Alert>
 
         {!isLoading && !error && localDesigns.length === 0 && (
-          <div className="mt-6 rounded-lg border border-dashed border-slate-300 p-6 text-center">
-            <p className="font-medium text-slate-950">
-              No {showArchived ? "archived" : "active"} local designs found.
-            </p>
-            <p className="mt-1 text-sm text-slate-500">
-              {showArchived
-                ? "Archived unavailable local designs will appear here."
-                : "Add a local design to make it available in the design library."}
-            </p>
-          </div>
+          <EmptyState
+            className="mt-6"
+            title={`No ${
+              filters.archived === "true" ? "archived" : "active"
+            } lab designs found.`}
+            description="Add an official lab design to make it available in the design library."
+          />
         )}
 
         {localDesigns.length > 0 && (
@@ -110,10 +182,9 @@ export default function AdminLocalDesigns() {
                 <tr>
                   <th className="px-4 py-3 font-medium">Title</th>
                   <th className="px-4 py-3 font-medium">Category</th>
-                  <th className="px-4 py-3 font-medium">Material</th>
-                  <th className="px-4 py-3 font-medium">Dimensions</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  {showArchived && (
+                  <th className="px-4 py-3 font-medium">Availability</th>
+                  <th className="px-4 py-3 font-medium">Print Ready</th>
+                  {filters.archived === "true" && (
                     <th className="px-4 py-3 font-medium">Archived</th>
                   )}
                   <th className="px-4 py-3 font-medium">Action</th>
@@ -131,29 +202,29 @@ export default function AdminLocalDesigns() {
                       {design.category?.name || "-"}
                     </td>
 
-                    <td className="px-4 py-3 text-slate-600">
-                      {design.material || "-"}
+                    <td className="px-4 py-3">
+                      <StatusBadge tone={design.isActive ? "success" : "neutral"}>
+                        {design.isActive ? "Available" : "Unavailable"}
+                      </StatusBadge>
                     </td>
 
-                    <td className="px-4 py-3 text-slate-600">
-                      {design.dimensions || "-"}
+                    <td className="px-4 py-3">
+                      <StatusBadge
+                        tone={design.isPrintReady ? "success" : "warning"}
+                      >
+                        {design.isPrintReady ? "Ready" : "Needs verification"}
+                      </StatusBadge>
                     </td>
 
-                    <td className="px-4 py-3 text-slate-600">
-                      {design.isActive ? "Available" : "Unavailable"}
-                    </td>
-
-                    {showArchived && (
+                    {filters.archived === "true" && (
                       <td className="px-4 py-3 text-slate-600">
-                        {design.archivedAt
-                          ? new Date(design.archivedAt).toLocaleDateString()
-                          : "-"}
+                        {formatDate(design.archivedAt)}
                       </td>
                     )}
 
                     <td className="px-4 py-3">
                       <Link
-                        to={`/admin/local-designs/${design.id}`}
+                        to={`/admin/lab-designs/${design.id}`}
                         className="font-semibold text-slate-950 underline"
                       >
                         Edit
@@ -165,7 +236,55 @@ export default function AdminLocalDesigns() {
             </table>
           </div>
         )}
-      </div>
-    </main>
+
+        <Pagination
+          pagination={pagination}
+          onPageChange={(page) => updateFilters({ page })}
+        />
+      </Panel>
+    </PageShell>
   );
+}
+
+function Pagination({ pagination, onPageChange }) {
+  if (!pagination) return null;
+
+  const page = Number(pagination.page || 1);
+  const totalPages = Number(pagination.totalPages || 1);
+
+  return (
+    <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
+      <span>
+        Page {page} of {totalPages} ({pagination.totalCount || 0} designs)
+      </span>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
+          Prev
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function formatDate(value) {
+  return value ? new Date(value).toLocaleDateString() : "-";
+}
+
+function formatStatus(value) {
+  return String(value || "unknown")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

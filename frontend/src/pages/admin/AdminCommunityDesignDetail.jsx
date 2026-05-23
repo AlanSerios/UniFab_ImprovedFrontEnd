@@ -4,6 +4,8 @@ import { API_BASE_URL } from "../../api/client";
 import {
   getAdminLocalDesignById,
   moderateAdminLocalDesign,
+  recheckAdminLocalDesign,
+  updateAdminLocalDesignCuration,
   updateAdminLocalDesignPrintReady,
 } from "../../api/designs";
 import { Button, ButtonLink } from "../../components/ui/Button";
@@ -41,6 +43,16 @@ function assetUrl(path) {
   return `${API_ORIGIN}${path}`;
 }
 
+function downloadUrl(path) {
+  const url = assetUrl(path);
+
+  if (!url || !url.includes("/api/v1/files/")) {
+    return url;
+  }
+
+  return `${url}${url.includes("?") ? "&" : "?"}download=1`;
+}
+
 function formatDate(value) {
   return value ? new Date(value).toLocaleString() : "-";
 }
@@ -54,9 +66,19 @@ export default function AdminCommunityDesignDetail() {
   const [message, setMessage] = useState("");
   const [action, setAction] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [printReadyConfirmed, setPrintReadyConfirmed] = useState(false);
+  const [printReadyNote, setPrintReadyNote] = useState("");
+  const [curationForm, setCurationForm] = useState({
+    isFeatured: "false",
+    featuredRank: "0",
+    isLibraryHidden: "false",
+    libraryNote: "",
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingCuration, setIsSavingCuration] = useState(false);
 
   const [auditEvents, setAuditEvents] = useState([]);
+  const [moderationRuns, setModerationRuns] = useState([]);
 
   const isApproved = useMemo(
     () => APPROVED_STATUSES.has(design?.moderationStatus),
@@ -66,6 +88,7 @@ export default function AdminCommunityDesignDetail() {
     () => parseModerationFlags(design?.moderationFlags),
     [design?.moderationFlags],
   );
+  const latestModerationRun = moderationRuns[0] || null;
 
   const loadDesignDetail = useCallback(async () => {
     const data = await getAdminLocalDesignById(designId);
@@ -79,12 +102,20 @@ export default function AdminCommunityDesignDetail() {
     return {
       localDesign,
       auditEvents: payload.auditEvents || [],
+      moderationRuns: payload.moderationRuns || [],
     };
   }, [designId]);
 
-  const applyDesignDetail = ({ localDesign, auditEvents }) => {
+  const applyDesignDetail = ({ localDesign, auditEvents, moderationRuns }) => {
     setDesign(localDesign);
+    setCurationForm({
+      isFeatured: localDesign?.isFeatured ? "true" : "false",
+      featuredRank: String(localDesign?.featuredRank || 0),
+      isLibraryHidden: localDesign?.isLibraryHidden ? "true" : "false",
+      libraryNote: localDesign?.libraryNote || "",
+    });
     setAuditEvents(auditEvents);
+    setModerationRuns(moderationRuns || []);
     setError("");
   };
 
@@ -103,6 +134,7 @@ export default function AdminCommunityDesignDetail() {
           setError(err.message);
           setDesign(null);
           setAuditEvents([]);
+          setModerationRuns([]);
         }
       } finally {
         if (isMounted) {
@@ -151,12 +183,10 @@ export default function AdminCommunityDesignDetail() {
   const handleTogglePrintReady = async () => {
     const nextPrintReady = !design?.isPrintReady;
 
-    if (
-      nextPrintReady &&
-      !window.confirm(
-        "Mark this design as Print Ready only after downloading and verifying the file locally in PrusaSlicer.",
-      )
-    ) {
+    if (nextPrintReady && !printReadyConfirmed) {
+      setError(
+        "Confirm local slicer verification before marking this design Print Ready.",
+      );
       return;
     }
 
@@ -167,16 +197,69 @@ export default function AdminCommunityDesignDetail() {
 
       const data = await updateAdminLocalDesignPrintReady(designId, {
         isPrintReady: nextPrintReady,
+        verificationConfirmed: nextPrintReady ? true : undefined,
+        verificationNote: nextPrintReady ? printReadyNote : undefined,
       });
       const payload = data.data || data;
 
       setDesign(payload.localDesign || payload.design);
       applyDesignDetail(await loadDesignDetail());
+      setPrintReadyConfirmed(false);
+      setPrintReadyNote("");
       setMessage("Print Ready status updated successfully.");
     } catch (err) {
       setError(err.message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleRecheckModeration = async () => {
+    try {
+      setIsSubmitting(true);
+      setMessage("");
+      setError("");
+
+      const data = await recheckAdminLocalDesign(designId);
+      const payload = data.data || data;
+
+      setDesign(payload.localDesign || payload.design);
+      applyDesignDetail(await loadDesignDetail());
+      setPrintReadyConfirmed(false);
+      setPrintReadyNote("");
+      setMessage("AI moderation recheck was queued.");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const updateCurationField = (field, value) => {
+    setCurationForm((currentForm) => ({
+      ...currentForm,
+      [field]: value,
+    }));
+  };
+
+  const handleSaveCuration = async () => {
+    try {
+      setIsSavingCuration(true);
+      setMessage("");
+      setError("");
+
+      await updateAdminLocalDesignCuration(designId, {
+        isFeatured: curationForm.isFeatured === "true",
+        featuredRank: Number(curationForm.featuredRank) || 0,
+        isLibraryHidden: curationForm.isLibraryHidden === "true",
+        libraryNote: curationForm.libraryNote,
+      });
+      applyDesignDetail(await loadDesignDetail());
+      setMessage("Library curation settings updated.");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSavingCuration(false);
     }
   };
 
@@ -265,7 +348,7 @@ export default function AdminCommunityDesignDetail() {
 
                 {design.fileUrl && (
                   <ButtonLink
-                    to={assetUrl(design.fileUrl)}
+                    to={downloadUrl(design.fileUrl)}
                     target="_blank"
                     rel="noreferrer"
                     className="mt-6"
@@ -335,6 +418,85 @@ export default function AdminCommunityDesignDetail() {
                     </div>
                   )}
                 </div>
+
+                {latestModerationRun && (
+                  <div className="mt-6 border-t border-slate-200 pt-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-slate-500">
+                          Latest AI Run
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-slate-950">
+                          #{latestModerationRun.id} ·{" "}
+                          {String(latestModerationRun.triggerKind || "-")
+                            .replaceAll("_", " ")}
+                        </p>
+                      </div>
+                      <StatusBadge
+                        tone={
+                          latestModerationRun.status === "completed"
+                            ? "success"
+                            : latestModerationRun.status === "failed"
+                              ? "danger"
+                              : "warning"
+                        }
+                      >
+                        {String(latestModerationRun.status || "pending")}
+                      </StatusBadge>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+                      <SummaryItem label="Moderation model">
+                        {latestModerationRun.moderationModel || "-"}
+                      </SummaryItem>
+                      <SummaryItem label="Policy model">
+                        {latestModerationRun.policyModel || "-"}
+                      </SummaryItem>
+                      <SummaryItem label="Policy version">
+                        {latestModerationRun.policyVersion || "-"}
+                      </SummaryItem>
+                      <SummaryItem label="Completed">
+                        {formatDate(latestModerationRun.completedAt)}
+                      </SummaryItem>
+                    </div>
+
+                    {latestModerationRun.summary && (
+                      <p className="mt-4 text-sm leading-6 text-slate-700">
+                        {latestModerationRun.summary}
+                      </p>
+                    )}
+
+                    {(latestModerationRun.items || []).length > 0 && (
+                      <div className="mt-4 overflow-hidden rounded-md border border-slate-200 bg-white">
+                        {(latestModerationRun.items || []).map((item) => (
+                          <div
+                            key={item.id}
+                            className="grid gap-2 border-b border-slate-100 p-3 text-xs last:border-b-0 sm:grid-cols-[160px_minmax(0,1fr)_90px]"
+                          >
+                            <span className="font-medium text-slate-500">
+                              {String(item.itemType || "").replaceAll("_", " ")}
+                            </span>
+                            <span className="break-words text-slate-700">
+                              {item.label}
+                            </span>
+                            <StatusBadge
+                              tone={
+                                item.status === "passed"
+                                  ? "success"
+                                  : item.status === "flagged" ||
+                                      item.status === "failed"
+                                    ? "danger"
+                                    : "neutral"
+                              }
+                            >
+                              {item.status}
+                            </StatusBadge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </Panel>
 
               <Panel className="bg-slate-50 shadow-none">
@@ -423,6 +585,22 @@ export default function AdminCommunityDesignDetail() {
                     {isSubmitting ? "Applying..." : "Apply Action"}
                   </Button>
                 </form>
+
+                <div className="mt-4 border-t border-slate-200 pt-4">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={isSubmitting}
+                    onClick={handleRecheckModeration}
+                    className="w-full"
+                  >
+                    {isSubmitting ? "Queueing..." : "Queue AI moderation recheck"}
+                  </Button>
+                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                    Use this after metadata, image, or generated model render
+                    screening needs to run again. Recheck clears Print Ready.
+                  </p>
+                </div>
               </Panel>
 
               <Panel className="bg-slate-50 shadow-none">
@@ -446,7 +624,11 @@ export default function AdminCommunityDesignDetail() {
                 <Button
                   type="button"
                   variant={design.isPrintReady ? "danger" : "secondary"}
-                  disabled={isSubmitting || !isApproved}
+                  disabled={
+                    isSubmitting ||
+                    !isApproved ||
+                    (!design.isPrintReady && !printReadyConfirmed)
+                  }
                   onClick={handleTogglePrintReady}
                   className="mt-4 w-full"
                 >
@@ -455,11 +637,127 @@ export default function AdminCommunityDesignDetail() {
                     : "Mark Print Ready"}
                 </Button>
 
+                {!design.isPrintReady && (
+                  <div className="mt-4 space-y-3 rounded-md border border-slate-200 bg-white p-3">
+                    <label className="flex items-start gap-3 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={printReadyConfirmed}
+                        onChange={(event) =>
+                          setPrintReadyConfirmed(event.target.checked)
+                        }
+                        className="mt-1 h-4 w-4 rounded border-slate-300"
+                      />
+                      <span>
+                        I verified this exact model file locally in the slicer,
+                        confirmed the file type, orientation/scale, and content
+                        safety, and it is ready for instant quotes.
+                      </span>
+                    </label>
+
+                    <Field label="Verification note">
+                      <TextArea
+                        rows={3}
+                        value={printReadyNote}
+                        onChange={(event) =>
+                          setPrintReadyNote(event.target.value)
+                        }
+                        placeholder="Optional internal verification note."
+                      />
+                    </Field>
+                  </div>
+                )}
+
+                {design.printReadyAt && (
+                  <p className="mt-3 text-xs leading-5 text-slate-500">
+                    Verified on {formatDate(design.printReadyAt)} by admin #
+                    {design.printReadyBy || "-"}.
+                  </p>
+                )}
+
                 {!isApproved && (
                   <p className="mt-3 text-xs leading-5 text-red-600">
                     Approve the design before marking it Print Ready.
                   </p>
                 )}
+              </Panel>
+
+              <Panel className="bg-slate-50 shadow-none">
+                <h2 className="text-lg font-semibold text-slate-950">
+                  Library Curation
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Curation controls public catalog placement only. They do not
+                  approve content or mark files Print Ready.
+                </p>
+
+                <div className="mt-4">
+                  <FormSection columns="grid-cols-1">
+                    <Field label="Featured">
+                      <SelectInput
+                        value={curationForm.isFeatured}
+                        onChange={(event) =>
+                          updateCurationField("isFeatured", event.target.value)
+                        }
+                      >
+                        <option value="false">Not featured</option>
+                        <option value="true">Featured</option>
+                      </SelectInput>
+                    </Field>
+
+                    <Field label="Featured rank">
+                      <input
+                        type="number"
+                        min="0"
+                        max="9999"
+                        value={curationForm.featuredRank}
+                        onChange={(event) =>
+                          updateCurationField(
+                            "featuredRank",
+                            event.target.value,
+                          )
+                        }
+                        className="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </Field>
+
+                    <Field label="Public library visibility">
+                      <SelectInput
+                        value={curationForm.isLibraryHidden}
+                        onChange={(event) =>
+                          updateCurationField(
+                            "isLibraryHidden",
+                            event.target.value,
+                          )
+                        }
+                      >
+                        <option value="false">Visible in library</option>
+                        <option value="true">Hidden from library</option>
+                      </SelectInput>
+                    </Field>
+
+                    <Field label="Library note">
+                      <TextArea
+                        rows={3}
+                        value={curationForm.libraryNote}
+                        onChange={(event) =>
+                          updateCurationField("libraryNote", event.target.value)
+                        }
+                        placeholder="Optional public note shown on the design detail page."
+                      />
+                    </Field>
+                  </FormSection>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={isSavingCuration}
+                  onClick={handleSaveCuration}
+                  className="mt-4 w-full"
+                >
+                  {isSavingCuration ? "Saving..." : "Save Curation"}
+                </Button>
               </Panel>
             </div>
           </div>

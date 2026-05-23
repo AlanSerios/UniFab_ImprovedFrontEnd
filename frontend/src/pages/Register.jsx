@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { registerUser } from "../api/auth";
 import { Button, ButtonLink } from "../components/ui/Button";
@@ -7,6 +8,10 @@ import { Field, SelectInput, TextInput } from "../components/ui/Form";
 import { PageHeader, PageShell, Panel } from "../components/ui/Page";
 
 export default function Register() {
+  const location = useLocation();
+  const redirectTo = location.state?.from || "/dashboard";
+  const pendingQuoteToken = location.state?.pendingQuoteToken || "";
+  const pendingCartAction = location.state?.pendingCartAction || "cart";
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -38,7 +43,8 @@ export default function Register() {
       const data = await registerUser(form);
 
       setSuccessMessage(
-        data.message || "Account created successfully. Please log in.",
+        data.message ||
+          "Account created successfully. Please verify your email before submitting print requests.",
       );
 
       setForm({
@@ -142,7 +148,16 @@ export default function Register() {
             <Alert type="success">
               {successMessage}
               <div className="mt-2">
-                <ButtonLink to="/login" variant="secondary" size="sm">
+                <ButtonLink
+                  to="/login"
+                  state={{
+                    from: redirectTo,
+                    pendingQuoteToken,
+                    pendingCartAction,
+                  }}
+                  variant="secondary"
+                  size="sm"
+                >
                   Go to login
                 </ButtonLink>
               </div>

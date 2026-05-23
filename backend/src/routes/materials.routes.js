@@ -9,7 +9,10 @@ import {
   uploadSlicerProfileVersion,
 } from "../controllers/materials.controller.js";
 import { validate } from "../middlewares/validator.middleware.js";
-import { verifyJWT } from "../middlewares/auth.middleware.js";
+import {
+  verifyEmailVerified,
+  verifyJWT,
+} from "../middlewares/auth.middleware.js";
 import { verifyAdmin } from "../middlewares/role.middleware.js";
 import { slicerProfileUploadMiddleware } from "../middlewares/slicer-profile-upload.middleware.js";
 import {
@@ -28,7 +31,7 @@ const router = express.Router();
 
 router.route("/active").get(publicReadRateLimiter, listActiveMaterials);
 
-router.use(verifyJWT, verifyAdmin);
+router.use(verifyJWT, verifyEmailVerified, verifyAdmin);
 
 router
   .route("/")

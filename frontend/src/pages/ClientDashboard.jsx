@@ -14,14 +14,19 @@ const dashboardLinks = [
     description: "View submitted requests, statuses, and quote snapshots.",
   },
   {
-    to: "/custom-design",
-    title: "Custom design request",
-    description: "Request help creating a printable model from your idea.",
+    to: "/designs",
+    title: "Design Library",
+    description: "Browse approved designs and start quotes from Print Ready files.",
   },
   {
-    to: "/design-requests",
-    title: "Design requests",
-    description: "Track custom design reviews and completed design results.",
+    to: "/my-designs",
+    title: "My Designs",
+    description: "Manage your drafts, submissions, moderation feedback, and visibility.",
+  },
+  {
+    to: "/saved-designs",
+    title: "Saved Designs",
+    description: "Return to private bookmarks from the public library.",
   },
 ];
 
@@ -33,10 +38,10 @@ export default function ClientDashboard() {
       <Panel>
         <PageHeader
           title={`Welcome, ${user?.firstName || user?.name || "Client"}`}
-          description="Start a new quote, review submitted print requests, or prepare a custom design request."
+          description="Start a quote, review submitted print requests, or manage your library designs."
         />
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {dashboardLinks.map((item) => (
             <Link
               key={item.to}

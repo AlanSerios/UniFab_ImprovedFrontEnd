@@ -6,8 +6,10 @@ import { Button } from "../components/ui/Button";
 import { Alert } from "../components/ui/Feedback";
 import { Field, TextInput } from "../components/ui/Form";
 import { PageHeader, PageShell, Panel } from "../components/ui/Page";
+import { useAuth } from "../context/AuthContext";
 
 export default function AccountSettings() {
+  const { user, reloadCurrentUser } = useAuth();
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -65,6 +67,7 @@ export default function AccountSettings() {
       setVerificationMessage(
         response.message || "Verification email sent successfully.",
       );
+      await reloadCurrentUser();
     } catch (err) {
       setVerificationError(
         err.message || "We could not send the verification email.",
@@ -188,22 +191,29 @@ export default function AccountSettings() {
                 Email verification
               </h2>
               <p className="mt-1 max-w-xl text-sm leading-6 text-slate-500">
-                Request a new verification email if your original link expired
-                or did not arrive.
+                {user?.isEmailVerified
+                  ? "Your email address is verified and can be used for print request submission."
+                  : "Request a new verification email if your original link expired or did not arrive."}
               </p>
             </div>
 
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleResendVerification}
-              disabled={isSendingVerification}
-              className="w-full sm:w-auto sm:shrink-0"
-            >
-              {isSendingVerification
-                ? "Sending..."
-                : "Resend verification email"}
-            </Button>
+            {user?.isEmailVerified ? (
+              <span className="rounded-md bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+                Verified
+              </span>
+            ) : (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleResendVerification}
+                disabled={isSendingVerification}
+                className="w-full sm:w-auto sm:shrink-0"
+              >
+                {isSendingVerification
+                  ? "Sending..."
+                  : "Resend verification email"}
+              </Button>
+            )}
           </div>
 
           <div className="mt-5 space-y-3">

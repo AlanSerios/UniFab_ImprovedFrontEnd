@@ -7,7 +7,7 @@ import {
 } from "../../api/materials";
 import { Button } from "../../components/ui/Button";
 import { Alert, StatusBadge } from "../../components/ui/Feedback";
-import { Field, FormSection, TextInput } from "../../components/ui/Form";
+import { Field, FormSection, TextArea, TextInput } from "../../components/ui/Form";
 import { PageHeader, PageShell, Panel } from "../../components/ui/Page";
 import {
   DataTable,
@@ -20,6 +20,7 @@ const EMPTY_FORM = {
   materialKey: "",
   displayName: "",
   materialCostPerGram: "",
+  colorOptionsText: "",
   isActive: true,
 };
 
@@ -32,8 +33,15 @@ function toFormMaterial(material) {
     materialKey: material.material_key,
     displayName: material.display_name || "",
     materialCostPerGram: String(material.material_cost_per_gram ?? ""),
+    colorOptionsText: formatColorOptions(material.colors),
     isActive: Boolean(material.is_active),
   };
+}
+
+function formatColorOptions(colors = []) {
+  return colors
+    .map((color) => [color.name, color.hexCode].filter(Boolean).join(" "))
+    .join(", ");
 }
 
 export default function AdminMaterials() {
@@ -126,6 +134,7 @@ export default function AdminMaterials() {
         materialKey: form.materialKey.trim(),
         displayName: form.displayName.trim(),
         materialCostPerGram: form.materialCostPerGram,
+        colorOptionsText: form.colorOptionsText,
         isActive: form.isActive,
       });
 
@@ -149,6 +158,7 @@ export default function AdminMaterials() {
       await updateMaterial(editingKey, {
         displayName: editForm.displayName.trim(),
         materialCostPerGram: editForm.materialCostPerGram,
+        colorOptionsText: editForm.colorOptionsText,
         isActive: editForm.isActive,
       });
 
@@ -231,6 +241,19 @@ export default function AdminMaterials() {
             <Button type="submit" disabled={isSaving} className="self-end">
               Add material
             </Button>
+
+            <Field
+              label="Color options"
+              hint="Comma-separated. Optional hex codes are supported, e.g. Black #111111, White #ffffff."
+            >
+              <TextArea
+                value={form.colorOptionsText}
+                onChange={(event) =>
+                  updateCreateField("colorOptionsText", event.target.value)
+                }
+                rows={2}
+              />
+            </Field>
           </FormSection>
         </form>
 
@@ -242,6 +265,7 @@ export default function AdminMaterials() {
                 <th className="px-4 py-3">Material</th>
                 <th className="px-4 py-3">Display Name</th>
                 <th className="px-4 py-3">Cost / Gram</th>
+                <th className="px-4 py-3">Colors</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
@@ -249,7 +273,7 @@ export default function AdminMaterials() {
               <TableBody>
               {isLoading && (
                 <tr>
-                  <td className="px-4 py-6 text-slate-500" colSpan={5}>
+                  <td className="px-4 py-6 text-slate-500" colSpan={6}>
                     Loading materials...
                   </td>
                 </tr>
@@ -257,7 +281,7 @@ export default function AdminMaterials() {
 
               {!isLoading && materials.length === 0 && (
                 <tr>
-                  <td className="px-4 py-6 text-slate-500" colSpan={5}>
+                  <td className="px-4 py-6 text-slate-500" colSpan={6}>
                     No materials found.
                   </td>
                 </tr>
@@ -300,6 +324,18 @@ export default function AdminMaterials() {
                               min="0"
                               step="0.01"
                               required
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <TextArea
+                              value={editForm.colorOptionsText}
+                              onChange={(event) =>
+                                updateEditField(
+                                  "colorOptionsText",
+                                  event.target.value,
+                                )
+                              }
+                              rows={3}
                             />
                           </td>
                           <td className="px-4 py-3">
@@ -346,6 +382,27 @@ export default function AdminMaterials() {
                           </td>
                           <td className="px-4 py-3 text-slate-700">
                             {material.material_cost_per_gram}
+                          </td>
+                          <td className="px-4 py-3 text-slate-700">
+                            <div className="flex max-w-xs flex-wrap gap-1">
+                              {(material.colors || []).length === 0 && (
+                                <span className="text-slate-400">-</span>
+                              )}
+                              {(material.colors || []).map((color) => (
+                                <span
+                                  key={`${material.material_key}-${color.id || color.name}`}
+                                  className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700"
+                                >
+                                  {color.hexCode && (
+                                    <span
+                                      className="h-3 w-3 rounded-full border border-slate-300"
+                                      style={{ backgroundColor: color.hexCode }}
+                                    />
+                                  )}
+                                  {color.name}
+                                </span>
+                              ))}
+                            </div>
                           </td>
                           <td className="px-4 py-3">
                             <StatusBadge

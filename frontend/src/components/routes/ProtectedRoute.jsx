@@ -1,9 +1,10 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
-export default function ProtectedRoute({ children }) {
-  const { isAuthenticated, isAuthLoading } = useAuth();
+export default function ProtectedRoute({ children, requireVerified = true }) {
+  const { isAuthenticated, isAuthLoading, user } = useAuth();
   const location = useLocation();
+  const from = `${location.pathname}${location.search}`;
 
   if (isAuthLoading) {
     return (
@@ -14,7 +15,17 @@ export default function ProtectedRoute({ children }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from }}
+      />
+    );
+  }
+
+  if (requireVerified && !user?.isEmailVerified) {
+    return <Navigate to="/verify-required" replace state={{ from }} />;
   }
 
   return children;

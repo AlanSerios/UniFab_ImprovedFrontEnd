@@ -5,6 +5,7 @@ import {
   findUserByEmailVerificationToken,
   findUserByForgotPasswordToken,
   isPasswordCorrect,
+  isRefreshTokenActive,
   generateAccessToken,
   generateRefreshToken,
   generateTemporaryToken,
@@ -49,6 +50,18 @@ const generateAccessAndRefreshTokens = async (userId) => {
   }
 };
 
+const getClientAppUrl = () =>
+  process.env.CLIENT_APP_URL ||
+  process.env.FRONTEND_URL ||
+  "http://localhost:5173";
+
+const buildFrontendUrl = (path) => {
+  const baseUrl = getClientAppUrl().replace(/\/+$/, "");
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+
+  return `${baseUrl}${normalizedPath}`;
+};
+
 const registerUser = asyncHandler(async (req, res) => {
   const { firstName, lastName, email, password, userType } = req.body;
 
@@ -81,7 +94,7 @@ const registerUser = asyncHandler(async (req, res) => {
     subject: "Please verify your email",
     mailgenContent: emailVerificationMailgenContent(
       `${user.first_name} ${user.last_name}`,
-      `${req.protocol}://${req.get("host")}/api/v1/auth/verify-email/${unHashedToken}`,
+      buildFrontendUrl(`/verify-email/${unHashedToken}`),
     ),
   });
 
@@ -254,7 +267,7 @@ const resendVerificationEmail = asyncHandler(async (req, res) => {
     subject: "Please verify your email",
     mailgenContent: emailVerificationMailgenContent(
       `${user.first_name} ${user.last_name}`,
-      `${req.protocol}://${req.get("host")}/api/v1/auth/verify-email/${unHashedToken}`,
+      buildFrontendUrl(`/verify-email/${unHashedToken}`),
     ),
   });
 
@@ -289,7 +302,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       throw new ApiError(401, "Invalid refresh token");
     }
 
-    if (user.refresh_token !== incomingRefreshToken) {
+    if (!(await isRefreshTokenActive(user.id, incomingRefreshToken))) {
       throw new ApiError(401, "Refresh token is invalid");
     }
 

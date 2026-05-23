@@ -1,5 +1,11 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { getCurrentUser, loginUser, logoutUser } from "../api/auth";
 
 const AuthContext = createContext(null);
@@ -16,6 +22,7 @@ function normalizeUser(user) {
       [user.firstName, user.lastName].filter(Boolean).join(" ") ||
       user.email,
     role: user.isAdmin ? "admin" : "client",
+    isEmailVerified: Boolean(user.isEmailVerified),
   };
 }
 
@@ -23,20 +30,32 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
+  const reloadCurrentUser = useCallback(async () => {
+    try {
+      const data = await getCurrentUser();
+      const currentUser = normalizeUser(data.data?.user || data.user);
+
+      setUser(currentUser);
+
+      return currentUser;
+    } catch {
+      setUser(null);
+
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     async function loadCurrentUser() {
       try {
-        const data = await getCurrentUser();
-        setUser(normalizeUser(data.data?.user || data.user));
-      } catch {
-        setUser(null);
+        await reloadCurrentUser();
       } finally {
         setIsAuthLoading(false);
       }
     }
 
     loadCurrentUser();
-  }, []);
+  }, [reloadCurrentUser]);
 
   const login = async ({ email, password }) => {
     const data = await loginUser({ email, password });
@@ -62,6 +81,7 @@ export function AuthProvider({ children }) {
     isAdmin: user?.role === "admin",
     login,
     logout,
+    reloadCurrentUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -7,13 +7,19 @@ import { Alert } from "../components/ui/Feedback";
 import { Field, TextInput } from "../components/ui/Form";
 import { PageHeader, PageShell, Panel } from "../components/ui/Page";
 import { useAuth } from "../context/AuthContext";
+import { useCart } from "../context/CartContext";
+import { rememberVerifiedDestination } from "../utils/verification-destination";
+import { createRequestDraft } from "../api/requests";
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
+  const { addItem } = useCart();
 
   const redirectTo = location.state?.from || "/dashboard";
+  const pendingQuoteToken = location.state?.pendingQuoteToken || "";
+  const pendingCartAction = location.state?.pendingCartAction || "cart";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,8 +37,42 @@ export default function Login() {
 
       const user = await login({ email, password });
 
+      if (!user.isEmailVerified) {
+        rememberVerifiedDestination(redirectTo);
+        navigate("/verify-required", {
+          replace: true,
+          state: { from: redirectTo },
+        });
+        return;
+      }
+
       if (user.role === "admin" && redirectTo === "/dashboard") {
         navigate("/admin");
+        return;
+      }
+
+      if (pendingQuoteToken) {
+        const result = await addItem(pendingQuoteToken);
+        let submitPath = "/cart";
+
+        if (pendingCartAction === "submit") {
+          if (!result?.addedItem?.id) {
+            throw new Error("Quote was added, but no cart item was returned.");
+          }
+
+          const data = await createRequestDraft({
+            cartItemIds: [result.addedItem.id],
+          });
+          const draft = data.data?.draft || data.draft;
+
+          if (!draft?.draftToken) {
+            throw new Error("Request draft was created without a token.");
+          }
+
+          submitPath = `/requests/new/${draft.draftToken}`;
+        }
+
+        navigate(pendingCartAction === "submit" ? submitPath : "/cart");
         return;
       }
 
@@ -103,6 +143,21 @@ export default function Login() {
           <Button type="submit" disabled={isSubmitting} className="w-full">
             {isSubmitting ? "Signing in..." : "Login"}
           </Button>
+
+          <p className="text-center text-sm text-slate-500">
+            Need an account?{" "}
+            <Link
+              to="/register"
+              state={{
+                from: redirectTo,
+                pendingQuoteToken,
+                pendingCartAction,
+              }}
+              className="font-semibold text-slate-950 underline"
+            >
+              Create one
+            </Link>
+          </p>
         </form>
       </Panel>
     </PageShell>

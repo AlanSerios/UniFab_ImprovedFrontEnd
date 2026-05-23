@@ -1,8 +1,10 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import { AuthProvider } from "./context/AuthContext";
+import { CartProvider } from "./context/CartContext";
 import AppLayout from "./components/layout/AppLayout";
 import Home from "./pages/Home";
+import About from "./pages/About";
 import UploadQuote from "./pages/UploadQuote";
 import QuoteReview from "./pages/QuoteReview";
 import Login from "./pages/Login";
@@ -11,13 +13,16 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import AccountSettings from "./pages/AccountSettings";
 import VerifyEmail from "./pages/VerifyEmail";
+import VerifyRequired from "./pages/VerifyRequired";
+import Terms from "./pages/Terms";
+import Cart from "./pages/Cart";
+import PrintRequestSubmission from "./pages/PrintRequestSubmission";
 
 import ClientDashboard from "./pages/ClientDashboard";
+import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminPrintRequests from "./pages/admin/AdminPrintRequests";
 import AdminPrintRequestDetail from "./pages/admin/AdminPrintRequestDetail";
-import AdminDesignRequests from "./pages/admin/AdminDesignRequests";
-import AdminDesignRequestDetail from "./pages/admin/AdminDesignRequestDetail";
 import AdminLocalDesigns from "./pages/admin/AdminLocalDesigns";
 import AdminLocalDesignForm from "./pages/admin/AdminLocalDesignForm";
 import AdminCommunityDesigns from "./pages/admin/AdminCommunityDesigns";
@@ -28,14 +33,16 @@ import AdminSlicerProfiles from "./pages/admin/AdminSlicerProfiles";
 import AdminPricingConfig from "./pages/admin/AdminPricingConfig";
 import AdminMaintenance from "./pages/admin/AdminMaintenance";
 import AdminPrinters from "./pages/admin/AdminPrinters";
+import AdminQuoteReadiness from "./pages/admin/AdminQuoteReadiness";
+import AdminDesignTaxonomy from "./pages/admin/AdminDesignTaxonomy";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminAudit from "./pages/admin/AdminAudit";
+import AdminContent from "./pages/admin/AdminContent";
 
 import ProtectedRoute from "./components/routes/ProtectedRoute";
 import AdminRoute from "./components/routes/AdminRoute";
 import PrintRequestDetail from "./pages/PrintRequestDetail";
 import PrintRequests from "./pages/PrintRequests";
-import CustomDesignRequest from "./pages/CustomDesignRequest";
-import DesignRequests from "./pages/DesignRequests";
-import DesignRequestDetail from "./pages/DesignRequestDetail";
 import DesignLibrary from "./pages/DesignLibrary";
 import LocalDesignDetail from "./pages/LocalDesignDetail";
 import MmfDesignDetail from "./pages/MmfDesignDetail";
@@ -44,17 +51,45 @@ import Printers from "./pages/Printers";
 import SystemStatus from "./pages/SystemStatus";
 import MyDesigns from "./pages/MyDesigns";
 import MyDesignForm from "./pages/MyDesignForm";
+import SavedDesigns from "./pages/SavedDesigns";
 
 export default function App() {
   return (
     <AuthProvider>
+      <CartProvider>
       <BrowserRouter>
         <Routes>
           <Route element={<AppLayout />}>
             <Route path="/" element={<Home />} />
+            <Route path="/about" element={<About />} />
             <Route path="/quote" element={<UploadQuote />} />
             <Route path="/quote/:quoteToken" element={<QuoteReview />} />
             <Route path="/printers" element={<Printers />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route
+              path="/cart"
+              element={
+                <ProtectedRoute>
+                  <Cart />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/requests/new"
+              element={
+                <ProtectedRoute>
+                  <PrintRequestSubmission />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/requests/new/:draftToken"
+              element={
+                <ProtectedRoute>
+                  <PrintRequestSubmission />
+                </ProtectedRoute>
+              }
+            />
 
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -75,6 +110,14 @@ export default function App() {
               path="/verify-email/:verificationToken"
               element={<VerifyEmail />}
             />
+            <Route
+              path="/verify-required"
+              element={
+                <ProtectedRoute requireVerified={false}>
+                  <VerifyRequired />
+                </ProtectedRoute>
+              }
+            />
 
             <Route
               path="/dashboard"
@@ -88,131 +131,55 @@ export default function App() {
               path="/admin"
               element={
                 <AdminRoute>
-                  <AdminDashboard />
+                  <AdminLayout />
                 </AdminRoute>
               }
-            />
-            <Route
-              path="/admin/print-requests"
-              element={
-                <AdminRoute>
-                  <AdminPrintRequests />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/print-requests/:requestId"
-              element={
-                <AdminRoute>
-                  <AdminPrintRequestDetail />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/design-requests"
-              element={
-                <AdminRoute>
-                  <AdminDesignRequests />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/design-requests/:requestId"
-              element={
-                <AdminRoute>
-                  <AdminDesignRequestDetail />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/local-designs"
-              element={
-                <AdminRoute>
-                  <AdminLocalDesigns />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/local-designs/new"
-              element={
-                <AdminRoute>
-                  <AdminLocalDesignForm />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/local-designs/:designId"
-              element={
-                <AdminRoute>
-                  <AdminLocalDesignForm />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/community-designs"
-              element={
-                <AdminRoute>
-                  <AdminCommunityDesigns />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/community-designs/:designId"
-              element={
-                <AdminRoute>
-                  <AdminCommunityDesignDetail />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/mmf-overrides"
-              element={
-                <AdminRoute>
-                  <AdminMmfOverrides />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/materials"
-              element={
-                <AdminRoute>
-                  <AdminMaterials />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/slicer-profiles"
-              element={
-                <AdminRoute>
-                  <AdminSlicerProfiles />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/pricing"
-              element={
-                <AdminRoute>
-                  <AdminPricingConfig />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/printers"
-              element={
-                <AdminRoute>
-                  <AdminPrinters />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/maintenance"
-              element={
-                <AdminRoute>
-                  <AdminMaintenance />
-                </AdminRoute>
-              }
-            />
-            <Route path="admin/status" element={<SystemStatus />} />
+            >
+              <Route index element={<AdminDashboard />} />
+              <Route path="print-requests" element={<AdminPrintRequests />} />
+              <Route
+                path="print-requests/:requestId"
+                element={<AdminPrintRequestDetail />}
+              />
+              <Route path="local-designs" element={<AdminLocalDesigns />} />
+              <Route path="lab-designs" element={<AdminLocalDesigns />} />
+              <Route
+                path="local-designs/new"
+                element={<AdminLocalDesignForm />}
+              />
+              <Route
+                path="local-designs/:designId"
+                element={<AdminLocalDesignForm />}
+              />
+              <Route
+                path="community-designs"
+                element={<AdminCommunityDesigns />}
+              />
+              <Route
+                path="community-designs/:designId"
+                element={<AdminCommunityDesignDetail />}
+              />
+              <Route path="mmf-overrides" element={<AdminMmfOverrides />} />
+              <Route path="design-taxonomy" element={<AdminDesignTaxonomy />} />
+              <Route path="materials" element={<AdminMaterials />} />
+              <Route path="slicer-profiles" element={<AdminSlicerProfiles />} />
+              <Route path="pricing" element={<AdminPricingConfig />} />
+              <Route
+                path="lab-designs/new"
+                element={<AdminLocalDesignForm />}
+              />
+              <Route
+                path="lab-designs/:designId"
+                element={<AdminLocalDesignForm />}
+              />
+              <Route path="quote-readiness" element={<AdminQuoteReadiness />} />
+              <Route path="printers" element={<AdminPrinters />} />
+              <Route path="maintenance" element={<AdminMaintenance />} />
+              <Route path="status" element={<SystemStatus />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="audit" element={<AdminAudit />} />
+              <Route path="content" element={<AdminContent />} />
+            </Route>
             <Route
               path="/requests/:requestId"
               element={
@@ -229,36 +196,20 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/custom-design"
-              element={
-                <ProtectedRoute>
-                  <CustomDesignRequest />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/design-requests"
-              element={
-                <ProtectedRoute>
-                  <DesignRequests />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/design-requests/:requestId"
-              element={
-                <ProtectedRoute>
-                  <DesignRequestDetail />
-                </ProtectedRoute>
-              }
-            />
             <Route path="/designs" element={<DesignLibrary />} />
             <Route
               path="/my-designs"
               element={
                 <ProtectedRoute>
                   <MyDesigns />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/saved-designs"
+              element={
+                <ProtectedRoute>
+                  <SavedDesigns />
                 </ProtectedRoute>
               }
             />
@@ -290,6 +241,7 @@ export default function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      </CartProvider>
     </AuthProvider>
   );
 }

@@ -1,0 +1,261 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/components/layout/AppLayout.jsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=45caa8ea"; const Fragment = __vite__cjsImport0_react_jsxDevRuntime["Fragment"]; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+let prevRefreshReg;
+let prevRefreshSig;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  prevRefreshReg = window.$RefreshReg$;
+  prevRefreshSig = window.$RefreshSig$;
+  window.$RefreshReg$ = RefreshRuntime.getRefreshReg("C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx");
+  window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+}
+var _s = $RefreshSig$();
+import { Link, NavLink, Outlet, useNavigate } from "/node_modules/.vite/deps/react-router-dom.js?v=45caa8ea";
+import { useAuth } from "/src/context/AuthContext.jsx";
+import { useCart } from "/src/context/CartContext.jsx";
+function HeaderLink({ to, children }) {
+  return /* @__PURE__ */ jsxDEV(
+    NavLink,
+    {
+      to,
+      className: ({ isActive }) => `rounded-md px-2.5 py-1.5 transition ${isActive ? "bg-slate-100 text-slate-950" : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"}`,
+      children
+    },
+    void 0,
+    false,
+    {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+      lineNumber: 26,
+      columnNumber: 5
+    },
+    this
+  );
+}
+_c = HeaderLink;
+export default function AppLayout() {
+  _s();
+  const navigate = useNavigate();
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
+  const { itemCount } = useCart();
+  const handleLogout = async () => {
+    await logout();
+    navigate("/");
+  };
+  return /* @__PURE__ */ jsxDEV("div", { className: "min-h-screen bg-slate-50 text-slate-950", children: [
+    /* @__PURE__ */ jsxDEV("header", { className: "sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur print:hidden", children: /* @__PURE__ */ jsxDEV("nav", { className: "mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8", children: [
+      /* @__PURE__ */ jsxDEV(
+        Link,
+        {
+          to: "/",
+          className: "text-xl font-semibold tracking-tight text-slate-950",
+          children: "UniFab"
+        },
+        void 0,
+        false,
+        {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 55,
+          columnNumber: 11
+        },
+        this
+      ),
+      /* @__PURE__ */ jsxDEV("div", { className: "flex flex-wrap items-center gap-1 text-sm font-medium", children: isAuthenticated && !user?.isEmailVerified ? /* @__PURE__ */ jsxDEV(Fragment, { children: [
+        /* @__PURE__ */ jsxDEV(HeaderLink, { to: "/verify-required", children: "Verify Email" }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 65,
+          columnNumber: 17
+        }, this),
+        /* @__PURE__ */ jsxDEV(HeaderLink, { to: "/quote", children: "Get Quote" }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 66,
+          columnNumber: 17
+        }, this),
+        /* @__PURE__ */ jsxDEV(
+          "button",
+          {
+            type: "button",
+            onClick: handleLogout,
+            className: "rounded-md px-2.5 py-1.5 text-slate-600 transition hover:bg-slate-50 hover:text-slate-950",
+            children: "Logout"
+          },
+          void 0,
+          false,
+          {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+            lineNumber: 67,
+            columnNumber: 17
+          },
+          this
+        )
+      ] }, void 0, true, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+        lineNumber: 64,
+        columnNumber: 13
+      }, this) : isAuthenticated ? /* @__PURE__ */ jsxDEV(Fragment, { children: [
+        /* @__PURE__ */ jsxDEV(HeaderLink, { to: "/dashboard", children: "Dashboard" }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 77,
+          columnNumber: 17
+        }, this),
+        /* @__PURE__ */ jsxDEV(HeaderLink, { to: "/quote", children: "Get Quote" }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 78,
+          columnNumber: 17
+        }, this),
+        /* @__PURE__ */ jsxDEV(HeaderLink, { to: "/cart", children: [
+          "Cart (",
+          itemCount,
+          ")"
+        ] }, void 0, true, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 79,
+          columnNumber: 17
+        }, this),
+        /* @__PURE__ */ jsxDEV(HeaderLink, { to: "/designs", children: "Designs" }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 80,
+          columnNumber: 17
+        }, this),
+        /* @__PURE__ */ jsxDEV(HeaderLink, { to: "/requests", children: "Requests" }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 81,
+          columnNumber: 17
+        }, this),
+        /* @__PURE__ */ jsxDEV(HeaderLink, { to: "/printers", children: "Printers" }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 82,
+          columnNumber: 17
+        }, this),
+        /* @__PURE__ */ jsxDEV(HeaderLink, { to: "/my-designs", children: "My Designs" }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 83,
+          columnNumber: 17
+        }, this),
+        /* @__PURE__ */ jsxDEV(HeaderLink, { to: "/saved-designs", children: "Saved" }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 84,
+          columnNumber: 17
+        }, this),
+        isAdmin && /* @__PURE__ */ jsxDEV(HeaderLink, { to: "/admin", children: "Admin" }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 86,
+          columnNumber: 29
+        }, this),
+        /* @__PURE__ */ jsxDEV(HeaderLink, { to: "/account-settings", children: user?.name }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 88,
+          columnNumber: 17
+        }, this),
+        /* @__PURE__ */ jsxDEV(
+          "button",
+          {
+            type: "button",
+            onClick: handleLogout,
+            className: "rounded-md px-2.5 py-1.5 text-slate-600 transition hover:bg-slate-50 hover:text-slate-950",
+            children: "Logout"
+          },
+          void 0,
+          false,
+          {
+            fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+            lineNumber: 90,
+            columnNumber: 17
+          },
+          this
+        )
+      ] }, void 0, true, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+        lineNumber: 76,
+        columnNumber: 13
+      }, this) : /* @__PURE__ */ jsxDEV(Fragment, { children: [
+        /* @__PURE__ */ jsxDEV(HeaderLink, { to: "/quote", children: "Get Quote" }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 100,
+          columnNumber: 17
+        }, this),
+        /* @__PURE__ */ jsxDEV(HeaderLink, { to: "/cart", children: [
+          "Cart (",
+          itemCount,
+          ")"
+        ] }, void 0, true, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 101,
+          columnNumber: 17
+        }, this),
+        /* @__PURE__ */ jsxDEV(HeaderLink, { to: "/designs", children: "Designs" }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 102,
+          columnNumber: 17
+        }, this),
+        /* @__PURE__ */ jsxDEV(HeaderLink, { to: "/printers", children: "Printers" }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 103,
+          columnNumber: 17
+        }, this),
+        /* @__PURE__ */ jsxDEV(HeaderLink, { to: "/login", children: "Login" }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 104,
+          columnNumber: 17
+        }, this),
+        /* @__PURE__ */ jsxDEV(HeaderLink, { to: "/register", children: "Register" }, void 0, false, {
+          fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+          lineNumber: 105,
+          columnNumber: 17
+        }, this)
+      ] }, void 0, true, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+        lineNumber: 99,
+        columnNumber: 13
+      }, this) }, void 0, false, {
+        fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+        lineNumber: 62,
+        columnNumber: 11
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+      lineNumber: 54,
+      columnNumber: 9
+    }, this) }, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+      lineNumber: 53,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV(Outlet, {}, void 0, false, {
+      fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+      lineNumber: 112,
+      columnNumber: 7
+    }, this)
+  ] }, void 0, true, {
+    fileName: "C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx",
+    lineNumber: 52,
+    columnNumber: 5
+  }, this);
+}
+_s(AppLayout, "wopRxICfG2u0aRa1KdnDJNtiW38=", false, function() {
+  return [useNavigate, useAuth, useCart];
+});
+_c2 = AppLayout;
+var _c, _c2;
+$RefreshReg$(_c, "HeaderLink");
+$RefreshReg$(_c2, "AppLayout");
+if (import.meta.hot && !inWebWorker) {
+  window.$RefreshReg$ = prevRefreshReg;
+  window.$RefreshSig$ = prevRefreshSig;
+}
+if (import.meta.hot && !inWebWorker) {
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("C:/Users/Kent Christian/Documents/UniFab/frontend/src/components/layout/AppLayout.jsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+
+//# sourceMappingURL=data:application/json;base64,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QSxVQUNkUixhQUNrQ0MsU0FDN0JDLE9BQU87QUFBQTtBQUFBLE1BSFBNO0FBQVMsSUFBQUQsSUFBQVk7QUFBQSxhQUFBWixJQUFBO0FBQUEsYUFBQVksS0FBQSIsIm5hbWVzIjpbIkxpbmsiLCJOYXZMaW5rIiwiT3V0bGV0IiwidXNlTmF2aWdhdGUiLCJ1c2VBdXRoIiwidXNlQ2FydCIsIkhlYWRlckxpbmsiLCJ0byIsImNoaWxkcmVuIiwiaXNBY3RpdmUiLCJfYyIsIkFwcExheW91dCIsIl9zIiwibmF2aWdhdGUiLCJ1c2VyIiwiaXNBdXRoZW50aWNhdGVkIiwiaXNBZG1pbiIsImxvZ291dCIsIml0ZW1Db3VudCIsImhhbmRsZUxvZ291dCIsImlzRW1haWxWZXJpZmllZCIsIm5hbWUiLCJfYzIiXSwiaWdub3JlTGlzdCI6W10sInNvdXJjZXMiOlsiQXBwTGF5b3V0LmpzeCJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBMaW5rLCBOYXZMaW5rLCBPdXRsZXQsIHVzZU5hdmlnYXRlIH0gZnJvbSBcInJlYWN0LXJvdXRlci1kb21cIjtcbmltcG9ydCB7IHVzZUF1dGggfSBmcm9tIFwiLi4vLi4vY29udGV4dC9BdXRoQ29udGV4dFwiO1xuaW1wb3J0IHsgdXNlQ2FydCB9IGZyb20gXCIuLi8uLi9jb250ZXh0L0NhcnRDb250ZXh0XCI7XG5cclxuZnVuY3Rpb24gSGVhZGVyTGluayh7IHRvLCBjaGlsZHJlbiB9KSB7XHJcbiAgcmV0dXJuIChcclxuICAgIDxOYXZMaW5rXHJcbiAgICAgIHRvPXt0b31cclxuICAgICAgY2xhc3NOYW1lPXsoeyBpc0FjdGl2ZSB9KSA9PlxyXG4gICAgICAgIGByb3VuZGVkLW1kIHB4LTIuNSBweS0xLjUgdHJhbnNpdGlvbiAke1xyXG4gICAgICAgICAgaXNBY3RpdmVcclxuICAgICAgICAgICAgPyBcImJnLXNsYXRlLTEwMCB0ZXh0LXNsYXRlLTk1MFwiXHJcbiAgICAgICAgICAgIDogXCJ0ZXh0LXNsYXRlLTYwMCBob3ZlcjpiZy1zbGF0ZS01MCBob3Zlcjp0ZXh0LXNsYXRlLTk1MFwiXHJcbiAgICAgICAgfWBcclxuICAgICAgfVxyXG4gICAgPlxyXG4gICAgICB7Y2hpbGRyZW59XHJcbiAgICA8L05hdkxpbms+XHJcbiAgKTtcclxufVxyXG5cclxuZXhwb3J0IGRlZmF1bHQgZnVuY3Rpb24gQXBwTGF5b3V0KCkge1xyXG4gIGNvbnN0IG5hdmlnYXRlID0gdXNlTmF2aWdhdGUoKTtcbiAgY29uc3QgeyB1c2VyLCBpc0F1dGhlbnRpY2F0ZWQsIGlzQWRtaW4sIGxvZ291dCB9ID0gdXNlQXV0aCgpO1xuICBjb25zdCB7IGl0ZW1Db3VudCB9ID0gdXNlQ2FydCgpO1xuXHJcbiAgY29uc3QgaGFuZGxlTG9nb3V0ID0gYXN5bmMgKCkgPT4ge1xyXG4gICAgYXdhaXQgbG9nb3V0KCk7XHJcbiAgICBuYXZpZ2F0ZShcIi9cIik7XHJcbiAgfTtcclxuXHJcbiAgcmV0dXJuIChcclxuICAgIDxkaXYgY2xhc3NOYW1lPVwibWluLWgtc2NyZWVuIGJnLXNsYXRlLTUwIHRleHQtc2xhdGUtOTUwXCI+XHJcbiAgICAgIDxoZWFkZXIgY2xhc3NOYW1lPVwic3RpY2t5IHRvcC0wIHotMjAgYm9yZGVyLWIgYm9yZGVyLXNsYXRlLTIwMCBiZy13aGl0ZS85NSBiYWNrZHJvcC1ibHVyIHByaW50OmhpZGRlblwiPlxyXG4gICAgICAgIDxuYXYgY2xhc3NOYW1lPVwibXgtYXV0byBmbGV4IG1heC13LTZ4bCBmbGV4LWNvbCBnYXAtMyBweC00IHB5LTMgc206cHgtNiBsZzpmbGV4LXJvdyBsZzppdGVtcy1jZW50ZXIgbGc6anVzdGlmeS1iZXR3ZWVuIGxnOnB4LThcIj5cclxuICAgICAgICAgIDxMaW5rXHJcbiAgICAgICAgICAgIHRvPVwiL1wiXHJcbiAgICAgICAgICAgIGNsYXNzTmFtZT1cInRleHQteGwgZm9udC1zZW1pYm9sZCB0cmFja2luZy10aWdodCB0ZXh0LXNsYXRlLTk1MFwiXHJcbiAgICAgICAgICA+XHJcbiAgICAgICAgICAgIFVuaUZhYlxyXG4gICAgICAgICAgPC9MaW5rPlxyXG5cclxuICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBmbGV4LXdyYXAgaXRlbXMtY2VudGVyIGdhcC0xIHRleHQtc20gZm9udC1tZWRpdW1cIj5cbiAgICAgICAgICAgIHtpc0F1dGhlbnRpY2F0ZWQgJiYgIXVzZXI/LmlzRW1haWxWZXJpZmllZCA/IChcbiAgICAgICAgICAgICAgPD5cbiAgICAgICAgICAgICAgICA8SGVhZGVyTGluayB0bz1cIi92ZXJpZnktcmVxdWlyZWRcIj5WZXJpZnkgRW1haWw8L0hlYWRlckxpbms+XG4gICAgICAgICAgICAgICAgPEhlYWRlckxpbmsgdG89XCIvcXVvdGVcIj5HZXQgUXVvdGU8L0hlYWRlckxpbms+XG4gICAgICAgICAgICAgICAgPGJ1dHRvblxuICAgICAgICAgICAgICAgICAgdHlwZT1cImJ1dHRvblwiXG4gICAgICAgICAgICAgICAgICBvbkNsaWNrPXtoYW5kbGVMb2dvdXR9XG4gICAgICAgICAgICAgICAgICBjbGFzc05hbWU9XCJyb3VuZGVkLW1kIHB4LTIuNSBweS0xLjUgdGV4dC1zbGF0ZS02MDAgdHJhbnNpdGlvbiBob3ZlcjpiZy1zbGF0ZS01MCBob3Zlcjp0ZXh0LXNsYXRlLTk1MFwiXG4gICAgICAgICAgICAgICAgPlxuICAgICAgICAgICAgICAgICAgTG9nb3V0XG4gICAgICAgICAgICAgICAgPC9idXR0b24+XG4gICAgICAgICAgICAgIDwvPlxuICAgICAgICAgICAgKSA6IGlzQXV0aGVudGljYXRlZCA/IChcbiAgICAgICAgICAgICAgPD5cbiAgICAgICAgICAgICAgICA8SGVhZGVyTGluayB0bz1cIi9kYXNoYm9hcmRcIj5EYXNoYm9hcmQ8L0hlYWRlckxpbms+XG4gICAgICAgICAgICAgICAgPEhlYWRlckxpbmsgdG89XCIvcXVvdGVcIj5HZXQgUXVvdGU8L0hlYWRlckxpbms+XG4gICAgICAgICAgICAgICAgPEhlYWRlckxpbmsgdG89XCIvY2FydFwiPkNhcnQgKHtpdGVtQ291bnR9KTwvSGVhZGVyTGluaz5cbiAgICAgICAgICAgICAgICA8SGVhZGVyTGluayB0bz1cIi9kZXNpZ25zXCI+RGVzaWduczwvSGVhZGVyTGluaz5cbiAgICAgICAgICAgICAgICA8SGVhZGVyTGluayB0bz1cIi9yZXF1ZXN0c1wiPlJlcXVlc3RzPC9IZWFkZXJMaW5rPlxuICAgICAgICAgICAgICAgIDxIZWFkZXJMaW5rIHRvPVwiL3ByaW50ZXJzXCI+UHJpbnRlcnM8L0hlYWRlckxpbms+XG4gICAgICAgICAgICAgICAgPEhlYWRlckxpbmsgdG89XCIvbXktZGVzaWduc1wiPk15IERlc2lnbnM8L0hlYWRlckxpbms+XG4gICAgICAgICAgICAgICAgPEhlYWRlckxpbmsgdG89XCIvc2F2ZWQtZGVzaWduc1wiPlNhdmVkPC9IZWFkZXJMaW5rPlxuXG4gICAgICAgICAgICAgICAge2lzQWRtaW4gJiYgPEhlYWRlckxpbmsgdG89XCIvYWRtaW5cIj5BZG1pbjwvSGVhZGVyTGluaz59XG5cclxuICAgICAgICAgICAgICAgIDxIZWFkZXJMaW5rIHRvPVwiL2FjY291bnQtc2V0dGluZ3NcIj57dXNlcj8ubmFtZX08L0hlYWRlckxpbms+XHJcblxyXG4gICAgICAgICAgICAgICAgPGJ1dHRvblxyXG4gICAgICAgICAgICAgICAgICB0eXBlPVwiYnV0dG9uXCJcclxuICAgICAgICAgICAgICAgICAgb25DbGljaz17aGFuZGxlTG9nb3V0fVxyXG4gICAgICAgICAgICAgICAgICBjbGFzc05hbWU9XCJyb3VuZGVkLW1kIHB4LTIuNSBweS0xLjUgdGV4dC1zbGF0ZS02MDAgdHJhbnNpdGlvbiBob3ZlcjpiZy1zbGF0ZS01MCBob3Zlcjp0ZXh0LXNsYXRlLTk1MFwiXHJcbiAgICAgICAgICAgICAgICA+XHJcbiAgICAgICAgICAgICAgICAgIExvZ291dFxyXG4gICAgICAgICAgICAgICAgPC9idXR0b24+XHJcbiAgICAgICAgICAgICAgPC8+XHJcbiAgICAgICAgICAgICkgOiAoXHJcbiAgICAgICAgICAgICAgPD5cclxuICAgICAgICAgICAgICAgIDxIZWFkZXJMaW5rIHRvPVwiL3F1b3RlXCI+R2V0IFF1b3RlPC9IZWFkZXJMaW5rPlxuICAgICAgICAgICAgICAgIDxIZWFkZXJMaW5rIHRvPVwiL2NhcnRcIj5DYXJ0ICh7aXRlbUNvdW50fSk8L0hlYWRlckxpbms+XG4gICAgICAgICAgICAgICAgPEhlYWRlckxpbmsgdG89XCIvZGVzaWduc1wiPkRlc2lnbnM8L0hlYWRlckxpbms+XG4gICAgICAgICAgICAgICAgPEhlYWRlckxpbmsgdG89XCIvcHJpbnRlcnNcIj5QcmludGVyczwvSGVhZGVyTGluaz5cclxuICAgICAgICAgICAgICAgIDxIZWFkZXJMaW5rIHRvPVwiL2xvZ2luXCI+TG9naW48L0hlYWRlckxpbms+XHJcbiAgICAgICAgICAgICAgICA8SGVhZGVyTGluayB0bz1cIi9yZWdpc3RlclwiPlJlZ2lzdGVyPC9IZWFkZXJMaW5rPlxyXG4gICAgICAgICAgICAgIDwvPlxyXG4gICAgICAgICAgICApfVxyXG4gICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgPC9uYXY+XHJcbiAgICAgIDwvaGVhZGVyPlxyXG5cclxuICAgICAgPE91dGxldCAvPlxyXG4gICAgPC9kaXY+XHJcbiAgKTtcclxufVxyXG4iXSwiZmlsZSI6IkM6L1VzZXJzL0tlbnQgQ2hyaXN0aWFuL0RvY3VtZW50cy9VbmlGYWIvZnJvbnRlbmQvc3JjL2NvbXBvbmVudHMvbGF5b3V0L0FwcExheW91dC5qc3gifQ==

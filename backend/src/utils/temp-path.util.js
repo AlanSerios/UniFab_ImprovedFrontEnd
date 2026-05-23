@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
+import { resolveTempPath } from "./storage-root.util.js";
 
 function ensureDirExists(dirPath) {
   if (!fs.existsSync(dirPath)) {
@@ -9,7 +10,7 @@ function ensureDirExists(dirPath) {
 }
 
 function getTempDir(...segments) {
-  const dirPath = path.resolve(process.cwd(), "temp", ...segments);
+  const dirPath = resolveTempPath(...segments);
   ensureDirExists(dirPath);
   return dirPath;
 }

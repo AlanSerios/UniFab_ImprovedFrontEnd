@@ -1,34 +1,79 @@
 import pool from "../db/db.js";
 
-function serializeJson(value) {
-  if (value === undefined || value === null) {
-    return null;
+const PRINTER_SELECT = `
+  p.id,
+  p.name,
+  p.model,
+  p.technology,
+  p.build_volume,
+  p.nozzle_size,
+  COALESCE(
+    (
+      SELECT CONCAT(
+        '[',
+        COALESCE(
+          GROUP_CONCAT(JSON_QUOTE(m.material_key) ORDER BY m.display_name ASC SEPARATOR ','),
+          ''
+        ),
+        ']'
+      )
+      FROM printer_materials pm
+      INNER JOIN materials m ON m.id = pm.material_id
+      WHERE pm.printer_id = p.id
+    ),
+    '[]'
+  ) AS supported_materials,
+  p.status,
+  p.is_public,
+  p.display_order,
+  p.notes,
+  p.created_by,
+  p.updated_by,
+  p.created_at,
+  p.updated_at
+`;
+
+async function syncPrinterMaterials(executor, printerId, supportedMaterials = []) {
+  await executor.query("DELETE FROM printer_materials WHERE printer_id = ?", [
+    printerId,
+  ]);
+
+  const materialKeys = [...new Set(supportedMaterials.map(String))];
+
+  if (materialKeys.length === 0) {
+    return;
   }
 
-  return JSON.stringify(value);
+  const [materials] = await executor.query(
+    `
+      SELECT id
+      FROM materials
+      WHERE material_key IN (?)
+    `,
+    [materialKeys],
+  );
+
+  for (const material of materials) {
+    await executor.query(
+      `
+        INSERT INTO printer_materials (printer_id, material_id)
+        VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE material_id = VALUES(material_id)
+      `,
+      [printerId, material.id],
+    );
+  }
 }
 
 async function listPublicPrinters() {
   const [rows] = await pool.query(
     `
       SELECT
-        id,
-        name,
-        model,
-        technology,
-        build_volume,
-        nozzle_size,
-        supported_materials,
-        status,
-        is_public,
-        display_order,
-        notes,
-        created_at,
-        updated_at
-      FROM printers
-      WHERE is_public = TRUE
-        AND status <> 'retired'
-      ORDER BY display_order ASC, name ASC
+        ${PRINTER_SELECT}
+      FROM printers p
+      WHERE p.is_public = TRUE
+        AND p.status <> 'retired'
+      ORDER BY p.display_order ASC, p.name ASC
     `,
   );
 
@@ -39,23 +84,9 @@ async function listPrintersForAdmin() {
   const [rows] = await pool.query(
     `
       SELECT
-        id,
-        name,
-        model,
-        technology,
-        build_volume,
-        nozzle_size,
-        supported_materials,
-        status,
-        is_public,
-        display_order,
-        notes,
-        created_by,
-        updated_by,
-        created_at,
-        updated_at
-      FROM printers
-      ORDER BY display_order ASC, name ASC
+        ${PRINTER_SELECT}
+      FROM printers p
+      ORDER BY p.display_order ASC, p.name ASC
     `,
   );
 
@@ -66,23 +97,9 @@ async function getPrinterById(printerId) {
   const [rows] = await pool.query(
     `
       SELECT
-        id,
-        name,
-        model,
-        technology,
-        build_volume,
-        nozzle_size,
-        supported_materials,
-        status,
-        is_public,
-        display_order,
-        notes,
-        created_by,
-        updated_by,
-        created_at,
-        updated_at
-      FROM printers
-      WHERE id = ?
+        ${PRINTER_SELECT}
+      FROM printers p
+      WHERE p.id = ?
       LIMIT 1
     `,
     [printerId],
@@ -92,82 +109,109 @@ async function getPrinterById(printerId) {
 }
 
 async function createPrinter(payload) {
-  const [result] = await pool.query(
-    `
-      INSERT INTO printers (
-        name,
-        model,
-        technology,
-        build_volume,
-        nozzle_size,
-        supported_materials,
-        status,
-        is_public,
-        display_order,
-        notes,
-        created_by,
-        updated_by
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `,
-    [
-      payload.name,
-      payload.model ?? null,
-      payload.technology,
-      payload.buildVolume ?? null,
-      payload.nozzleSize ?? null,
-      serializeJson(payload.supportedMaterials),
-      payload.status,
-      payload.isPublic,
-      payload.displayOrder,
-      payload.notes ?? null,
-      payload.createdBy ?? null,
-      payload.updatedBy ?? null,
-    ],
-  );
+  const connection = await pool.getConnection();
 
-  return getPrinterById(result.insertId);
+  try {
+    await connection.beginTransaction();
+    const [result] = await connection.query(
+      `
+        INSERT INTO printers (
+          name,
+          model,
+          technology,
+          build_volume,
+          nozzle_size,
+          status,
+          is_public,
+          display_order,
+          notes,
+          created_by,
+          updated_by
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        payload.name,
+        payload.model ?? null,
+        payload.technology,
+        payload.buildVolume ?? null,
+        payload.nozzleSize ?? null,
+        payload.status,
+        payload.isPublic,
+        payload.displayOrder,
+        payload.notes ?? null,
+        payload.createdBy ?? null,
+        payload.updatedBy ?? null,
+      ],
+    );
+
+    await syncPrinterMaterials(
+      connection,
+      result.insertId,
+      payload.supportedMaterials,
+    );
+    await connection.commit();
+
+    return getPrinterById(result.insertId);
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 async function updatePrinterById(printerId, payload) {
-  const [result] = await pool.query(
-    `
-      UPDATE printers
-      SET
-        name = ?,
-        model = ?,
-        technology = ?,
-        build_volume = ?,
-        nozzle_size = ?,
-        supported_materials = ?,
-        status = ?,
-        is_public = ?,
-        display_order = ?,
-        notes = ?,
-        updated_by = ?
-      WHERE id = ?
-    `,
-    [
-      payload.name,
-      payload.model ?? null,
-      payload.technology,
-      payload.buildVolume ?? null,
-      payload.nozzleSize ?? null,
-      serializeJson(payload.supportedMaterials),
-      payload.status,
-      payload.isPublic,
-      payload.displayOrder,
-      payload.notes ?? null,
-      payload.updatedBy ?? null,
-      printerId,
-    ],
-  );
+  const connection = await pool.getConnection();
 
-  if (result.affectedRows === 0) {
-    return null;
+  try {
+    await connection.beginTransaction();
+    const [result] = await connection.query(
+      `
+        UPDATE printers
+        SET
+          name = ?,
+          model = ?,
+          technology = ?,
+          build_volume = ?,
+          nozzle_size = ?,
+          status = ?,
+          is_public = ?,
+          display_order = ?,
+          notes = ?,
+          updated_by = ?
+        WHERE id = ?
+      `,
+      [
+        payload.name,
+        payload.model ?? null,
+        payload.technology,
+        payload.buildVolume ?? null,
+        payload.nozzleSize ?? null,
+        payload.status,
+        payload.isPublic,
+        payload.displayOrder,
+        payload.notes ?? null,
+        payload.updatedBy ?? null,
+        printerId,
+      ],
+    );
+
+    if (result.affectedRows === 0) {
+      await connection.rollback();
+      return null;
+    }
+
+    await syncPrinterMaterials(connection, printerId, payload.supportedMaterials);
+    await connection.commit();
+
+    return getPrinterById(printerId);
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
   }
-
-  return getPrinterById(printerId);
 }
 
 async function deletePrinterById(printerId) {
