@@ -1,9 +1,8 @@
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { getAdminDashboardMetrics } from "../../api/admin";
-import { Alert, StatusBadge } from "../../components/ui/Feedback";
-import { PageHeader, PageShell, Panel } from "../../components/ui/Page";
-import { ADMIN_NAV_GROUPS } from "./adminNavigation";
+import { Alert } from "../../components/ui/Feedback";
+import { PageShell, Panel } from "../../components/ui/Page";
 
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState(null);
@@ -41,24 +40,33 @@ export default function AdminDashboard() {
 
   return (
     <PageShell size="xl">
-      <div className="space-y-6">
-        <Panel className="border-slate-200 bg-white shadow-none">
-          <PageHeader
-            title="Admin workspace"
-            description="A practical view of today’s print queue, Design Library review, quote readiness, and system health."
-            meta={
-              metrics?.checkedAt
-                ? `Updated ${new Date(metrics.checkedAt).toLocaleString()}`
-                : "Live admin metrics"
-            }
-          />
+      <div className="unifab-admin-page unifab-admin-dashboard unifab-admin-page--dashboard">
+        <Panel className="unifab-admin-command">
+          <div className="unifab-admin-command__header">
+            <div>
+              <p className="unifab-admin-command__eyebrow">Operations</p>
+              <h1>Admin workspace</h1>
+              <p>
+                Monitor the queues, checks, and blockers that need lab action.
+              </p>
+            </div>
+            <div className="unifab-admin-command__meta">
+              <span>Metrics</span>
+              <strong>
+                {metrics?.checkedAt
+                  ? new Date(metrics.checkedAt).toLocaleString()
+                  : "Live"}
+              </strong>
+            </div>
+          </div>
+
           <Alert className="mt-4" type="error">
             {error}
           </Alert>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="unifab-admin-summary-rail">
             {summary.map((item) => (
-              <MetricCard
+              <SummaryMetric
                 key={item.label}
                 label={item.label}
                 value={isLoading ? "..." : item.value}
@@ -69,27 +77,26 @@ export default function AdminDashboard() {
           </div>
         </Panel>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
-          <Panel className="border-slate-200 bg-white shadow-none">
+        <div className="unifab-admin-dashboard__grid">
+          <Panel className="unifab-admin-panel">
             <SectionHeader
-              title="Today’s work"
+              title="Today's work"
               description="Queues that usually need admin attention before clients can move forward."
             />
-            <div className="mt-5 divide-y divide-slate-100 rounded-lg border border-slate-200">
+            <div className="unifab-admin-queue">
               {workItems.map((item) => (
-                <WorkItem key={item.to} item={item} isLoading={isLoading} />
+                <QueueRow key={item.to} item={item} isLoading={isLoading} />
               ))}
             </div>
           </Panel>
 
-          <Panel className="border-slate-200 bg-white shadow-none">
+          <Panel className="unifab-admin-panel">
             <SectionHeader
               title="System signals"
-              description="Operational blockers and readiness checks."
             />
-            <div className="mt-5 space-y-3">
+            <div className="unifab-admin-signal-list">
               {systemSignals.map((signal) => (
-                <SignalRow
+                <SignalLine
                   key={signal.label}
                   signal={signal}
                   isLoading={isLoading}
@@ -98,18 +105,6 @@ export default function AdminDashboard() {
             </div>
           </Panel>
         </div>
-
-        <Panel className="border-slate-200 bg-white shadow-none">
-          <SectionHeader
-            title="Admin areas"
-            description="Grouped controls for operations, catalog management, configuration, and platform health."
-          />
-          <div className="mt-5 grid gap-4 lg:grid-cols-2">
-            {ADMIN_NAV_GROUPS.map((group) => (
-              <AdminAreaGroup key={group.title} group={group} />
-            ))}
-          </div>
-        </Panel>
       </div>
     </PageShell>
   );
@@ -135,7 +130,7 @@ function buildSummary(metrics) {
       label: "Request queue",
       value: urgentRequests,
       tone: urgentRequests > 0 ? "warning" : "success",
-      detail: "Pending review, awaiting payment, and payment verified",
+      detail: "Pending review, awaiting payment, payment verified",
     },
     {
       label: "Design review",
@@ -233,93 +228,48 @@ function buildSystemSignals(metrics) {
   ];
 }
 
-function MetricCard({ label, value, tone, detail }) {
+function SummaryMetric({ label, value, tone, detail }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-[#fbfbfa] p-5">
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-medium text-slate-500">{label}</p>
-        <StatusBadge tone={tone}>{toneLabel(tone)}</StatusBadge>
-      </div>
-      <p className="mt-4 text-3xl font-semibold tracking-tight text-slate-950">
-        {value}
-      </p>
-      <p className="mt-2 text-xs leading-5 text-slate-500">{detail}</p>
+    <div className={`unifab-admin-summary unifab-admin-summary--${tone}`} title={detail}>
+      <p>{label}</p>
+      <strong>{value}</strong>
     </div>
   );
 }
 
-function WorkItem({ item, isLoading }) {
+function QueueRow({ item, isLoading }) {
   return (
     <Link
       to={item.to}
-      className="flex items-start justify-between gap-4 bg-white px-4 py-4 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+      className={`unifab-admin-queue-row unifab-admin-queue-row--${item.tone}`}
+      title={item.description}
     >
       <div>
-        <h3 className="font-semibold text-slate-950">{item.title}</h3>
-        <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
-          {item.description}
-        </p>
+        <h3>{item.title}</h3>
       </div>
-      <StatusBadge tone={item.tone}>
-        {isLoading ? "..." : item.count}
-      </StatusBadge>
+      <span>{isLoading ? "..." : item.count}</span>
     </Link>
   );
 }
 
-function SignalRow({ signal, isLoading }) {
+function SignalLine({ signal, isLoading }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-[#fbfbfa] p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="font-semibold text-slate-950">{signal.label}</p>
-          <p className="mt-1 text-xs leading-5 text-slate-500">
-            {signal.detail}
-          </p>
-        </div>
-        <StatusBadge tone={signal.tone}>
-          {isLoading ? "..." : signal.value}
-        </StatusBadge>
+    <div
+      className={`unifab-admin-signal-line unifab-admin-signal-line--${signal.tone}`}
+    >
+      <div>
+        <p>{signal.label}</p>
       </div>
-    </div>
-  );
-}
-
-function AdminAreaGroup({ group }) {
-  const items = group.items.filter((item) => item.to !== "/admin");
-
-  return (
-    <div className="rounded-lg border border-slate-200 bg-[#fbfbfa] p-4">
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-        {group.title}
-      </h3>
-      <div className="mt-3 divide-y divide-slate-100">
-        {items.map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            className="block py-3 first:pt-0 last:pb-0"
-          >
-            <p className="font-semibold text-slate-950">{item.title}</p>
-            <p className="mt-1 text-sm leading-5 text-slate-500">
-              {item.description}
-            </p>
-          </Link>
-        ))}
-      </div>
+      <strong>{isLoading ? "..." : signal.value}</strong>
     </div>
   );
 }
 
 function SectionHeader({ title, description }) {
   return (
-    <div>
-      <h2 className="text-lg font-semibold tracking-tight text-slate-950">
-        {title}
-      </h2>
-      <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
-        {description}
-      </p>
+    <div className="unifab-admin-section-head">
+      <h2>{title}</h2>
+      {description && <p>{description}</p>}
     </div>
   );
 }
@@ -328,11 +278,4 @@ function toCountMap(rows = [], key) {
   return Object.fromEntries(
     rows.map((item) => [item[key], Number(item.count || 0)]),
   );
-}
-
-function toneLabel(tone) {
-  if (tone === "danger") return "Needs work";
-  if (tone === "warning") return "Open";
-  if (tone === "success") return "Clear";
-  return "Tracked";
 }

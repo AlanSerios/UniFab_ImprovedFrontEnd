@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 const variants = {
   primary:
-    "bg-slate-950 text-white shadow-sm hover:bg-slate-800 focus-visible:ring-slate-950 disabled:bg-slate-400",
+    "bg-[#2b67ad] text-white shadow-sm hover:bg-[#1f4f86] focus-visible:ring-[#2b67ad] disabled:bg-slate-400",
   secondary:
     "border border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:bg-slate-50 focus-visible:ring-slate-500 disabled:text-slate-400",
   subtle:

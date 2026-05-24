@@ -104,7 +104,7 @@ export default function AdminPricingConfig() {
 
   return (
     <PageShell size="lg">
-      <Panel>
+      <Panel className="unifab-admin-page unifab-admin-panel unifab-admin-config-page unifab-admin-page--pricing">
         <PageHeader
           title="Pricing config"
           description="Manage the rates used for future slicer-based quote calculations."

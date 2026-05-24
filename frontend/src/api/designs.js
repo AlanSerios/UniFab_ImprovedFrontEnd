@@ -94,13 +94,6 @@ export function updateAdminLocalDesign(designId, formData) {
   });
 }
 
-export function deactivateAdminLocalDesign(designId) {
-  return apiRequest(`/designs/local/${designId}/deactivate`, {
-    method: "PATCH",
-    body: JSON.stringify({}),
-  });
-}
-
 export function archiveAdminLocalDesign(designId) {
   return apiRequest(`/designs/admin/local/${designId}/archive`, {
     method: "PATCH",

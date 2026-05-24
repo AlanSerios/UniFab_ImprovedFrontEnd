@@ -2,9 +2,7 @@ import express from "express";
 import {
   createRequestDraft,
   previewRequestDraft,
-  previewPrintRequestSubmission,
   submitRequestDraft,
-  submitPrintRequest,
   listMyPrintRequests,
   getMyPrintRequestDetail,
   listAllPrintRequests,
@@ -15,6 +13,7 @@ import {
   cancelPrintRequest,
   streamAdminPrintRequestModel,
   streamAdminPrintRequestItemModel,
+  deprecatedDraftOnlySubmission,
 } from "../controllers/print-request.controller.js";
 import {
   verifyEmailVerified,
@@ -25,9 +24,7 @@ import { validate } from "../middlewares/validator.middleware.js";
 import {
   createRequestDraftValidator,
   previewRequestDraftValidator,
-  previewPrintRequestSubmissionValidator,
   submitRequestDraftValidator,
-  submitPrintRequestValidator,
   printRequestIdValidator,
   listMyPrintRequestsQueryValidator,
   listAllPrintRequestsQueryValidator,
@@ -157,9 +154,7 @@ router
   .post(
     authenticatedReadRateLimiter,
     verifyEmailVerified,
-    previewPrintRequestSubmissionValidator(),
-    validate,
-    previewPrintRequestSubmission,
+    deprecatedDraftOnlySubmission,
   );
 
 router
@@ -171,13 +166,7 @@ router
     validate,
     listMyPrintRequests,
   )
-  .post(
-    writeRateLimiter,
-    verifyEmailVerified,
-    submitPrintRequestValidator(),
-    validate,
-    submitPrintRequest,
-  );
+  .post(writeRateLimiter, verifyEmailVerified, deprecatedDraftOnlySubmission);
 
 router
   .route("/:requestId/cancel")

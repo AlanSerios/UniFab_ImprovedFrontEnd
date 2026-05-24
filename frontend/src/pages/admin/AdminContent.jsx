@@ -91,7 +91,7 @@ export default function AdminContent() {
 
   return (
     <PageShell size="xl">
-      <Panel>
+      <Panel className="unifab-admin-page unifab-admin-panel unifab-admin-config-page unifab-admin-page--content">
         <PageHeader
           title="Website content"
           description="Manage approved public copy for homepage messaging, lab hours, contact details, and service notices."

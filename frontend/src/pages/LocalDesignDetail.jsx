@@ -9,7 +9,6 @@ import {
   Share2,
 } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { API_BASE_URL } from "../api/client";
 import {
   getLocalDesignById,
   getSavedDesigns,
@@ -30,55 +29,22 @@ import { ModelViewer } from "../components/ui/ModelViewer";
 import { ModelPreviewModal } from "../components/ui/ModelPreviewModal";
 import { PageShell } from "../components/ui/Page";
 import { useAuth } from "../context/AuthContext";
+import {
+  assetUrl,
+  buildDesignGalleryItems,
+  downloadUrl,
+  formatSourceKind,
+  getDesignFilesWithLegacyFallback,
+  getDesignImagesWithLegacyFallback,
+  getFileExtension,
+  getFileLabel,
+  getSafeReturnTo,
+} from "../utils/local-design-detail";
 import { normalizeModelPreview } from "../utils/model-preview";
-
-const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
-function assetUrl(path) {
-  if (!path) return "";
-
-  if (/^https?:\/\//i.test(path)) {
-    return path;
-  }
-
-  return `${API_ORIGIN}${path}`;
-}
-
-function downloadUrl(path) {
-  const url = assetUrl(path);
-
-  if (!url || !url.includes("/api/v1/files/")) {
-    return url;
-  }
-
-  return `${url}${url.includes("?") ? "&" : "?"}download=1`;
-}
-
-function formatSourceKind(sourceKind) {
-  return sourceKind === "community" ? "Community Design" : "Official Lab";
-}
-
-function getSafeReturnTo(searchParams) {
-  const returnTo = searchParams.get("returnTo");
-
-  if (!returnTo) {
-    return "/designs";
-  }
-
-  if (
-    returnTo === "/designs" ||
-    returnTo.startsWith("/designs?") ||
-    returnTo === "/my-designs" ||
-    returnTo.startsWith("/my-designs?")
-  ) {
-    return returnTo;
-  }
-
-  return "/designs";
-}
 
 function ExternalFileLink({ href, children, primary = false, className = "" }) {
   const base =
-    "inline-flex min-h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-semibold transition";
+    "unifab-design-detail__action-link inline-flex min-h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-semibold transition";
   const tone = primary
     ? "bg-slate-950 text-white hover:bg-slate-800"
     : "border border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:bg-slate-50";
@@ -97,58 +63,13 @@ function ExternalFileLink({ href, children, primary = false, className = "" }) {
 
 function SummaryRow({ label, value }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-2 text-sm">
+    <div className="unifab-design-detail__summary-row flex items-start justify-between gap-4 py-2 text-sm">
       <span className="text-slate-500">{label}</span>
       <span className="max-w-44 text-right font-semibold text-slate-950">
         {value}
       </span>
     </div>
   );
-}
-
-function getFileLabel(design) {
-  return (
-    design?.fileName ||
-    design?.fileUrl?.split("/").pop() ||
-    design?.title ||
-    "Design file"
-  );
-}
-
-function getFileExtension(fileName) {
-  const cleanName = String(fileName || "").split(/[?#]/)[0];
-  const match = cleanName.match(/\.([a-z0-9]+)$/i);
-
-  return match ? match[1].toUpperCase() : "MODEL";
-}
-
-function normalizeGalleryUrl(value) {
-  if (!value) {
-    return "";
-  }
-
-  try {
-    const parsedUrl = new URL(value, window.location.origin);
-    return parsedUrl.pathname.replace(/\/{2,}/g, "/").toLowerCase();
-  } catch {
-    return String(value).split(/[?#]/)[0].replace(/\/{2,}/g, "/").toLowerCase();
-  }
-}
-
-function dedupeGalleryItems(items) {
-  const seen = new Set();
-
-  return items.filter((item) => {
-    const identity = item.type === "model" ? item.fileUrl || item.url : item.url;
-    const key = `${item.type}:${normalizeGalleryUrl(identity) || item.key}`;
-
-    if (seen.has(key)) {
-      return false;
-    }
-
-    seen.add(key);
-    return true;
-  });
 }
 
 function ModelFileListRow({
@@ -163,12 +84,12 @@ function ModelFileListRow({
   onPreview,
 }) {
   return (
-    <div className="grid gap-5 border-t border-slate-200 py-6 lg:grid-cols-[112px_minmax(0,1fr)_190px] lg:items-center">
+    <div className="unifab-design-detail__file-row grid gap-5 border-t border-slate-200 py-6 lg:grid-cols-[112px_minmax(0,1fr)_190px] lg:items-center">
       <button
         type="button"
         onClick={onPreview}
         disabled={!canPreview}
-        className="group h-24 w-24 rounded-md border border-slate-200 bg-slate-100 p-2 transition disabled:cursor-not-allowed disabled:opacity-60 enabled:hover:border-slate-400 enabled:focus-visible:outline-none enabled:focus-visible:ring-2 enabled:focus-visible:ring-slate-500"
+        className="unifab-design-detail__file-thumb group h-24 w-24 rounded-md border border-slate-200 bg-slate-100 p-2 transition disabled:cursor-not-allowed disabled:opacity-60 enabled:hover:border-slate-400 enabled:focus-visible:outline-none enabled:focus-visible:ring-2 enabled:focus-visible:ring-slate-500"
         aria-label="Open 3D model preview"
       >
         {modelSnapshotUrl ? (
@@ -185,7 +106,7 @@ function ModelFileListRow({
       </button>
 
       <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="unifab-design-detail__file-meta flex flex-wrap items-center gap-2">
           <p className="break-all text-sm font-semibold text-slate-950">
             {fileName}
           </p>
@@ -268,15 +189,15 @@ function DesignPreviewGallery({
   };
 
   return (
-    <section className="h-full bg-white">
-      <div className="relative bg-slate-100">
+    <section className="unifab-design-detail__gallery h-full bg-white">
+      <div className="unifab-design-detail__gallery-stage relative bg-slate-100">
         <button
           type="button"
           onClick={
             currentItem?.type === "model" ? () => onOpenModel(currentItem) : undefined
           }
           disabled={currentItem?.type !== "model"}
-          className={`group flex aspect-[4/3] min-h-80 w-full items-center justify-center ${
+          className={`unifab-design-detail__gallery-main group flex aspect-[4/3] min-h-80 w-full items-center justify-center ${
             currentItem?.type === "model"
               ? "cursor-zoom-in"
               : "cursor-default"
@@ -291,17 +212,17 @@ function DesignPreviewGallery({
             <img
               src={currentItem.url}
               alt={title || mainLabel}
-              className="h-full w-full object-contain"
+              className="unifab-design-detail__gallery-image h-full w-full object-contain"
             />
           ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center text-sm text-slate-500">
+            <div className="unifab-design-detail__gallery-empty flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center text-sm text-slate-500">
               <Box className="h-12 w-12 text-slate-400" aria-hidden="true" />
               3D model preview
             </div>
           )}
 
           {currentItem?.type === "model" && (
-            <span className="absolute bottom-4 right-4 rounded-md bg-slate-950/90 px-3 py-2 text-xs font-semibold text-white opacity-0 shadow-sm transition group-hover:opacity-100 group-focus-visible:opacity-100">
+            <span className="unifab-design-detail__preview-hint absolute bottom-4 right-4 rounded-md bg-slate-950/90 px-3 py-2 text-xs font-semibold text-white opacity-0 shadow-sm transition group-hover:opacity-100 group-focus-visible:opacity-100">
               Open 3D preview
             </span>
           )}
@@ -312,7 +233,7 @@ function DesignPreviewGallery({
             <button
               type="button"
               onClick={showPrevious}
-              className="absolute left-4 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+              className="unifab-design-detail__gallery-nav absolute left-4 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
               aria-label="Previous preview"
             >
               <ChevronLeft className="h-5 w-5" aria-hidden="true" />
@@ -320,7 +241,7 @@ function DesignPreviewGallery({
             <button
               type="button"
               onClick={showNext}
-              className="absolute right-4 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+              className="unifab-design-detail__gallery-nav absolute right-4 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
               aria-label="Next preview"
             >
               <ChevronRight className="h-5 w-5" aria-hidden="true" />
@@ -329,7 +250,7 @@ function DesignPreviewGallery({
         )}
       </div>
 
-      <div className="border-t border-slate-200 bg-white p-3">
+      <div className="unifab-design-detail__thumb-strip border-t border-slate-200 bg-white p-3">
         <div className="flex gap-2 overflow-x-auto">
           {previewItems.length > 0 ? (
             previewItems.map((item, index) => (
@@ -337,7 +258,7 @@ function DesignPreviewGallery({
                 key={item.key}
                 type="button"
                 onClick={() => onChange(item.key)}
-                className={`shrink-0 rounded-md border p-1 transition ${
+                className={`unifab-design-detail__thumb-button shrink-0 rounded-md border p-1 transition ${
                   currentItem?.key === item.key
                     ? "border-slate-950 bg-white"
                     : "border-slate-200 hover:border-slate-400"
@@ -526,33 +447,7 @@ export default function LocalDesignDetail() {
     }
   };
 
-  const activeDesignFiles = (design?.files || []).filter(
-    (file) =>
-      (file.status || "active") === "active" &&
-      (file.storageStatus || "present") === "present",
-  );
-  const activeDesignImages = (design?.images || []).filter(
-    (image) =>
-      (image.status || "active") === "active" &&
-      (image.storageStatus || "present") === "present",
-  );
-  const designFiles = activeDesignFiles.length
-    ? activeDesignFiles
-    : design?.fileUrl
-      ? [
-          {
-            id: null,
-            fileUrl: design.fileUrl,
-            modelSnapshotUrl: design.modelSnapshotUrl,
-            originalFileName: getFileLabel(design),
-            extension: getFileExtension(design.fileUrl || getFileLabel(design)),
-            fileObjectId: design.fileObjectId || null,
-            fileSize: design.fileSize,
-            isPrintReady: Boolean(design.isPrintReady),
-            isPrimary: true,
-          },
-        ]
-      : [];
+  const designFiles = getDesignFilesWithLegacyFallback(design);
   const primaryDesignFile =
     designFiles.find((file) => file.isPrimary) || designFiles[0] || null;
   const canQuote = Boolean(design?.isActive && design?.isPrintReady);
@@ -569,50 +464,11 @@ export default function LocalDesignDetail() {
   const designModelSnapshotUrl = assetUrl(
     primaryDesignFile?.modelSnapshotUrl || design?.modelSnapshotUrl,
   );
-  const designImages = activeDesignImages.length
-    ? activeDesignImages
-    : designThumbnailUrl
-      ? [
-          {
-            id: "legacy-thumbnail",
-            imageUrl: design.thumbnailUrl,
-            originalFileName: "Design thumbnail",
-          },
-        ]
-      : [];
-  const galleryItems = dedupeGalleryItems([
-    ...designImages
-      .map((image, index) => ({
-        key: `image-${image.id || image.imageUrl || index}`,
-        type: "image",
-        url: assetUrl(image.imageUrl),
-        label:
-          image.originalFileName ||
-          `Design thumbnail ${index + 1}`,
-      }))
-      .filter((item) => item.url),
-    ...designFiles
-      .map((file, index) => ({
-        key: `model-${file.id || file.fileUrl || index}`,
-        type: "model",
-        url: assetUrl(file.modelSnapshotUrl),
-        fileUrl: file.fileUrl,
-        fileObjectId: file.fileObjectId || null,
-        modelSnapshotUrl: file.modelSnapshotUrl,
-        fileName:
-          file.originalFileName ||
-          file.fileUrl?.split("/").pop() ||
-          `Design file ${index + 1}`,
-        extension:
-          file.extension ||
-          getFileExtension(file.originalFileName) ||
-          getFileExtension(file.fileUrl),
-        label:
-          file.originalFileName ||
-          `3D model snapshot ${index + 1}`,
-      }))
-      .filter((item) => item.url || item.fileUrl),
-  ]);
+  const designImages = getDesignImagesWithLegacyFallback({
+    design,
+    thumbnailUrl: designThumbnailUrl,
+  });
+  const galleryItems = buildDesignGalleryItems({ designImages, designFiles });
   const tagsValue =
     design?.tags?.length > 0 ? (
       <div className="flex flex-wrap gap-2">
@@ -626,6 +482,7 @@ export default function LocalDesignDetail() {
 
   return (
     <PageShell size="xl">
+      <div className="unifab-design-detail unifab-design-detail--local">
       {isLoading && (
         <p className="text-sm text-slate-600">Loading UniFab design...</p>
       )}
@@ -1002,6 +859,7 @@ export default function LocalDesignDetail() {
           </ModelPreviewModal>
         </ModelDetailShell>
       )}
+      </div>
     </PageShell>
   );
 }

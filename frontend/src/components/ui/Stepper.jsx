@@ -1,11 +1,7 @@
 import { Check } from "lucide-react";
 
 export function Stepper({ steps, currentStatus }) {
-  // Find the index of the current status
   const currentIndex = steps.findIndex((step) => step.id === currentStatus);
-  
-  // If status is not in the normal flow (e.g., 'rejected'), we might want to handle it differently, 
-  // but for now, we'll just show the steps and maybe mark it as failed if needed.
   const isRejected = currentStatus === "rejected";
 
   return (
@@ -48,7 +44,6 @@ export function Stepper({ steps, currentStatus }) {
                 </div>
                 {stepIdx !== steps.length - 1 ? (
                   <>
-                    {/* Arrow separator for lg screens and up */}
                     <div className="absolute right-0 top-0 hidden h-full w-5 lg:block" aria-hidden="true">
                       <svg
                         className="h-full w-full text-slate-300"

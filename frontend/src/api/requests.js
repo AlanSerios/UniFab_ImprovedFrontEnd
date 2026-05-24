@@ -36,20 +36,6 @@ export function undoAdminPrintRequestStatus(requestId, payload) {
   });
 }
 
-export function submitPrintRequestFromCart(payload = {}) {
-  return apiRequest("/requests", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
-export function previewPrintRequestSubmission(payload = {}) {
-  return apiRequest("/requests/preview", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
 export function createRequestDraft(payload = {}) {
   return apiRequest("/requests/drafts", {
     method: "POST",

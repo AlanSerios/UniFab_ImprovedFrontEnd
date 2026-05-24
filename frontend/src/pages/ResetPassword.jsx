@@ -45,46 +45,51 @@ export default function ResetPassword() {
 
   return (
     <PageShell size="sm">
-      <Panel>
-        <PageHeader
-          title="Reset password"
-          description="Set a new password for your UniFab account."
-        />
+      <div className="unifab-auth unifab-auth--utility">
+        <Panel className="unifab-auth__panel">
+          <PageHeader
+            title="Reset password"
+            description="Set a new password for your UniFab account."
+          />
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-          <Field label="New password">
-            <TextInput
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-            />
-          </Field>
+          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+            <Field label="New password">
+              <TextInput
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+              />
+            </Field>
 
-          <Field label="Confirm password">
-            <TextInput
-              type="password"
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              required
-            />
-          </Field>
+            <Field label="Confirm password">
+              <TextInput
+                type="password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                required
+              />
+            </Field>
 
-          <Alert type="success">{message}</Alert>
-          <Alert type="error">{error}</Alert>
+            <Alert type="success">{message}</Alert>
+            <Alert type="error">{error}</Alert>
 
-          <Button type="submit" disabled={isSubmitting} className="w-full">
-            {isSubmitting ? "Resetting..." : "Reset password"}
-          </Button>
-        </form>
+            <Button type="submit" disabled={isSubmitting} className="w-full">
+              {isSubmitting ? "Resetting..." : "Reset password"}
+            </Button>
+          </form>
 
-        <p className="mt-6 text-center text-sm text-slate-500">
-          Password already reset?{" "}
-          <Link to="/login" className="font-semibold text-slate-950 underline">
-            Back to login
-          </Link>
-        </p>
-      </Panel>
+          <p className="mt-6 text-center text-sm text-slate-500">
+            Password already reset?{" "}
+            <Link
+              to="/login"
+              className="font-semibold text-slate-950 underline"
+            >
+              Back to login
+            </Link>
+          </p>
+        </Panel>
+      </div>
     </PageShell>
   );
 }

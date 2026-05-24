@@ -82,58 +82,64 @@ export default function VerifyRequired() {
 
   return (
     <PageShell size="sm">
-      <Panel>
-        <PageHeader
-          title="Verify your email"
-          description="Your UniFab account is created, but it is not fully active until your email address is verified."
-        />
+      <div className="unifab-auth unifab-auth--utility">
+        <Panel className="unifab-auth__panel">
+          <PageHeader
+            title="Verify your email"
+            description="Your UniFab account is created, but it is not fully active until your email address is verified."
+          />
 
-        <div className="mt-6 space-y-4 text-sm leading-6 text-slate-600">
-          <p>
-            We sent a verification link to{" "}
-            <span className="font-semibold text-slate-950">{user?.email}</span>.
-            After verification, you can continue to your dashboard, submit print
-            requests, and manage your designs.
+          <div className="mt-6 space-y-4 text-sm leading-6 text-slate-600">
+            <p>
+              We sent a verification link to{" "}
+              <span className="font-semibold text-slate-950">
+                {user?.email}
+              </span>
+              . After verification, you can continue to your dashboard, submit
+              print requests, and manage your designs.
+            </p>
+            <p>
+              You can keep reviewing public quotes, and your account cart will
+              be available after verification.
+            </p>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            {message && <Alert type="success">{message}</Alert>}
+            {error && <Alert type="error">{error}</Alert>}
+          </div>
+
+          <div className="mt-6 flex flex-col gap-3">
+            <Button
+              type="button"
+              onClick={handleResendVerification}
+              disabled={isSendingVerification}
+            >
+              {isSendingVerification
+                ? "Sending..."
+                : "Resend verification email"}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleRefreshStatus}
+              disabled={isRefreshing}
+            >
+              {isRefreshing ? "Checking..." : "I already verified"}
+            </Button>
+            <Button type="button" variant="secondary" onClick={handleLogout}>
+              Logout
+            </Button>
+          </div>
+
+          <p className="mt-6 text-center text-sm text-slate-500">
+            Need to change accounts?{" "}
+            <ButtonLink to="/login" variant="subtle" size="sm">
+              Go to login
+            </ButtonLink>
           </p>
-          <p>
-            You can keep reviewing public quotes, and your account cart will be
-            available after verification.
-          </p>
-        </div>
-
-        <div className="mt-6 space-y-3">
-          {message && <Alert type="success">{message}</Alert>}
-          {error && <Alert type="error">{error}</Alert>}
-        </div>
-
-        <div className="mt-6 flex flex-col gap-3">
-          <Button
-            type="button"
-            onClick={handleResendVerification}
-            disabled={isSendingVerification}
-          >
-            {isSendingVerification ? "Sending..." : "Resend verification email"}
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={handleRefreshStatus}
-            disabled={isRefreshing}
-          >
-            {isRefreshing ? "Checking..." : "I already verified"}
-          </Button>
-          <Button type="button" variant="secondary" onClick={handleLogout}>
-            Logout
-          </Button>
-        </div>
-
-        <p className="mt-6 text-center text-sm text-slate-500">
-          Need to change accounts?{" "}
-          <ButtonLink to="/login" variant="subtle" size="sm">
-            Go to login
-          </ButtonLink>
-        </p>
-      </Panel>
+        </Panel>
+      </div>
     </PageShell>
   );
 }

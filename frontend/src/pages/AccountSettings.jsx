@@ -79,13 +79,13 @@ export default function AccountSettings() {
 
   return (
     <PageShell size="sm">
-      <div className="space-y-6">
+      <div className="unifab-auth unifab-auth--settings unifab-auth--utility space-y-6">
         <PageHeader
           title="Account settings"
           description="Manage your password and email verification settings."
         />
 
-        <Panel>
+        <Panel className="unifab-auth__panel">
           <div className="border-b border-slate-200 pb-5">
             <h2 className="text-lg font-semibold text-slate-950">
               Change password
@@ -184,7 +184,7 @@ export default function AccountSettings() {
           </form>
         </Panel>
 
-        <Panel>
+        <Panel className="unifab-auth__panel">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-950">

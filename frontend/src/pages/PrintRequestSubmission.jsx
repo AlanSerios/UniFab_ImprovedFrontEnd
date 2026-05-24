@@ -12,10 +12,15 @@ import { ModelSnapshotPreview } from "../components/ui/ModelSnapshotPreview";
 import { PageShell, Panel } from "../components/ui/Page";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
-
-function isExpired(item) {
-  return item.expiresAt && new Date(item.expiresAt).getTime() <= Date.now();
-}
+import {
+  buildRequestItemPreviewSource,
+  calculateSubmissionSubtotal,
+  extractCreatedPrintRequest,
+  extractSubmissionPreview,
+  formatMoney,
+  getStepStatus,
+  isExpired,
+} from "../utils/print-request-submission";
 
 export default function PrintRequestSubmission() {
   const navigate = useNavigate();
@@ -46,9 +51,10 @@ export default function PrintRequestSubmission() {
   );
   const previewItems = submissionPreview?.items || [];
   const currency = submissionPreview?.currency || "PHP";
-  const subtotal =
-    submissionPreview?.estimatedTotal ??
-    previewItems.reduce((sum, item) => sum + Number(item.estimatedCost || 0), 0);
+  const subtotal = calculateSubmissionSubtotal({
+    preview: submissionPreview,
+    items: previewItems,
+  });
   const canContinueFromReview =
     Boolean(draftToken) &&
     previewItems.length > 0 &&
@@ -78,7 +84,7 @@ export default function PrintRequestSubmission() {
         const data = await getRequestDraftPreview(draftToken);
 
         if (isMounted) {
-          setSubmissionPreview(data.data?.preview || data.preview || data);
+          setSubmissionPreview(extractSubmissionPreview(data));
         }
       } catch (err) {
         if (isMounted) {
@@ -126,7 +132,7 @@ export default function PrintRequestSubmission() {
         ...form,
         termsAccepted: form.termsAccepted,
       });
-      const createdRequest = data.data?.printRequest || data.printRequest;
+      const createdRequest = extractCreatedPrintRequest(data);
       await reloadCart();
 
       if (createdRequest?.id) {
@@ -260,14 +266,7 @@ export default function PrintRequestSubmission() {
                       className="unifab-request-submit__item-row"
                     >
                       <ModelSnapshotPreview
-                        source={{
-                          ...item,
-                          snapshotUrl: item.thumbnailUrl,
-                          fileName:
-                            item.fileOriginalName ||
-                            item.originalFileName ||
-                            item.label,
-                        }}
+                        source={buildRequestItemPreviewSource(item)}
                         className="unifab-request-submit__preview"
                         fallbackClassName="unifab-request-submit__preview-fallback"
                         fallbackLabel="Preview"
@@ -288,8 +287,7 @@ export default function PrintRequestSubmission() {
                         Qty {item.quantity}
                       </p>
                       <p className="unifab-request-submit__price">
-                        {item.currency || currency}{" "}
-                        {Number(item.estimatedCost || 0).toFixed(2)}
+                        {formatMoney(item.estimatedCost, item.currency || currency)}
                       </p>
                     </div>
                   ))}
@@ -441,7 +439,7 @@ export default function PrintRequestSubmission() {
                   {submissionPreview?.itemCount || previewItems.length}
                 </SummaryLine>
                 <SummaryLine label="Subtotal" strong>
-                  {currency} {Number(subtotal || 0).toFixed(2)}
+                  {formatMoney(subtotal, currency)}
                 </SummaryLine>
               </div>
               {step < 3 ? (
@@ -480,18 +478,7 @@ export default function PrintRequestSubmission() {
 }
 
 function StepPanel({ number, title, currentStep, children }) {
-  const status =
-    number < currentStep
-      ? "Completed"
-      : number === currentStep
-        ? "In progress"
-        : "Pending";
-  const statusClass =
-    status === "Completed"
-      ? "is-completed"
-      : status === "In progress"
-        ? "is-current"
-        : "is-pending";
+  const { status, className } = getStepStatus({ number, currentStep });
 
   return (
     <Panel className="unifab-request-submit__step-panel shadow-none">
@@ -499,7 +486,7 @@ function StepPanel({ number, title, currentStep, children }) {
         <h2>
           {number}. {title}
         </h2>
-        <span className={`unifab-request-submit__step-status ${statusClass}`}>
+        <span className={`unifab-request-submit__step-status ${className}`}>
           {status}
         </span>
       </div>

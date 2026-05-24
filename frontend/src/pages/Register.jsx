@@ -63,112 +63,116 @@ export default function Register() {
 
   return (
     <PageShell size="sm">
-      <Panel>
-        <PageHeader
-          title="Create account"
-          description="Register as a client to submit print requests and track progress."
-        />
+      <div className="unifab-auth unifab-auth--main">
+        <Panel className="unifab-auth__panel">
+          <PageHeader
+            title="Create account"
+            description="Register as a client to submit print requests and track progress."
+          />
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="First name">
-              <TextInput
-                type="text"
-                value={form.firstName}
-                onChange={(event) =>
-                  updateField("firstName", event.target.value)
-                }
-                required
-              />
-            </Field>
+          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="First name">
+                <TextInput
+                  type="text"
+                  value={form.firstName}
+                  onChange={(event) =>
+                    updateField("firstName", event.target.value)
+                  }
+                  required
+                />
+              </Field>
 
-            <Field label="Last name">
-              <TextInput
-                type="text"
-                value={form.lastName}
-                onChange={(event) =>
-                  updateField("lastName", event.target.value)
-                }
-                required
-              />
-            </Field>
-          </div>
-
-          <Field label="Email">
-            <TextInput
-              type="email"
-              value={form.email}
-              onChange={(event) => updateField("email", event.target.value)}
-              required
-            />
-          </Field>
-
-          <Field label="User type">
-            <SelectInput
-              value={form.userType}
-              onChange={(event) => updateField("userType", event.target.value)}
-              required
-            >
-              <option value="student">Student</option>
-              <option value="faculty">Faculty</option>
-              <option value="researcher">Researcher</option>
-              <option value="others">Others</option>
-            </SelectInput>
-          </Field>
-
-          <Field label="Password">
-            <div className="relative">
-              <TextInput
-                type={showPassword ? "text" : "password"}
-                value={form.password}
-                onChange={(event) =>
-                  updateField("password", event.target.value)
-                }
-                className="pr-11"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((current) => !current)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                className="absolute inset-y-0 right-3 flex items-center text-slate-500 transition hover:text-slate-950"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5" />
-                ) : (
-                  <Eye className="h-5 w-5" />
-                )}
-              </button>
+              <Field label="Last name">
+                <TextInput
+                  type="text"
+                  value={form.lastName}
+                  onChange={(event) =>
+                    updateField("lastName", event.target.value)
+                  }
+                  required
+                />
+              </Field>
             </div>
-          </Field>
 
-          <Alert type="error">{error}</Alert>
+            <Field label="Email">
+              <TextInput
+                type="email"
+                value={form.email}
+                onChange={(event) => updateField("email", event.target.value)}
+                required
+              />
+            </Field>
 
-          {successMessage && (
-            <Alert type="success">
-              {successMessage}
-              <div className="mt-2">
-                <ButtonLink
-                  to="/login"
-                  state={{
-                    from: redirectTo,
-                    pendingQuoteToken,
-                    pendingCartAction,
-                  }}
-                  variant="secondary"
-                  size="sm"
+            <Field label="User type">
+              <SelectInput
+                value={form.userType}
+                onChange={(event) =>
+                  updateField("userType", event.target.value)
+                }
+                required
+              >
+                <option value="student">Student</option>
+                <option value="faculty">Faculty</option>
+                <option value="researcher">Researcher</option>
+                <option value="others">Others</option>
+              </SelectInput>
+            </Field>
+
+            <Field label="Password">
+              <div className="relative">
+                <TextInput
+                  type={showPassword ? "text" : "password"}
+                  value={form.password}
+                  onChange={(event) =>
+                    updateField("password", event.target.value)
+                  }
+                  className="pr-11"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute inset-y-0 right-3 flex items-center text-slate-500 transition hover:text-slate-950"
                 >
-                  Go to login
-                </ButtonLink>
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
               </div>
-            </Alert>
-          )}
+            </Field>
 
-          <Button type="submit" disabled={isSubmitting} className="w-full">
-            {isSubmitting ? "Creating account..." : "Create account"}
-          </Button>
-        </form>
-      </Panel>
+            <Alert type="error">{error}</Alert>
+
+            {successMessage && (
+              <Alert type="success">
+                {successMessage}
+                <div className="mt-2">
+                  <ButtonLink
+                    to="/login"
+                    state={{
+                      from: redirectTo,
+                      pendingQuoteToken,
+                      pendingCartAction,
+                    }}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    Go to login
+                  </ButtonLink>
+                </div>
+              </Alert>
+            )}
+
+            <Button type="submit" disabled={isSubmitting} className="w-full">
+              {isSubmitting ? "Creating account..." : "Create account"}
+            </Button>
+          </form>
+        </Panel>
+      </div>
     </PageShell>
   );
 }

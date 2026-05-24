@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Bookmark, BookmarkCheck, Share2 } from "lucide-react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { API_BASE_URL } from "../api/client";
 import {
   getDesignTaxonomy,
   getSavedDesigns,
@@ -14,184 +13,27 @@ import { Alert, EmptyState, StatusBadge } from "../components/ui/Feedback";
 import { SelectInput, TextInput } from "../components/ui/Form";
 import { PageHeader, PageShell, Panel } from "../components/ui/Page";
 import { useAuth } from "../context/AuthContext";
-
-const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
-
-const DEFAULT_LOCAL_PAGINATION = {
-  page: 1,
-  limit: 12,
-  totalCount: 0,
-  totalPages: 1,
-};
-
-const DEFAULT_MMF_PAGINATION = {
-  page: 1,
-  limit: 12,
-  totalCount: 0,
-  totalPages: 1,
-  visibleCount: 0,
-};
-
-const DESIGN_TAB_VALUES = new Set(["local", "mmf"]);
-
-const LOCAL_SORT_VALUES = new Set([
-  "newest",
-  "oldest",
-  "title_asc",
-  "title_desc",
-  "print_ready",
-]);
-
-const LOCAL_LIMIT_VALUES = new Set([6, 12, 24]);
-const SOURCE_FILTER_VALUES = new Set(["lab", "community"]);
-const PRINT_READY_FILTER_VALUES = new Set(["true", "false"]);
-const SAVED_MMF_STORAGE_KEY = "unifab.savedMmfDesignIds";
-
-const MMF_SORT_VALUES = new Set(["relevance", "popularity", "date", "visits"]);
-const MMF_ORDER_VALUES = new Set(["asc", "desc"]);
-const MMF_LIMIT_VALUES = new Set([12, 24, 36]);
-
-function getStoredSavedMmfDesignIds() {
-  if (typeof window === "undefined") {
-    return new Set();
-  }
-
-  try {
-    const storedIds = JSON.parse(
-      window.localStorage.getItem(SAVED_MMF_STORAGE_KEY) || "[]",
-    );
-
-    return Array.isArray(storedIds) ? new Set(storedIds.map(Number)) : new Set();
-  } catch {
-    return new Set();
-  }
-}
-
-function assetUrl(path) {
-  if (!path) return "";
-
-  if (/^https?:\/\//i.test(path)) {
-    return path;
-  }
-
-  return `${API_ORIGIN}${path}`;
-}
-
-function getSearchValue(searchParams, key, fallback = "") {
-  return searchParams.get(key) || fallback;
-}
-
-function getAllowedSearchValue(
-  searchParams,
-  key,
-  allowedValues,
-  fallback = "",
-) {
-  const value = searchParams.get(key);
-
-  if (!value || !allowedValues.has(value)) {
-    return fallback;
-  }
-
-  return value;
-}
-
-function getPositiveIntegerSearchValue(searchParams, key, fallback) {
-  const value = Number(searchParams.get(key));
-
-  if (!Number.isInteger(value) || value < 1) {
-    return fallback;
-  }
-
-  return value;
-}
-
-function getLocalLimitSearchValue(searchParams) {
-  const value = Number(searchParams.get("localLimit"));
-
-  if (!LOCAL_LIMIT_VALUES.has(value)) {
-    return 12;
-  }
-
-  return value;
-}
-
-function getMmfLimitSearchValue(searchParams) {
-  const value = Number(searchParams.get("mmfPerPage"));
-
-  if (!MMF_LIMIT_VALUES.has(value)) {
-    return 12;
-  }
-
-  return value;
-}
-
-function getMmfThumbnailUrl(item) {
-  const primaryImage = item.images?.find((image) => image.isPrimary);
-  const fallbackImage = item.images?.[0];
-
-  return (
-    primaryImage?.standardUrl ||
-    primaryImage?.thumbnailUrl ||
-    primaryImage?.originalUrl ||
-    fallbackImage?.standardUrl ||
-    fallbackImage?.thumbnailUrl ||
-    fallbackImage?.originalUrl ||
-    ""
-  );
-}
-
-function parseLocalDesignPayload(localPayload, fallbackLimit) {
-  if (Array.isArray(localPayload)) {
-    return {
-      items: localPayload,
-      pagination: {
-        page: 1,
-        limit: fallbackLimit,
-        totalCount: localPayload.length,
-        totalPages: 1,
-      },
-    };
-  }
-
-  const items = localPayload?.items || [];
-  const page = Number(localPayload?.page || 1);
-  const limit = Number(localPayload?.limit || fallbackLimit);
-  const totalCount = Number(localPayload?.totalCount || items.length);
-  const totalPages = Number(localPayload?.totalPages || 1);
-
-  return {
-    items,
-    pagination: {
-      page: Math.max(page, 1),
-      limit: Math.max(limit, 1),
-      totalCount: Math.max(totalCount, 0),
-      totalPages: Math.max(totalPages, 1),
-    },
-  };
-}
-
-function parseMmfPaginationPayload(mmfPayload, fallbackLimit) {
-  const items = mmfPayload?.items || [];
-  const page = Number(mmfPayload?.page || 1);
-  const limit = Number(mmfPayload?.limit || fallbackLimit);
-  const totalCount = Number(mmfPayload?.totalCount || 0);
-  const totalPages = Number(mmfPayload?.totalPages || 1);
-  const visibleCount = Number(
-    mmfPayload?.visibleCount ?? mmfPayload?.items?.length ?? 0,
-  );
-
-  return {
-    items,
-    pagination: {
-      page: Math.max(page, 1),
-      limit: Math.max(limit, 1),
-      totalCount: Math.max(totalCount, 0),
-      totalPages: Math.max(totalPages, 1),
-      visibleCount: Math.max(visibleCount, 0),
-    },
-  };
-}
+import {
+  DEFAULT_LOCAL_PAGINATION,
+  DEFAULT_MMF_PAGINATION,
+  DESIGN_TAB_VALUES,
+  LOCAL_SORT_VALUES,
+  MMF_ORDER_VALUES,
+  MMF_SORT_VALUES,
+  PRINT_READY_FILTER_VALUES,
+  SAVED_MMF_STORAGE_KEY,
+  SOURCE_FILTER_VALUES,
+  assetUrl,
+  getAllowedSearchValue,
+  getLocalLimitSearchValue,
+  getMmfLimitSearchValue,
+  getMmfThumbnailUrl,
+  getPositiveIntegerSearchValue,
+  getSearchValue,
+  getStoredSavedMmfDesignIds,
+  parseLocalDesignPayload,
+  parseMmfPaginationPayload,
+} from "../utils/design-library";
 
 export default function DesignLibrary() {
   const location = useLocation();
@@ -660,14 +502,17 @@ export default function DesignLibrary() {
 
   return (
     <PageShell size="xl">
-      <Panel>
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <PageHeader
-            title="Design library"
-            description="Browse approved UniFab-hosted designs and search MyMiniFactory references."
-          />
+      <Panel className="unifab-library">
+        <div className="unifab-library__hero">
+          <div>
+            <p className="unifab-library__eyebrow">Design Library</p>
+            <PageHeader
+              title="Find a model to print"
+              description="Browse UniFab-hosted designs or search external MyMiniFactory references curated by the lab."
+            />
+          </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-wrap gap-2">
+          <form onSubmit={handleSubmit} className="unifab-library__search">
             <TextInput
               type="search"
               value={searchTerm}
@@ -693,7 +538,7 @@ export default function DesignLibrary() {
         </div>
 
         {showCatalogTabs && (
-          <div className="mt-6 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+          <div className="unifab-library__tabs">
             {showLocalTabButton && (
               <CatalogTabButton
                 isActive={isLocalTab}
@@ -715,9 +560,9 @@ export default function DesignLibrary() {
         )}
 
         {isLocalTab && (
-          <div className="mt-5 space-y-4">
+          <div className="unifab-library__filters">
             {taxonomy.categories.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="unifab-library__chips">
                 <Button
                   type="button"
                   size="sm"
@@ -743,9 +588,8 @@ export default function DesignLibrary() {
               </div>
             )}
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-6 sm:gap-y-3">
-            {/* Filter group */}
-            <div className="flex flex-wrap items-end gap-3">
+          <div className="unifab-library__filter-row">
+            <div className="unifab-library__filter-group">
               <label className="flex flex-col gap-1">
                 <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
                   Category
@@ -837,11 +681,7 @@ export default function DesignLibrary() {
               </label>
             </div>
 
-            {/* Divider */}
-            <div className="hidden self-stretch border-l border-slate-200 sm:block" />
-
-            {/* Sort & display group */}
-            <div className="flex flex-wrap items-end gap-3">
+            <div className="unifab-library__filter-group unifab-library__filter-group--compact">
               <label className="flex flex-col gap-1">
                 <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
                   Sort by
@@ -891,7 +731,7 @@ export default function DesignLibrary() {
         )}
 
         {isMmfTab && submittedSearch && (
-          <div className="mt-4 flex flex-wrap items-end gap-3">
+          <div className="unifab-library__filters unifab-library__filter-row">
             <label className="flex flex-col gap-1">
               <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
                 Sort by
@@ -965,21 +805,21 @@ export default function DesignLibrary() {
         </Alert>
 
         {!isLoading && !error && (
-          <div className="mt-8">
+          <div className="unifab-library__results">
             {isLocalTab && (
               <section>
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div className="unifab-library__section-head">
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-950">
+                    <h2>
                       UniFab Designs
                     </h2>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p>
                       {localPagination.totalCount} result
                       {localPagination.totalCount === 1 ? "" : "s"} found
                     </p>
                   </div>
 
-                  <p className="text-sm text-slate-500">
+                  <p>
                     Page {localPagination.page} of {localPagination.totalPages}
                   </p>
                 </div>
@@ -992,7 +832,7 @@ export default function DesignLibrary() {
                   />
                 ) : (
                   <>
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="unifab-library__grid">
                       {localDesigns.map((design) => (
                         <LocalDesignCard
                           key={design.id}
@@ -1042,20 +882,20 @@ export default function DesignLibrary() {
 
             {isMmfTab && (
               <section>
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div className="unifab-library__section-head">
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-950">
+                    <h2>
                       MyMiniFactory Designs
                     </h2>
 
                     {submittedSearch ? (
-                      <p className="mt-1 text-sm text-slate-500">
+                      <p>
                         {mmfPagination.totalCount} external result
                         {mmfPagination.totalCount === 1 ? "" : "s"} found -{" "}
                         {mmfPagination.visibleCount} visible on this page
                       </p>
                     ) : (
-                      <p className="mt-1 text-sm text-slate-500">
+                      <p>
                         Pinned and Print Ready MyMiniFactory references curated
                         by UniFab.
                       </p>
@@ -1063,7 +903,7 @@ export default function DesignLibrary() {
                   </div>
 
                   {mmfStatus && !mmfStatus.available && (
-                    <p className="text-sm font-medium text-red-600">
+                    <p className="unifab-library__warning">
                       {mmfStatus.message || "MyMiniFactory unavailable"}
                     </p>
                   )}
@@ -1085,7 +925,7 @@ export default function DesignLibrary() {
                   />
                 ) : (
                   <>
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="unifab-library__grid">
                       {mmfItems.map((item) => (
                         <MmfDesignCard
                           key={item.id}
@@ -1144,9 +984,9 @@ function CatalogTabButton({ isActive, onClick, children }) {
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-md px-4 py-2 text-sm font-semibold transition ${
+      className={`unifab-library__tab rounded-md px-4 py-2 text-sm font-semibold transition ${
         isActive
-          ? "bg-slate-950 text-white shadow-sm"
+          ? "is-active bg-slate-950 text-white shadow-sm"
           : "bg-slate-100 text-slate-700 hover:bg-slate-200"
       }`}
     >
@@ -1166,20 +1006,20 @@ function DesignCardThumbnail({
   badge = null,
 }) {
   return (
-    <div className="relative flex h-36 items-center justify-center overflow-hidden border-b border-slate-200 bg-slate-100">
+    <div className="unifab-design-card__media unifab-library-card__thumb">
       {src ? (
         <img
           src={src}
           alt={alt}
-          className="h-full w-full object-contain p-2 transition duration-200 group-hover:scale-[1.03]"
+          className="transition duration-300 group-hover:scale-[1.025]"
         />
       ) : (
-        <div className="flex h-full items-center justify-center text-sm text-slate-500">
+        <div className="unifab-design-card__empty-thumb">
           {fallback}
         </div>
       )}
 
-      {badge && <div className="absolute left-3 top-3">{badge}</div>}
+      {badge && <div className="unifab-design-card__media-badge">{badge}</div>}
     </div>
   );
 }
@@ -1199,7 +1039,7 @@ function IconActionButton({ children, label, onClick }) {
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2"
+      className="unifab-library-card__icon-button inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2"
     >
       {children}
     </button>
@@ -1220,8 +1060,8 @@ function LocalDesignCard({
   const shareUrl = `${window.location.origin}${detailPath}`;
 
   return (
-    <article className="group flex h-full min-h-[360px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md">
-      <Link to={detailPath} className="block">
+    <article className="unifab-design-card unifab-library-card group">
+      <Link to={detailPath} className="unifab-design-card__link">
         <DesignCardThumbnail
           src={assetUrl(design.thumbnailUrl)}
           alt={design.title || "Design thumbnail"}
@@ -1232,28 +1072,28 @@ function LocalDesignCard({
           }
         />
 
-        <div className="p-4 pb-0">
-          <div className="mb-2 flex flex-wrap gap-2">
+        <div className="unifab-design-card__body">
+          <div className="unifab-design-card__meta">
             <StatusBadge>{getSourceLabel(design.sourceKind)}</StatusBadge>
             {design.category?.name && (
               <StatusBadge tone="neutral">{design.category.name}</StatusBadge>
             )}
           </div>
 
-          <h3 className="line-clamp-2 font-semibold text-slate-950">
+          <h3 className="unifab-design-card__title line-clamp-2">
             {design.title || "Untitled design"}
           </h3>
 
-          <p className="mt-2 line-clamp-2 min-h-[3rem] text-sm leading-6 text-slate-600">
+          <p className="unifab-design-card__description line-clamp-2">
             {design.description || "No description provided."}
           </p>
         </div>
       </Link>
 
-      <div className="mt-auto border-t border-slate-200 p-4">
-        <div className="flex items-center justify-between gap-3">
+      <div className="unifab-design-card__footer unifab-library-card__footer">
+        <div className="unifab-design-card__status-row">
           <CardAvailabilityBadge isReady={isPrintReady} />
-          <div className="flex gap-2">
+          <div className="unifab-design-card__icon-actions">
             <IconActionButton
               label={isSaved ? "Remove from saved designs" : "Save design"}
               onClick={(event) => {
@@ -1283,7 +1123,7 @@ function LocalDesignCard({
           </div>
         </div>
 
-        <div className="mt-3">
+        <div className="unifab-design-card__primary-action">
           <ButtonLink
             to={isPrintReady ? quotePath : detailPath}
             size="md"
@@ -1313,35 +1153,35 @@ function MmfDesignCard({
   const shareUrl = `${window.location.origin}${detailPath}`;
 
   return (
-    <article className="group flex h-full min-h-[360px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md">
+    <article className="unifab-design-card unifab-library-card group">
       <DesignCardThumbnail src={thumbnailUrl} alt={title} />
 
-      <Link to={detailPath} className="block p-4 pb-0">
-        <div className="mb-2 flex flex-wrap gap-2">
+      <Link to={detailPath} className="unifab-design-card__body">
+        <div className="unifab-design-card__meta">
           <StatusBadge>MyMiniFactory</StatusBadge>
         </div>
 
-        <h3 className="line-clamp-2 font-semibold text-slate-950">{title}</h3>
+        <h3 className="unifab-design-card__title line-clamp-2">{title}</h3>
 
-        <p className="mt-2 line-clamp-2 min-h-[3rem] text-sm leading-6 text-slate-600">
+        <p className="unifab-design-card__description line-clamp-2">
           {item.description || "No description provided."}
         </p>
 
         {item.override?.clientNote && (
-          <p className="mt-3 rounded-md bg-slate-50 px-3 py-2 text-sm leading-6 text-slate-600">
+          <p className="unifab-design-card__note line-clamp-2">
             {item.override.clientNote}
           </p>
         )}
       </Link>
 
-      <div className="mt-auto border-t border-slate-200 p-4">
-        <div className="flex items-center justify-between gap-3">
+      <div className="unifab-design-card__footer unifab-library-card__footer">
+        <div className="unifab-design-card__status-row">
           <CardAvailabilityBadge
             isReady={isPrintReady}
             readyLabel="Print Ready"
             reviewLabel="Needs Review"
           />
-          <div className="flex gap-2">
+          <div className="unifab-design-card__icon-actions">
             <IconActionButton
               label={isSaved ? "Remove saved MMF design" : "Save MMF design"}
               onClick={() => onToggleSaved?.(item.id)}
@@ -1369,7 +1209,7 @@ function MmfDesignCard({
 
         <Link
           to={detailPath}
-          className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 transition hover:border-slate-400 hover:bg-slate-50"
+          className="unifab-design-card__secondary-link"
         >
           View Details
         </Link>

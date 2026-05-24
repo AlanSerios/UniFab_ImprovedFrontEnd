@@ -1,6 +1,10 @@
-import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
 import { asyncHandler } from "../utils/async-handler.js";
+import {
+  buildDatabaseRetentionCleanupOptions,
+  buildDesignFileCleanupOptions,
+  buildFileRegistryCleanupOptions,
+} from "../utils/admin-maintenance-request.util.js";
 import {
   getFileObjectDetail,
   getFileRegistrySummary,
@@ -9,15 +13,6 @@ import {
 } from "../services/admin-file-registry.service.js";
 import { runDesignFileCleanup } from "../services/design-file-cleanup.service.js";
 import { cleanupDatabaseRetention } from "../services/db-retention-cleanup.service.js";
-
-function parseReferenceTypes(value) {
-  if (!value) return [];
-  if (Array.isArray(value)) return value;
-  return String(value)
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
 
 const getAdminFileRegistrySummary = asyncHandler(async (_req, res) => {
   const summary = await getFileRegistrySummary();
@@ -79,13 +74,9 @@ const getAdminFileObjectDetail = asyncHandler(async (req, res) => {
 });
 
 const dryRunAdminFileRegistryCleanup = asyncHandler(async (req, res) => {
-  const cleanup = await runFileRegistryCleanup({
-    dryRun: true,
-    actorId: req.user?.id || null,
-    limit: req.body?.limit,
-    retentionPolicy: req.body?.retentionPolicy,
-    referenceTypes: parseReferenceTypes(req.body?.referenceTypes),
-  });
+  const cleanup = await runFileRegistryCleanup(
+    buildFileRegistryCleanupOptions(req, { dryRun: true }),
+  );
 
   return res.status(200).json(
     new ApiResponse(
@@ -97,20 +88,9 @@ const dryRunAdminFileRegistryCleanup = asyncHandler(async (req, res) => {
 });
 
 const runAdminFileRegistryCleanup = asyncHandler(async (req, res) => {
-  const reason = String(req.body?.reason || "").trim();
-
-  if (!reason) {
-    throw new ApiError(400, "Cleanup reason is required");
-  }
-
-  const cleanup = await runFileRegistryCleanup({
-    dryRun: false,
-    actorId: req.user?.id || null,
-    reason,
-    limit: req.body?.limit,
-    retentionPolicy: req.body?.retentionPolicy,
-    referenceTypes: parseReferenceTypes(req.body?.referenceTypes),
-  });
+  const cleanup = await runFileRegistryCleanup(
+    buildFileRegistryCleanupOptions(req, { dryRun: false }),
+  );
 
   return res.status(200).json(
     new ApiResponse(200, { cleanup }, "File registry cleanup completed"),
@@ -118,13 +98,9 @@ const runAdminFileRegistryCleanup = asyncHandler(async (req, res) => {
 });
 
 const dryRunDesignFileCleanup = asyncHandler(async (req, res) => {
-  const cleanup = await runDesignFileCleanup({
-    dryRun: true,
-    actorId: req.user?.id || null,
-    limit: req.body?.limit,
-    retentionDays: req.body?.retentionDays,
-    mmfRetentionDays: req.body?.mmfRetentionDays,
-  });
+  const cleanup = await runDesignFileCleanup(
+    buildDesignFileCleanupOptions(req, { dryRun: true }),
+  );
 
   return res.status(200).json(
     new ApiResponse(
@@ -136,20 +112,9 @@ const dryRunDesignFileCleanup = asyncHandler(async (req, res) => {
 });
 
 const runAdminDesignFileCleanup = asyncHandler(async (req, res) => {
-  const reason = String(req.body?.reason || "").trim();
-
-  if (!reason) {
-    throw new ApiError(400, "Cleanup reason is required");
-  }
-
-  const cleanup = await runDesignFileCleanup({
-    dryRun: false,
-    actorId: req.user?.id || null,
-    reason,
-    limit: req.body?.limit,
-    retentionDays: req.body?.retentionDays,
-    mmfRetentionDays: req.body?.mmfRetentionDays,
-  });
+  const cleanup = await runDesignFileCleanup(
+    buildDesignFileCleanupOptions(req, { dryRun: false }),
+  );
 
   return res.status(200).json(
     new ApiResponse(
@@ -161,14 +126,9 @@ const runAdminDesignFileCleanup = asyncHandler(async (req, res) => {
 });
 
 const dryRunDatabaseRetentionCleanup = asyncHandler(async (req, res) => {
-  const cleanup = await cleanupDatabaseRetention({
-    dryRun: true,
-    limit: req.body?.limit,
-    fileAccessEventRetentionDays: req.body?.fileAccessEventRetentionDays,
-    moderationRetentionDays: req.body?.moderationRetentionDays,
-    designAuditRetentionDays: req.body?.designAuditRetentionDays,
-    printRequestEventRetentionDays: req.body?.printRequestEventRetentionDays,
-  });
+  const cleanup = await cleanupDatabaseRetention(
+    buildDatabaseRetentionCleanupOptions(req, { dryRun: true }),
+  );
 
   return res.status(200).json(
     new ApiResponse(
@@ -180,20 +140,9 @@ const dryRunDatabaseRetentionCleanup = asyncHandler(async (req, res) => {
 });
 
 const runDatabaseRetentionCleanup = asyncHandler(async (req, res) => {
-  const reason = String(req.body?.reason || "").trim();
-
-  if (!reason) {
-    throw new ApiError(400, "Cleanup reason is required");
-  }
-
-  const cleanup = await cleanupDatabaseRetention({
-    dryRun: false,
-    limit: req.body?.limit,
-    fileAccessEventRetentionDays: req.body?.fileAccessEventRetentionDays,
-    moderationRetentionDays: req.body?.moderationRetentionDays,
-    designAuditRetentionDays: req.body?.designAuditRetentionDays,
-    printRequestEventRetentionDays: req.body?.printRequestEventRetentionDays,
-  });
+  const cleanup = await cleanupDatabaseRetention(
+    buildDatabaseRetentionCleanupOptions(req, { dryRun: false }),
+  );
 
   return res.status(200).json(
     new ApiResponse(200, { cleanup }, "Database retention cleanup completed"),

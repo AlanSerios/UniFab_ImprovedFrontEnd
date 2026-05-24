@@ -3,6 +3,13 @@ import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import {
+  buildPagination,
+  normalizeAdminAuditEvent,
+  normalizeAdminUser,
+  normalizeSiteContent,
+  parseOptionalBooleanField,
+} from "../utils/admin-response.util.js";
+import {
   countAdminUsers,
   createAdminAuditEvent,
   getAdminDashboardMetrics,
@@ -13,75 +20,6 @@ import {
   updateAdminUserFlags,
   updateSiteContentItem,
 } from "../models/admin.model.js";
-
-function parseJsonSafely(value) {
-  if (!value) return null;
-  if (typeof value === "object") return value;
-
-  try {
-    return JSON.parse(value);
-  } catch {
-    return null;
-  }
-}
-
-function parseOptionalBoolean(value, fieldName) {
-  if (value === undefined) return undefined;
-  if (typeof value === "boolean") return value;
-
-  const normalized = String(value).trim().toLowerCase();
-  if (["true", "1", "yes"].includes(normalized)) return true;
-  if (["false", "0", "no"].includes(normalized)) return false;
-
-  throw new ApiError(400, `${fieldName} must be a valid boolean`);
-}
-
-function normalizeUser(row) {
-  return {
-    id: row.id,
-    firstName: row.first_name,
-    lastName: row.last_name,
-    name: [row.first_name, row.last_name].filter(Boolean).join(" ").trim(),
-    email: row.email,
-    userType: row.user_type,
-    isAdmin: Boolean(row.is_admin),
-    isEmailVerified: Boolean(row.is_email_verified),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-function normalizeAuditEvent(row) {
-  return {
-    id: row.id,
-    actorId: row.actor_id,
-    actorEmail: row.actor_email,
-    actorName: [row.actor_first_name, row.actor_last_name]
-      .filter(Boolean)
-      .join(" ")
-      .trim(),
-    eventType: row.event_type,
-    entityType: row.entity_type,
-    entityId: row.entity_id,
-    summary: row.summary,
-    metadata: parseJsonSafely(row.metadata),
-    createdAt: row.created_at,
-  };
-}
-
-function normalizeContent(row) {
-  return {
-    id: row.id,
-    contentKey: row.content_key,
-    title: row.title,
-    body: row.body,
-    metadata: parseJsonSafely(row.metadata),
-    updatedBy: row.updated_by,
-    updatedByEmail: row.updated_by_email,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
 
 const getAdminDashboard = asyncHandler(async (_req, res) => {
   const metrics = await getAdminDashboardMetrics();
@@ -108,14 +46,9 @@ const listUsers = asyncHandler(async (req, res) => {
     new ApiResponse(
       200,
       {
-        users: result.rows.map(normalizeUser),
+        users: result.rows.map(normalizeAdminUser),
         counts: result.counts,
-        pagination: {
-          page: result.page,
-          limit: result.limit,
-          totalCount: result.totalCount,
-          totalPages: Math.max(Math.ceil(result.totalCount / result.limit), 1),
-        },
+        pagination: buildPagination(result),
         filters: {
           search: req.query.search || "",
           role: req.query.role || "",
@@ -129,8 +62,8 @@ const listUsers = asyncHandler(async (req, res) => {
 
 const updateUser = asyncHandler(async (req, res) => {
   const targetUserId = Number(req.params.userId);
-  const isAdmin = parseOptionalBoolean(req.body.isAdmin, "isAdmin");
-  const isEmailVerified = parseOptionalBoolean(
+  const isAdmin = parseOptionalBooleanField(req.body.isAdmin, "isAdmin");
+  const isEmailVerified = parseOptionalBooleanField(
     req.body.isEmailVerified,
     "isEmailVerified",
   );
@@ -196,7 +129,7 @@ const updateUser = asyncHandler(async (req, res) => {
     return res.status(200).json(
       new ApiResponse(
         200,
-        { user: normalizeUser(updatedUser) },
+        { user: normalizeAdminUser(updatedUser) },
         "Admin user updated successfully",
       ),
     );
@@ -220,13 +153,8 @@ const listAuditEvents = asyncHandler(async (req, res) => {
     new ApiResponse(
       200,
       {
-        events: result.rows.map(normalizeAuditEvent),
-        pagination: {
-          page: result.page,
-          limit: result.limit,
-          totalCount: result.totalCount,
-          totalPages: Math.max(Math.ceil(result.totalCount / result.limit), 1),
-        },
+        events: result.rows.map(normalizeAdminAuditEvent),
+        pagination: buildPagination(result),
       },
       "Admin audit events fetched successfully",
     ),
@@ -234,7 +162,7 @@ const listAuditEvents = asyncHandler(async (req, res) => {
 });
 
 const getContent = asyncHandler(async (_req, res) => {
-  const content = (await listSiteContent()).map(normalizeContent);
+  const content = (await listSiteContent()).map(normalizeSiteContent);
 
   return res.status(200).json(
     new ApiResponse(
@@ -293,7 +221,7 @@ const updateContent = asyncHandler(async (req, res) => {
     return res.status(200).json(
       new ApiResponse(
         200,
-        { content: normalizeContent(content) },
+        { content: normalizeSiteContent(content) },
         "Site content updated successfully",
       ),
     );

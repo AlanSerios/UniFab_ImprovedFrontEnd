@@ -6,10 +6,16 @@ import { Alert } from "../components/ui/Feedback";
 import { ModelSnapshotPreview } from "../components/ui/ModelSnapshotPreview";
 import { PageShell, Panel } from "../components/ui/Page";
 import { useCart } from "../context/CartContext";
-
-function isExpired(item) {
-  return item.expiresAt && new Date(item.expiresAt).getTime() <= Date.now();
-}
+import {
+  buildCartItemPreviewSource,
+  extractRequestDraft,
+  formatCartItemMeta,
+  formatMoney,
+  getCartCurrency,
+  getRequoteButtonLabel,
+  getRequotePath,
+  isCartItemExpired,
+} from "../utils/cart";
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -17,8 +23,8 @@ export default function Cart() {
   const [checkoutError, setCheckoutError] = useState("");
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
 
-  const expiredItems = useMemo(() => items.filter(isExpired), [items]);
-  const currency = items[0]?.currency || "PHP";
+  const expiredItems = useMemo(() => items.filter(isCartItemExpired), [items]);
+  const currency = getCartCurrency(items);
 
   async function handleCheckout() {
     if (expiredItems.length > 0) {
@@ -29,7 +35,7 @@ export default function Cart() {
       setIsCreatingDraft(true);
       setCheckoutError("");
       const data = await createRequestDraft();
-      const draft = data.data?.draft || data.draft;
+      const draft = extractRequestDraft(data);
 
       if (!draft?.draftToken) {
         throw new Error("Request draft was created without a token.");
@@ -46,9 +52,13 @@ export default function Cart() {
   return (
     <PageShell size="xl">
       <div className="unifab-cart space-y-4">
-        <h1 className="unifab-cart__title">
-          Shopping cart
-        </h1>
+        <div className="unifab-cart__header">
+          <div>
+            <p>Request checkout</p>
+            <h1 className="unifab-cart__title">Cart</h1>
+          </div>
+          <span>{items.length} quoted item{items.length === 1 ? "" : "s"}</span>
+        </div>
         <Alert type="error">{cartError}</Alert>
         <Alert type="error">{checkoutError}</Alert>
 
@@ -86,7 +96,7 @@ export default function Cart() {
             ) : (
               <div className="unifab-cart__rows">
                 {items.map((item) => {
-                  const expired = isExpired(item);
+                  const expired = isCartItemExpired(item);
                   return (
                     <div
                       key={item.id}
@@ -96,14 +106,7 @@ export default function Cart() {
                     >
                       <div className="flex min-w-0 items-center gap-4">
                         <ModelSnapshotPreview
-                          source={{
-                            ...item,
-                            snapshotUrl: item.thumbnailUrl,
-                            fileName:
-                              item.fileOriginalName ||
-                              item.originalFileName ||
-                              item.label,
-                          }}
+                          source={buildCartItemPreviewSource(item)}
                           className="unifab-cart__preview"
                           fallbackClassName="unifab-cart__preview-fallback"
                           fallbackLabel="Preview"
@@ -114,10 +117,7 @@ export default function Cart() {
                             {item.label}
                           </p>
                           <p className="unifab-cart__item-meta">
-                            {[item.material, item.materialColorName]
-                              .filter(Boolean)
-                              .join(" / ")}{" "}
-                            / {item.printQuality} / {item.infill}% infill
+                            {formatCartItemMeta(item)}
                           </p>
                           {expired && (
                             <div className="unifab-cart__expired">
@@ -127,9 +127,7 @@ export default function Cart() {
                                 size="sm"
                                 variant="secondary"
                               >
-                                {item.sourceType === "upload"
-                                  ? "Quote again"
-                                  : "Recalculate quote"}
+                                {getRequoteButtonLabel(item)}
                               </ButtonLink>
                             </div>
                           )}
@@ -139,8 +137,7 @@ export default function Cart() {
                         {item.quantity}
                       </span>
                       <span className="unifab-cart__price">
-                        {item.currency || "PHP"}{" "}
-                        {Number(item.estimatedCost || 0).toFixed(2)}
+                        {formatMoney(item.estimatedCost, item.currency || "PHP")}
                       </span>
                       <button
                         type="button"
@@ -168,12 +165,12 @@ export default function Cart() {
               <div className="unifab-cart__summary-body">
               <div className="space-y-4 text-sm">
                 <SummaryLine label="Merchandise Total">
-                  {currency} {Number(subtotal || 0).toFixed(2)}
+                  {formatMoney(subtotal, currency)}
                 </SummaryLine>
                 <SummaryLine label="Review Estimated">--</SummaryLine>
                 <SummaryLine label="Subtotal" strong>
-                  <span className="text-orange-600">
-                    {currency} {Number(subtotal || 0).toFixed(2)}
+                  <span className="unifab-cart__subtotal">
+                    {formatMoney(subtotal, currency)}
                   </span>
                 </SummaryLine>
               </div>
@@ -229,48 +226,6 @@ export default function Cart() {
       </div>
     </PageShell>
   );
-}
-
-function getRequotePath(item) {
-  if (item.sourceType === "library" && item.designId) {
-    const params = new URLSearchParams({
-      source: "local",
-      designId: String(item.designId),
-    });
-    const designFileId =
-      item.designSnapshot?.designFileId || item.quoteSnapshot?.designFile?.id;
-
-    if (designFileId) {
-      params.set("fileId", String(designFileId));
-    }
-
-    return `/quote?${params.toString()}`;
-  }
-
-  if (item.sourceType === "mmf") {
-    const objectId =
-      item.designSnapshot?.id ||
-      item.quoteSnapshot?.mmfObject?.id ||
-      item.quoteSnapshot?.mmfObject?.mmfObjectId;
-    const printReadyFileId =
-      item.designSnapshot?.override?.printReadyFileId ||
-      item.quoteSnapshot?.mmfObject?.printReadyFile?.id;
-
-    if (objectId) {
-      const params = new URLSearchParams({
-        source: "mmf",
-        objectId: String(objectId),
-      });
-
-      if (printReadyFileId) {
-        params.set("fileId", String(printReadyFileId));
-      }
-
-      return `/quote?${params.toString()}`;
-    }
-  }
-
-  return "/quote";
 }
 
 function SummaryLine({ label, children, strong = false }) {

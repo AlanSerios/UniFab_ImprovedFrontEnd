@@ -1,13 +1,15 @@
 export function PageShell({ children, size = "lg" }) {
   const sizes = {
     sm: "max-w-md",
-    md: "max-w-3xl",
-    lg: "max-w-5xl",
-    xl: "max-w-6xl",
+    md: "max-w-[64rem]",
+    lg: "max-w-[82rem]",
+    xl: "max-w-[92rem]",
   };
 
   return (
-    <main className={`mx-auto w-full ${sizes[size]} px-4 py-8 sm:px-6 lg:px-8`}>
+    <main
+      className={`unifab-page-shell unifab-page-shell--${size} mx-auto w-full ${sizes[size]} px-4 py-8 sm:px-6 xl:px-8`}
+    >
       {children}
     </main>
   );
@@ -16,7 +18,7 @@ export function PageShell({ children, size = "lg" }) {
 export function Panel({ children, className = "" }) {
   return (
     <section
-      className={`rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-6 ${className}`}
+      className={`unifab-panel rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-6 ${className}`}
     >
       {children}
     </section>
@@ -25,7 +27,7 @@ export function Panel({ children, className = "" }) {
 
 export function PageHeader({ title, description, action, meta }) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="unifab-page-header flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
           {title}

@@ -159,7 +159,7 @@ export default function AdminPrinters() {
 
   return (
     <PageShell size="xl">
-      <Panel>
+      <Panel className="unifab-admin-page unifab-admin-panel unifab-admin-config-page unifab-admin-page--printers">
         <PageHeader
           title="Printers"
           description="Publish printer information for clients. Printer selection does not affect quote generation."
@@ -174,7 +174,7 @@ export default function AdminPrinters() {
 
         <form
           onSubmit={handleSubmit}
-          className="mt-6 grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-2"
+          className="unifab-admin-filterbar mt-6 grid gap-4 rounded-lg p-4 md:grid-cols-2"
         >
           <Field label="Printer name">
             <TextInput

@@ -21,3 +21,4 @@ backend/temp/
 backend/db/backups/
 
 .codex_temp
+.codex_tmp/

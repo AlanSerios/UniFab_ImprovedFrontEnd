@@ -82,6 +82,19 @@ app.use(
 );
 
 app.use(
+  "/storage/website-content",
+  express.static(resolveStoragePath("website-content"), {
+    fallthrough: false,
+    index: false,
+    etag: true,
+    maxAge: "1h",
+    setHeaders(res) {
+      res.setHeader("X-Content-Type-Options", "nosniff");
+    },
+  }),
+);
+
+app.use(
   "/storage/local-designs/thumbnails",
   express.static(resolveStoragePath("local-designs", "thumbnails"), {
     fallthrough: false,

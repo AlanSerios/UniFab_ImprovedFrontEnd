@@ -77,7 +77,7 @@ export default function AdminQuoteReadiness() {
 
   return (
     <PageShell size="xl">
-      <Panel>
+      <Panel className="unifab-admin-page unifab-admin-panel unifab-admin-diagnostics-page unifab-admin-page--quote-readiness">
         <PageHeader
           title="Quote readiness"
           description="Check whether public quote paths have active materials, profiles, profile files, dry-run validation, and pricing."

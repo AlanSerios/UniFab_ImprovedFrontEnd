@@ -16,23 +16,17 @@ import { ModelSnapshotPreview } from "../components/ui/ModelSnapshotPreview";
 import { PageShell, Panel } from "../components/ui/Page";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
-import { assetUrl, getPathExtension } from "../utils/model-preview";
-
-const QUALITY_OPTIONS = ["draft", "standard", "fine"];
-
-function formatFileSize(size) {
-  if (!Number.isFinite(size)) return "-";
-
-  if (size >= 1024 * 1024) {
-    return `${(size / (1024 * 1024)).toFixed(2)} MB`;
-  }
-
-  return `${Math.max(1, Math.round(size / 1024))} KB`;
-}
-
-function formatMoney(value, currency = "PHP") {
-  return `${currency} ${Number(value || 0).toFixed(2)}`;
-}
+import { getPathExtension } from "../utils/model-preview";
+import {
+  QUALITY_OPTIONS,
+  buildLocalDesignQuoteSource,
+  buildMmfQuoteSource,
+  buildQuoteResult,
+  buildUploadQuoteFormData,
+  extractQuoteToken,
+  formatFileSize,
+  formatMoney,
+} from "../utils/upload-quote";
 
 export default function UploadQuote() {
   const navigate = useNavigate();
@@ -157,7 +151,7 @@ export default function UploadQuote() {
         ? "Quote ready"
         : hasQuoteSource
           ? "Waiting for valid settings"
-          : "Add a model";
+          : "Needs file";
   const quoteSupportMessage = activePreloadedFile
     ? activePreloadedMmfFile
       ? "This MyMiniFactory file was cached and verified by FabLab for instant quote. Source downloads remain on MyMiniFactory."
@@ -205,69 +199,18 @@ export default function UploadQuote() {
 
         const data = await getMmfDesignByObjectId(objectIdParam);
         const mmfObject = data.data?.mmfObject || data.mmfObject || data;
-        const printReadyFiles = mmfObject?.override?.printReadyFiles || [];
-        const printReadyFile =
-          printReadyFiles.find(
-            (file) => fileIdParam && String(file.id) === String(fileIdParam),
-          ) ||
-          mmfObject?.override?.printReadyFile ||
-          printReadyFiles[0];
-
-        if (!mmfObject?.override?.isPrintReady || !printReadyFile) {
-          throw new Error(
-            "This MyMiniFactory design is not ready for instant quote yet.",
-          );
-        }
-
-        if (!printReadyFile.cachedFileUrl) {
-          throw new Error(
-            "This MyMiniFactory design does not have a cached printable file.",
-          );
-        }
+        const quoteSource = buildMmfQuoteSource({
+          mmfObject,
+          objectId: objectIdParam,
+          fileId: fileIdParam,
+        });
 
         if (!isMounted) return;
 
         setModelFile(null);
         setQuoteResult(null);
         setQuoteToken("");
-        setPreloadedMmfFile({
-          objectId: objectIdParam,
-          printReadyFileId: printReadyFile.id,
-          sourceLabel: "MyMiniFactory",
-          title: mmfObject.name || "MyMiniFactory design",
-          sourceUrl: mmfObject.url || "",
-          fileName:
-            printReadyFile.originalFileName ||
-            printReadyFile.cachedFileUrl.split("/").pop() ||
-            "MMF printable file",
-          extension:
-            printReadyFile.extension ||
-            getPathExtension(printReadyFile.originalFileName) ||
-            getPathExtension(printReadyFile.cachedFileUrl),
-          fileSize: printReadyFile.fileSize,
-          fileObjectId: printReadyFile.fileObjectId,
-          modelUrl: printReadyFile.cachedFileUrl,
-          thumbnailUrl: printReadyFile.modelSnapshotUrl,
-          sourceThumbnailUrl: assetUrl(
-            mmfObject.images?.find((image) => image.isPrimary)?.standardUrl ||
-              mmfObject.images?.[0]?.standardUrl ||
-              mmfObject.images?.[0]?.thumbnailUrl ||
-              "",
-          ),
-          designSnapshot: {
-            id: mmfObject.id,
-            name: mmfObject.name,
-            url: mmfObject.url,
-            sourceType: "mmf",
-            thumbnailUrl:
-              printReadyFile.modelSnapshotUrl ||
-              mmfObject.images?.find((image) => image.isPrimary)
-                ?.standardUrl ||
-              mmfObject.images?.[0]?.standardUrl ||
-              mmfObject.images?.[0]?.thumbnailUrl ||
-              null,
-          },
-        });
+        setPreloadedMmfFile(quoteSource);
       } catch (err) {
         if (isMounted) {
           setPreloadedMmfFile(null);
@@ -302,72 +245,18 @@ export default function UploadQuote() {
         const data = await getLocalDesignById(designIdParam);
         const payload = data.data || data;
         const localDesign = payload.localDesign || data.localDesign || data;
-
-        const designFiles = localDesign?.files || [];
-        const selectedDesignFile =
-          designFiles.find(
-            (file) => fileIdParam && String(file.id) === String(fileIdParam),
-          ) ||
-          localDesign?.primaryFile ||
-          designFiles.find((file) => file.isPrintReady) ||
-          designFiles[0] ||
-          null;
-
-        if (!localDesign?.isActive || !localDesign?.isPrintReady) {
-          throw new Error(
-            "This UniFab-hosted design is not ready for instant quote yet.",
-          );
-        }
-
-        if (!selectedDesignFile?.fileUrl && !localDesign.fileUrl) {
-          throw new Error("This UniFab-hosted design does not have a model file.");
-        }
-
-        if (selectedDesignFile && !selectedDesignFile.isPrintReady) {
-          throw new Error(
-            "The selected UniFab-hosted design file is not Print Ready yet.",
-          );
-        }
+        const quoteSource = buildLocalDesignQuoteSource({
+          localDesign,
+          designId: designIdParam,
+          fileId: fileIdParam,
+        });
 
         if (!isMounted) return;
 
         setModelFile(null);
         setQuoteResult(null);
         setQuoteToken("");
-        setPreloadedLocalDesignFile({
-          designId: designIdParam,
-          designFileId: selectedDesignFile?.id || null,
-          sourceLabel: "UniFab-hosted",
-          title: localDesign.title || "UniFab-hosted design",
-          fileName:
-            selectedDesignFile?.originalFileName ||
-            selectedDesignFile?.fileUrl?.split("/").pop() ||
-            localDesign.fileUrl?.split("/").pop() ||
-            localDesign.title ||
-            "UniFab model file",
-          extension:
-            selectedDesignFile?.extension ||
-            getPathExtension(selectedDesignFile?.originalFileName) ||
-            getPathExtension(selectedDesignFile?.fileUrl || localDesign.fileUrl),
-          fileSize: selectedDesignFile?.fileSize || localDesign.fileSize,
-          fileObjectId: selectedDesignFile?.fileObjectId || localDesign.fileObjectId,
-          modelUrl: selectedDesignFile?.fileUrl || localDesign.fileUrl,
-          thumbnailUrl:
-            selectedDesignFile?.modelSnapshotUrl ||
-              localDesign.modelSnapshotUrl ||
-              localDesign.thumbnailUrl,
-          designSnapshot: {
-            id: localDesign.id,
-            title: localDesign.title,
-            name: localDesign.title,
-            sourceType: "library",
-            thumbnailUrl:
-              selectedDesignFile?.modelSnapshotUrl ||
-              localDesign.modelSnapshotUrl ||
-              localDesign.thumbnailUrl ||
-              null,
-          },
-        });
+        setPreloadedLocalDesignFile(quoteSource);
       } catch (err) {
         if (isMounted) {
           setPreloadedLocalDesignFile(null);
@@ -393,6 +282,23 @@ export default function UploadQuote() {
     (!colorOptions.length || effectiveMaterialColorId) &&
     hasReadyQualities &&
     readyQualities.includes(effectiveQuality);
+
+  function handleUploadFileChange(event) {
+    const nextFile = event.target.files?.[0];
+
+    if (!nextFile) return;
+
+    setModelFile(nextFile);
+    setPreloadedMmfFile(null);
+    setPreloadedLocalDesignFile(null);
+    setQuoteResult(null);
+    setQuoteToken("");
+    event.target.value = "";
+
+    if (sourceParam) {
+      navigate("/quote", { replace: true });
+    }
+  }
 
   const handleViewQuote = async () => {
     if (!hasQuoteSource) {
@@ -472,23 +378,20 @@ export default function UploadQuote() {
         }
 
         if (!data) {
-          const formData = new FormData();
-          formData.append("modelFile", modelFile);
-          formData.append("material", material);
-          if (effectiveMaterialColorId) {
-            formData.append("materialColorId", effectiveMaterialColorId);
-          }
-          formData.append("quality", effectiveQuality);
-          formData.append("infill", String(infill));
-          formData.append("quantity", String(quantity));
-
-          data = await calculateUploadQuote(formData);
+          data = await calculateUploadQuote(
+            buildUploadQuoteFormData({
+              modelFile,
+              material,
+              materialColorId: effectiveMaterialColorId,
+              quality: effectiveQuality,
+              infill,
+              quantity,
+            }),
+          );
         }
       }
 
-      const nextQuoteToken =
-        data.data?.quoteToken || data.quoteToken || data.quote?.quoteToken;
-      const quoteData = data.data || data;
+      const nextQuoteToken = extractQuoteToken(data);
 
       if (!nextQuoteToken) {
         throw new Error(
@@ -497,43 +400,22 @@ export default function UploadQuote() {
       }
 
       setQuoteToken(nextQuoteToken);
-      setQuoteResult({
-        ...quoteData,
-        sourceType: quoteSourceType,
-        fileOriginalName: activePreloadedFile?.fileName || modelFile.name,
-        designSnapshot: activePreloadedFile?.designSnapshot,
-        material,
-        materialColorId: effectiveMaterialColorId,
-        materialColorName:
-          colorOptions.find(
-            (color) => String(color.id) === String(effectiveMaterialColorId),
-          )?.name || null,
-        materialColorHex:
-          colorOptions.find(
-            (color) => String(color.id) === String(effectiveMaterialColorId),
-          )?.hexCode || null,
-        printQuality: effectiveQuality,
-        infill,
-        quantity,
-        estimatedCost: quoteData.totalPrice,
-        thumbnailUrl:
-          activePreloadedFile?.thumbnailUrl ||
-          quoteData.thumbnailUrl ||
-          quoteData.file?.thumbnailUrl,
-        expiresAt: quoteData.quoteExpiresAt,
-        quoteKey: currentQuoteKey,
-        uploadAssetKey,
-        quoteSnapshot: {
-          ...quoteData,
-          thumbnailUrl:
-            activePreloadedFile?.thumbnailUrl ||
-            quoteData.thumbnailUrl ||
-            quoteData.file?.thumbnailUrl,
-        },
-        pricingConfigSnapshot: {
-          currency: quoteData.currency || "PHP",
-        },
-      });
+      setQuoteResult(
+        buildQuoteResult({
+          data,
+          quoteSourceType,
+          activePreloadedFile,
+          modelFile,
+          material,
+          materialColorId: effectiveMaterialColorId,
+          selectedColor,
+          quality: effectiveQuality,
+          infill,
+          quantity,
+          currentQuoteKey,
+          uploadAssetKey,
+        }),
+      );
     } catch (err) {
       setError(err.message);
     } finally {
@@ -660,14 +542,15 @@ export default function UploadQuote() {
                   <div className="unifab-quote-lite__upload">
                     <p>Add 3D file</p>
                     <span>Choose an STL, OBJ, or 3MF file to start.</span>
-                    <TextInput
-                      type="file"
-                      accept=".stl,.obj,.3mf"
-                      onChange={(event) =>
-                        setModelFile(event.target.files[0] || null)
-                      }
-                      className="mt-4"
-                    />
+                    <label className="unifab-quote-lite__file-picker">
+                      <span>Choose file</span>
+                      <TextInput
+                        type="file"
+                        accept=".stl,.obj,.3mf"
+                        onChange={handleUploadFileChange}
+                        className="unifab-quote-lite__native-file"
+                      />
+                    </label>
                   </div>
                 )}
 
@@ -730,13 +613,17 @@ export default function UploadQuote() {
                         {activePreloadedFile.sourceLabel} file.
                       </div>
                     ) : (
-                      <TextInput
-                        type="file"
-                        accept=".stl,.obj,.3mf"
-                        onChange={(event) =>
-                          setModelFile(event.target.files[0] || null)
-                        }
-                      />
+                      <div className="unifab-quote-lite__file-actions">
+                        <label className="unifab-quote-lite__file-picker">
+                          <span>Choose replacement</span>
+                          <TextInput
+                            type="file"
+                            accept=".stl,.obj,.3mf"
+                            onChange={handleUploadFileChange}
+                            className="unifab-quote-lite__native-file"
+                          />
+                        </label>
+                      </div>
                     )}
                   </div>
                 )}

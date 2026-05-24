@@ -10,6 +10,7 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Stage, Center, Html } from "@react-three/drei";
 import { STLLoader, OBJLoader, ThreeMFLoader } from "three-stdlib";
 import { useLoader } from "@react-three/fiber";
+import { Cache } from "three";
 
 const SUPPORTED_EXTENSIONS = [".stl", ".obj", ".3mf"];
 const MIME_EXTENSION_MAP = new Map([
@@ -192,7 +193,7 @@ export function ModelViewer({
   url,
   fileName,
   extension,
-  className = "h-64",
+  className = "",
 }) {
   const [remoteObjectUrl, setRemoteObjectUrl] = useState(null);
   const [remoteFileName, setRemoteFileName] = useState(null);
@@ -200,20 +201,48 @@ export function ModelViewer({
   const [loadError, setLoadError] = useState("");
   const [renderError, setRenderError] = useState("");
   const remoteObjectUrlRef = useRef(null);
+  const localObjectUrlRef = useRef(null);
   const requestIdRef = useRef(0);
 
-  const localObjectUrl = useMemo(
-    () => (file ? URL.createObjectURL(file) : null),
-    [file],
-  );
+  const fileIdentity = useMemo(() => {
+    if (!file) return "";
+
+    return [file.name, file.size, file.lastModified, file.type].join(":");
+  }, [file]);
+
+  const [localObjectUrl, setLocalObjectUrl] = useState(null);
 
   useEffect(() => {
+    if (!file) {
+      if (localObjectUrlRef.current) {
+        Cache.remove(localObjectUrlRef.current);
+        URL.revokeObjectURL(localObjectUrlRef.current);
+        localObjectUrlRef.current = null;
+      }
+
+      return undefined;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    const previousObjectUrl = localObjectUrlRef.current;
+    localObjectUrlRef.current = objectUrl;
+    // The object URL is allocated by this effect for the next Three.js loader render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLocalObjectUrl(objectUrl);
+
+    if (previousObjectUrl) {
+      Cache.remove(previousObjectUrl);
+      URL.revokeObjectURL(previousObjectUrl);
+    }
+
     return () => {
-      if (localObjectUrl) {
-        URL.revokeObjectURL(localObjectUrl);
+      if (localObjectUrlRef.current === objectUrl) {
+        Cache.remove(objectUrl);
+        URL.revokeObjectURL(objectUrl);
+        localObjectUrlRef.current = null;
       }
     };
-  }, [localObjectUrl]);
+  }, [file, fileIdentity]);
 
   useEffect(() => {
     const requestId = requestIdRef.current + 1;
@@ -228,6 +257,7 @@ export function ModelViewer({
 
       if (file || !url || !shouldFetchWithCredentials(url)) {
         if (remoteObjectUrlRef.current) {
+          Cache.remove(remoteObjectUrlRef.current);
           URL.revokeObjectURL(remoteObjectUrlRef.current);
           remoteObjectUrlRef.current = null;
         }
@@ -268,11 +298,13 @@ export function ModelViewer({
         );
 
         if (requestIdRef.current !== requestId || abortController.signal.aborted) {
+          Cache.remove(objectUrl);
           URL.revokeObjectURL(objectUrl);
           return;
         }
 
         if (remoteObjectUrlRef.current) {
+          Cache.remove(remoteObjectUrlRef.current);
           URL.revokeObjectURL(remoteObjectUrlRef.current);
         }
 
@@ -298,6 +330,7 @@ export function ModelViewer({
   useEffect(() => {
     return () => {
       if (remoteObjectUrlRef.current) {
+        Cache.remove(remoteObjectUrlRef.current);
         URL.revokeObjectURL(remoteObjectUrlRef.current);
         remoteObjectUrlRef.current = null;
       }
@@ -306,7 +339,10 @@ export function ModelViewer({
 
   const needsCredentialFetch = !file && url && shouldFetchWithCredentials(url);
   const modelUrl =
-    localObjectUrl || remoteObjectUrl || (needsCredentialFetch ? null : url) || null;
+    (file ? localObjectUrl : null) ||
+    remoteObjectUrl ||
+    (needsCredentialFetch ? null : url) ||
+    null;
   const modelExtension = resolveModelExtension({
     explicitExtension: extension,
     file,
@@ -318,7 +354,7 @@ export function ModelViewer({
 
   if (loadError) {
     return (
-      <div className={`${className} flex items-center justify-center rounded-lg border-2 border-dashed border-rose-200 bg-rose-50 p-4 text-center text-sm text-rose-700`}>
+      <div className={`unifab-model-viewer ${className} flex items-center justify-center rounded-lg border-2 border-dashed border-rose-200 bg-rose-50 p-4 text-center text-sm text-rose-700`}>
         {loadError}
       </div>
     );
@@ -326,7 +362,7 @@ export function ModelViewer({
 
   if (renderError) {
     return (
-      <div className={`${className} flex items-center justify-center rounded-lg border-2 border-dashed border-rose-200 bg-rose-50 p-4 text-center text-sm text-rose-700`}>
+      <div className={`unifab-model-viewer ${className} flex items-center justify-center rounded-lg border-2 border-dashed border-rose-200 bg-rose-50 p-4 text-center text-sm text-rose-700`}>
         {renderError}
       </div>
     );
@@ -334,7 +370,7 @@ export function ModelViewer({
 
   if (!modelUrl) {
     return (
-      <div className={`${className} flex items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 text-slate-500`}>
+      <div className={`unifab-model-viewer ${className} flex items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 text-slate-500`}>
         {needsCredentialFetch ? "Loading 3D preview..." : "Upload a file to preview"}
       </div>
     );
@@ -342,14 +378,14 @@ export function ModelViewer({
 
   if (!modelExtension) {
     return (
-       <div className={`${className} flex items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 p-4 text-center text-slate-500`}>
+       <div className={`unifab-model-viewer ${className} flex items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 p-4 text-center text-slate-500`}>
         3D preview is currently only available for .stl, .obj, and .3mf files. <br/> The model type could not be detected from this file.
       </div>
     )
   }
 
   return (
-    <div className={`${className} w-full cursor-move overflow-hidden rounded-lg border border-slate-200 bg-slate-100`}>
+    <div className={`unifab-model-viewer ${className} w-full cursor-move overflow-hidden rounded-lg border border-slate-200 bg-slate-100`}>
       <Canvas shadows camera={{ position: [0, 0, 150], fov: 50 }}>
         <ModelLoaderErrorBoundary
           resetKey={`${modelUrl}:${modelExtension}`}

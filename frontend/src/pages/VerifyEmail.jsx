@@ -58,38 +58,40 @@ export default function VerifyEmail() {
 
   return (
     <PageShell size="sm">
-      <Panel>
-        <PageHeader
-          title="Verify email"
-          description="We are checking your email verification link."
-        />
+      <div className="unifab-auth unifab-auth--utility">
+        <Panel className="unifab-auth__panel">
+          <PageHeader
+            title="Verify email"
+            description="We are checking your email verification link."
+          />
 
-        {isLoading && (
-          <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-            Verifying email...
+          {isLoading && (
+            <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+              Verifying email...
+            </div>
+          )}
+
+          <Alert className="mt-6" type="success">
+            {message}
+          </Alert>
+
+          <Alert className="mt-6" type="error">
+            {error}
+          </Alert>
+
+          <div className="mt-6 flex justify-center">
+            <ButtonLink to={isAuthenticated ? verifiedDestination : "/login"}>
+              {isAuthenticated ? "Continue" : "Go to login"}
+            </ButtonLink>
           </div>
-        )}
 
-        <Alert className="mt-6" type="success">
-          {message}
-        </Alert>
-
-        <Alert className="mt-6" type="error">
-          {error}
-        </Alert>
-
-        <div className="mt-6 flex justify-center">
-          <ButtonLink to={isAuthenticated ? verifiedDestination : "/login"}>
-            {isAuthenticated ? "Continue" : "Go to login"}
-          </ButtonLink>
-        </div>
-
-        {error && (
-          <p className="mt-4 text-center text-sm text-slate-500">
-            Need a new link? Sign in and request another verification email.
-          </p>
-        )}
-      </Panel>
+          {error && (
+            <p className="mt-4 text-center text-sm text-slate-500">
+              Need a new link? Sign in and request another verification email.
+            </p>
+          )}
+        </Panel>
+      </div>
     </PageShell>
   );
 }

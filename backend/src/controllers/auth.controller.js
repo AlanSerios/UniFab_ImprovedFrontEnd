@@ -24,8 +24,14 @@ import {
   emailVerificationMailgenContent,
   forgotPasswordMailgenContent,
 } from "../utils/mail.js";
+import {
+  buildForgotPasswordResetUrl,
+  buildFrontendUrl,
+  getAuthCookieOptions,
+  hashTemporaryToken,
+  mapUserRowToSafeUser,
+} from "../utils/auth-response.util.js";
 import jwt from "jsonwebtoken";
-import crypto from "crypto";
 
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -48,18 +54,6 @@ const generateAccessAndRefreshTokens = async (userId) => {
       "Something went wrong while generating access token",
     );
   }
-};
-
-const getClientAppUrl = () =>
-  process.env.CLIENT_APP_URL ||
-  process.env.FRONTEND_URL ||
-  "http://localhost:5173";
-
-const buildFrontendUrl = (path) => {
-  const baseUrl = getClientAppUrl().replace(/\/+$/, "");
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-
-  return `${baseUrl}${normalizedPath}`;
 };
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -104,17 +98,7 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Something went wrong while fetching created user");
   }
 
-  const safeUser = {
-    id: createdUser.id,
-    firstName: createdUser.first_name,
-    lastName: createdUser.last_name,
-    email: createdUser.email,
-    userType: createdUser.user_type,
-    isAdmin: createdUser.is_admin,
-    isEmailVerified: createdUser.is_email_verified,
-    createdAt: createdUser.created_at,
-    updatedAt: createdUser.updated_at,
-  };
+  const safeUser = mapUserRowToSafeUser(createdUser);
 
   return res
     .status(200)
@@ -156,23 +140,8 @@ const loginUser = asyncHandler(async (req, res) => {
 
   const loggedInUser = await findUserById(user.id);
 
-  const safeUser = {
-    id: loggedInUser.id,
-    firstName: loggedInUser.first_name,
-    lastName: loggedInUser.last_name,
-    email: loggedInUser.email,
-    userType: loggedInUser.user_type,
-    isAdmin: loggedInUser.is_admin,
-    isEmailVerified: loggedInUser.is_email_verified,
-    createdAt: loggedInUser.created_at,
-    updatedAt: loggedInUser.updated_at,
-  };
-
-  const options = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-  };
+  const safeUser = mapUserRowToSafeUser(loggedInUser);
+  const options = getAuthCookieOptions();
 
   return res
     .status(200)
@@ -198,11 +167,7 @@ const logoutUser = asyncHandler(async (req, res) => {
 
   await clearRefreshToken(userID);
 
-  const options = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-  };
+  const options = getAuthCookieOptions();
 
   return res
     .status(200)
@@ -230,10 +195,7 @@ const verifyEmail = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Verification token is required");
   }
 
-  let hashedToken = crypto
-    .createHash("sha256")
-    .update(verificationToken)
-    .digest("hex");
+  const hashedToken = hashTemporaryToken(verificationToken);
 
   const user = await findUserByEmailVerificationToken(hashedToken);
 
@@ -310,11 +272,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       user.id,
     );
 
-    const options = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    };
+    const options = getAuthCookieOptions();
 
     return res
       .status(200)
@@ -352,7 +310,7 @@ const forgotPasswordRequest = asyncHandler(async (req, res) => {
     subject: "Password Reset Request",
     mailgenContent: forgotPasswordMailgenContent(
       `${user.first_name} ${user.last_name}`,
-      `${process.env.FORGOT_PASSWORD_REDIRECT_URL}/${unHashedToken}`,
+      buildForgotPasswordResetUrl(unHashedToken),
     ),
   });
 
@@ -371,10 +329,7 @@ const resetForgotPassword = asyncHandler(async (req, res) => {
   const { resetToken } = req.params;
   const { newPassword } = req.body;
 
-  let hashedToken = crypto
-    .createHash("sha256")
-    .update(resetToken)
-    .digest("hex");
+  const hashedToken = hashTemporaryToken(resetToken);
 
   const user = await findUserByForgotPasswordToken(hashedToken);
 

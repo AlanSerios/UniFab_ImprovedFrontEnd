@@ -116,20 +116,20 @@ export default function AdminPrintRequests() {
 
   return (
     <PageShell size="xl">
-      <Panel>
+      <Panel className="unifab-admin-page unifab-admin-panel unifab-admin-list-page unifab-admin-page--print-requests">
         <PageHeader
           title="Admin print requests"
           description="Review submitted print requests, track lifecycle status, and manage payment handoff."
         />
 
-        <div className="mt-6 inline-flex rounded-md border border-slate-300 bg-white p-1 text-sm font-medium">
+        <div className="unifab-admin-segment mt-6 inline-flex text-sm font-medium">
           <button
             type="button"
             onClick={() => updateFilters({ archived: "" })}
             className={`rounded px-3 py-1.5 ${
               filters.archived !== "true"
-                ? "bg-slate-950 text-white"
-                : "text-slate-700 hover:bg-slate-100"
+                ? "is-active"
+                : ""
             }`}
           >
             Active
@@ -139,15 +139,15 @@ export default function AdminPrintRequests() {
             onClick={() => updateFilters({ archived: "true" })}
             className={`rounded px-3 py-1.5 ${
               filters.archived === "true"
-                ? "bg-slate-950 text-white"
-                : "text-slate-700 hover:bg-slate-100"
+                ? "is-active"
+                : ""
             }`}
           >
             Archived
           </button>
         </div>
 
-        <div className="mt-4 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_12rem_12rem_8rem]">
+        <div className="unifab-admin-filterbar mt-4 grid gap-3 rounded-lg p-4 md:grid-cols-[1fr_12rem_12rem_8rem]">
           <Field label="Search">
             <TextInput
               type="search"
@@ -223,9 +223,9 @@ export default function AdminPrintRequests() {
         )}
 
         {printRequests.length > 0 && (
-          <div className="mt-6 overflow-hidden rounded-lg border border-slate-200">
+          <div className="unifab-admin-table-wrap mt-6 overflow-hidden rounded-lg">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-slate-600">
+              <thead>
                 <tr>
                   <th className="px-4 py-3 font-medium">Reference</th>
                   <th className="px-4 py-3 font-medium">Client</th>
@@ -291,7 +291,7 @@ export default function AdminPrintRequests() {
                     <td className="px-4 py-3">
                       <Link
                         to={`/admin/print-requests/${request.id}`}
-                        className="font-semibold text-slate-950 underline"
+                        className="font-semibold text-[#2b67ad] underline-offset-4 hover:text-[#173760] hover:underline"
                       >
                         View
                       </Link>

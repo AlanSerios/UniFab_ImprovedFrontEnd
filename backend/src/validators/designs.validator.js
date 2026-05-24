@@ -560,10 +560,6 @@ const updateLocalDesignValidator = () => {
   ];
 };
 
-const deactivateLocalDesignValidator = () => {
-  return [...localDesignIdValidator()];
-};
-
 const overrideIdValidator = () => {
   return [
     param("overrideId")
@@ -879,7 +875,6 @@ export {
   localDesignIdValidator,
   createLocalDesignValidator,
   updateLocalDesignValidator,
-  deactivateLocalDesignValidator,
   overrideIdValidator,
   createDesignOverrideValidator,
   updateDesignOverrideValidator,

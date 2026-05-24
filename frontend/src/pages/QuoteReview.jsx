@@ -8,7 +8,19 @@ import { PageHeader, PageShell, Panel } from "../components/ui/Page";
 import { ModelSnapshotPreview } from "../components/ui/ModelSnapshotPreview";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
-import { normalizeModelPreview } from "../utils/model-preview";
+import {
+  extractQuote,
+  extractRequestDraft,
+  formatLengthMeters,
+  formatMoney,
+  formatPrintTime,
+  formatQuoteDateTime,
+  formatWeightGrams,
+  getPendingCartAction,
+  getQuoteCurrency,
+  getQuotePreview,
+  getQuoteSourceLabel,
+} from "../utils/quote-review";
 
 export default function QuoteReview() {
   const { quoteToken } = useParams();
@@ -24,12 +36,8 @@ export default function QuoteReview() {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   const quoteSnapshot = quote?.quoteSnapshot;
-  const currency =
-    quote?.pricingConfigSnapshot?.currency || quoteSnapshot?.currency || "PHP";
-  const preview = useMemo(
-    () => normalizeModelPreview(getPreviewSource(quote)),
-    [quote],
-  );
+  const currency = getQuoteCurrency(quote);
+  const preview = useMemo(() => getQuotePreview(quote), [quote]);
 
   async function addQuoteOrRedirect(nextPath = "/cart") {
     if (isAuthenticated && !user?.isEmailVerified) {
@@ -42,7 +50,7 @@ export default function QuoteReview() {
         state: {
           from: nextPath,
           pendingQuoteToken: quoteToken,
-          pendingCartAction: nextPath === "/requests/new" ? "submit" : "cart",
+          pendingCartAction: getPendingCartAction(nextPath),
         },
       });
       return false;
@@ -80,7 +88,7 @@ export default function QuoteReview() {
         const data = await createRequestDraft({
           cartItemIds: [didAdd.id],
         });
-        const draft = data.data?.draft || data.draft;
+        const draft = extractRequestDraft(data);
 
         if (!draft?.draftToken) {
           throw new Error("Request draft was created without a token.");
@@ -102,7 +110,7 @@ export default function QuoteReview() {
         setError("");
 
         const data = await getQuoteByToken(quoteToken);
-        setQuote(data.data?.quote || data.quote || data);
+        setQuote(extractQuote(data));
       } catch (err) {
         setError(err.message);
         setQuote(null);
@@ -183,21 +191,21 @@ export default function QuoteReview() {
                 <div className="unifab-quote-lite__metrics">
                   <SummaryItem
                     label="Print time"
-                    value={`${Math.round(
-                      quoteSnapshot.estimatedPrintTimeMinutes || 0,
-                    )} minutes`}
+                    value={formatPrintTime(
+                      quoteSnapshot.estimatedPrintTimeMinutes,
+                    )}
                   />
                   <SummaryItem
                     label="Filament weight"
-                    value={`${Number(
-                      quoteSnapshot.filamentWeightGrams || 0,
-                    ).toFixed(2)} g`}
+                    value={formatWeightGrams(
+                      quoteSnapshot.filamentWeightGrams,
+                    )}
                   />
                   <SummaryItem
                     label="Filament length"
-                    value={`${Number(
-                      quoteSnapshot.filamentLengthMeters || 0,
-                    ).toFixed(2)} m`}
+                    value={formatLengthMeters(
+                      quoteSnapshot.filamentLengthMeters,
+                    )}
                   />
                 </div>
               )}
@@ -217,14 +225,12 @@ export default function QuoteReview() {
             <aside className="unifab-quote-lite__review-summary">
               <div className="unifab-quote-lite__summary-total">
                 <p>Estimated cost</p>
-                <strong>
-                  {currency} {Number(quote.estimatedCost || 0).toFixed(2)}
-                </strong>
+                <strong>{formatMoney(quote.estimatedCost, currency)}</strong>
               </div>
 
               {quote.expiresAt && (
                 <p className="unifab-quote-lite__expires">
-                  Quote expires {new Date(quote.expiresAt).toLocaleString()}
+                  Quote expires {formatQuoteDateTime(quote.expiresAt)}
                 </p>
               )}
 
@@ -266,100 +272,4 @@ function SummaryItem({ label, value }) {
       <p className="unifab-quote-lite__field-value">{value || "-"}</p>
     </div>
   );
-}
-
-function getQuoteSourceLabel(quote) {
-  if (!quote) {
-    return "Quote source";
-  }
-
-  if (quote.fileOriginalName) {
-    return quote.fileOriginalName;
-  }
-
-  if (quote.sourceType === "library") {
-    return quote.designSnapshot?.title || "Local design";
-  }
-
-  if (quote.sourceType === "mmf") {
-    return quote.designSnapshot?.name || "MyMiniFactory design";
-  }
-
-  return "Uploaded model";
-}
-
-function getPreviewSource(quote) {
-  if (!quote) {
-    return { modelUrl: null, fileName: null, extension: null };
-  }
-
-  const fileUrl =
-    quote.fileUrl ||
-    quote.quoteSnapshot?.file?.url ||
-    quote.designSnapshot?.fileUrl ||
-    quote.quoteSnapshot?.design?.fileUrl ||
-    quote.quoteSnapshot?.mmfObject?.printReadyFile?.cachedFileUrl ||
-    quote.quoteSnapshot?.mmfObject?.linkedLocalDesign?.fileUrl;
-  const fileName =
-    quote.fileOriginalName ||
-    quote.quoteSnapshot?.file?.originalName ||
-    quote.designSnapshot?.fileOriginalName ||
-    quote.designSnapshot?.primaryFile?.originalFileName ||
-    quote.quoteSnapshot?.design?.fileOriginalName ||
-    quote.quoteSnapshot?.design?.primaryFile?.originalFileName ||
-    quote.quoteSnapshot?.mmfObject?.printReadyFile?.originalFileName ||
-    quote.designSnapshot?.title ||
-    quote.quoteSnapshot?.design?.title ||
-    quote.quoteSnapshot?.mmfObject?.linkedLocalDesign?.title ||
-    fileUrl;
-  const extension =
-    getExtension(quote.fileOriginalName) ||
-    getExtension(quote.quoteSnapshot?.file?.originalName) ||
-    quote.designSnapshot?.extension ||
-    quote.designSnapshot?.primaryFile?.extension ||
-    quote.quoteSnapshot?.design?.extension ||
-    quote.quoteSnapshot?.design?.primaryFile?.extension ||
-    quote.quoteSnapshot?.mmfObject?.printReadyFile?.extension ||
-    getExtension(fileName) ||
-    getExtension(fileUrl);
-
-  const snapshotUrl =
-    quote.thumbnailUrl ||
-    quote.modelSnapshotUrl ||
-    quote.quoteSnapshot?.file?.thumbnailUrl ||
-    quote.quoteSnapshot?.file?.modelSnapshotUrl ||
-    quote.designSnapshot?.thumbnailUrl ||
-    quote.designSnapshot?.modelSnapshotUrl ||
-    quote.quoteSnapshot?.design?.thumbnailUrl ||
-    quote.quoteSnapshot?.design?.modelSnapshotUrl ||
-    quote.quoteSnapshot?.mmfObject?.printReadyFile?.modelSnapshotUrl ||
-    quote.quoteSnapshot?.mmfObject?.linkedLocalDesign?.thumbnailUrl ||
-    null;
-
-  return {
-    modelUrl: fileUrl,
-    fileUrl,
-    snapshotUrl,
-    fileName,
-    extension,
-    fileObjectId:
-      quote.fileObjectId ||
-      quote.file_object_id ||
-      quote.quoteSnapshot?.file?.fileObjectId ||
-      quote.designSnapshot?.fileObjectId ||
-      quote.designSnapshot?.primaryFile?.fileObjectId ||
-      quote.quoteSnapshot?.design?.fileObjectId ||
-      quote.quoteSnapshot?.design?.primaryFile?.fileObjectId ||
-      quote.quoteSnapshot?.mmfObject?.printReadyFile?.fileObjectId ||
-      null,
-  };
-}
-
-function getExtension(value) {
-  if (!value) {
-    return null;
-  }
-
-  const match = String(value).split(/[?#]/)[0].toLowerCase().match(/\.[^.\\/]+$/);
-  return match?.[0] || null;
 }

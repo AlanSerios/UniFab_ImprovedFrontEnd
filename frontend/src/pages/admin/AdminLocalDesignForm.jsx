@@ -21,7 +21,6 @@ import {
   updateAdminLocalDesignCuration,
   updateAdminLocalDesign,
 } from "../../api/designs";
-import { API_BASE_URL } from "../../api/client";
 import { Button, ButtonLink } from "../../components/ui/Button";
 import { Alert, StatusBadge } from "../../components/ui/Feedback";
 import {
@@ -32,83 +31,20 @@ import {
   TextInput,
 } from "../../components/ui/Form";
 import { PageHeader, PageShell, Panel } from "../../components/ui/Page";
-
-function toFormState(localDesign) {
-  return {
-    title: localDesign?.title || "",
-    description: localDesign?.description || "",
-    licenseType: localDesign?.licenseType || "",
-    categoryId: localDesign?.category?.id ? String(localDesign.category.id) : "",
-    tagIds: (localDesign?.tags || []).map((tag) => String(tag.id)),
-    isActive: localDesign?.isActive === false ? "false" : "true",
-    isFeatured: localDesign?.isFeatured ? "true" : "false",
-    featuredRank: String(localDesign?.featuredRank || 0),
-    isLibraryHidden: localDesign?.isLibraryHidden ? "true" : "false",
-    libraryNote: localDesign?.libraryNote || "",
-    archivedAt: localDesign?.archivedAt || null,
-  };
-}
-
-const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
-
-function assetUrl(path) {
-  if (!path) return "";
-  if (/^https?:\/\//i.test(path)) return path;
-  return `${API_ORIGIN}${path}`;
-}
-
-function activeFiles(design) {
-  return (design?.files || []).filter(
-    (file) =>
-      (file.status || "active") === "active" &&
-      (file.storageStatus || "present") === "present",
-  );
-}
-
-function activeImages(design) {
-  return (design?.images || []).filter(
-    (image) =>
-      (image.status || "active") === "active" &&
-      (image.storageStatus || "present") === "present",
-  );
-}
-
-function toAssetState(design) {
-  const files = activeFiles(design);
-  const images = activeImages(design);
-
-  return {
-    removeFileIds: [],
-    removeImageIds: [],
-    replaceFileId: "",
-    replaceImageId: "",
-    replacementFile: null,
-    replacementImage: null,
-    primaryFileId: files.find((file) => file.isPrimary)?.id || files[0]?.id || "",
-    primaryImageId:
-      images.find((image) => image.isPrimary)?.id || images[0]?.id || "",
-    fileOrder: files.map((file) => Number(file.id)).filter(Boolean),
-    imageOrder: images.map((image) => Number(image.id)).filter(Boolean),
-  };
-}
-
-function formatFileSize(bytes) {
-  const value = Number(bytes);
-
-  if (!value || Number.isNaN(value)) return "";
-  if (value < 1024 * 1024) return `${Math.round(value / 1024)} KB`;
-
-  return `${(value / 1024 / 1024).toFixed(1)} MB`;
-}
-
-function getOrderIndex(order, id, fallbackIndex) {
-  const index = order.findIndex((item) => Number(item) === Number(id));
-  return index < 0 ? fallbackIndex + 1000 : index;
-}
+import {
+  activeFiles,
+  activeImages,
+  assetUrl,
+  buildAdminLocalDesignFormData,
+  formatFileSize,
+  getOrderIndex,
+  toAdminLocalDesignAssetState,
+  toAdminLocalDesignFormState,
+} from "../../utils/admin-local-design-form";
 
 function SectionCard({ title, description, children }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
+    <section className="unifab-admin-section rounded-lg border border-slate-200 bg-white">
       <div className="border-b border-slate-100 px-5 py-4">
         <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
         {description && (
@@ -162,7 +98,7 @@ function UploadZone({
         htmlFor={inputId}
         className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-slate-300 bg-white px-4 py-8 text-center transition hover:border-slate-500 hover:bg-slate-50"
       >
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-950 text-white">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#2b67ad] text-white">
           <Icon className="h-5 w-5" aria-hidden="true" />
         </span>
         <span className="mt-4 text-base font-semibold text-slate-950">
@@ -240,7 +176,7 @@ function AssetCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             {isPrimary && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-slate-950 px-2 py-0.5 text-xs font-semibold text-white">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#2b67ad] px-2 py-0.5 text-xs font-semibold text-white">
                 <Star className="h-3 w-3" aria-hidden="true" />
                 Primary
               </span>
@@ -313,70 +249,19 @@ function AssetCard({
   );
 }
 
-function buildFormData({
-  form,
-  designFiles,
-  thumbnailImages,
-  isEditing,
-  assetState,
-}) {
-  const formData = new FormData();
-
-  formData.append("title", form.title);
-  formData.append("description", form.description);
-  formData.append("licenseType", form.licenseType);
-  formData.append("categoryId", form.categoryId);
-  formData.append("tagIds", form.tagIds.join(","));
-
-  if (isEditing) {
-    formData.append("isActive", form.isActive);
-  }
-
-  formData.append("removeFileIds", assetState.removeFileIds.join(","));
-  formData.append("removeImageIds", assetState.removeImageIds.join(","));
-  formData.append("fileOrder", JSON.stringify(assetState.fileOrder));
-  formData.append("imageOrder", JSON.stringify(assetState.imageOrder));
-
-  if (assetState.primaryFileId) {
-    formData.append("primaryFileId", String(assetState.primaryFileId));
-  }
-
-  if (assetState.primaryImageId) {
-    formData.append("primaryImageId", String(assetState.primaryImageId));
-  }
-
-  if (assetState.replaceFileId && assetState.replacementFile) {
-    formData.append("replaceFileId", String(assetState.replaceFileId));
-    formData.append("designFiles", assetState.replacementFile);
-  }
-
-  if (assetState.replaceImageId && assetState.replacementImage) {
-    formData.append("replaceImageId", String(assetState.replaceImageId));
-    formData.append("thumbnailImages", assetState.replacementImage);
-  }
-
-  for (const file of designFiles) {
-    formData.append("designFiles", file);
-  }
-
-  for (const file of thumbnailImages) {
-    formData.append("thumbnailImages", file);
-  }
-
-  return formData;
-}
-
 export default function AdminLocalDesignForm() {
   const { designId } = useParams();
   const navigate = useNavigate();
   const isEditing = Boolean(designId);
 
-  const [form, setForm] = useState(() => toFormState(null));
+  const [form, setForm] = useState(() => toAdminLocalDesignFormState(null));
   const [taxonomy, setTaxonomy] = useState({ categories: [], tags: [] });
   const [currentDesign, setCurrentDesign] = useState(null);
   const [designFiles, setDesignFiles] = useState([]);
   const [thumbnailImages, setThumbnailImages] = useState([]);
-  const [assetState, setAssetState] = useState(() => toAssetState(null));
+  const [assetState, setAssetState] = useState(() =>
+    toAdminLocalDesignAssetState(null),
+  );
   const [isLoading, setIsLoading] = useState(isEditing);
   const [isSaving, setIsSaving] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
@@ -433,8 +318,8 @@ export default function AdminLocalDesignForm() {
         if (isMounted) {
           setLoadedSourceKind(localDesign.sourceKind || "lab");
           setCurrentDesign(localDesign);
-          setForm(toFormState(localDesign));
-          setAssetState(toAssetState(localDesign));
+          setForm(toAdminLocalDesignFormState(localDesign));
+          setAssetState(toAdminLocalDesignAssetState(localDesign));
           setPersistedIsActive(Boolean(localDesign.isActive));
         }
       } catch (err) {
@@ -529,7 +414,7 @@ export default function AdminLocalDesignForm() {
       setError("");
       setSuccessMessage("");
 
-      const formData = buildFormData({
+      const formData = buildAdminLocalDesignFormData({
         form,
         designFiles,
         thumbnailImages,
@@ -543,7 +428,7 @@ export default function AdminLocalDesignForm() {
 
         setPersistedIsActive(Boolean(localDesign?.isActive));
         setCurrentDesign(localDesign);
-        setAssetState(toAssetState(localDesign));
+        setAssetState(toAdminLocalDesignAssetState(localDesign));
         setForm((currentForm) => ({
           ...currentForm,
           archivedAt: localDesign?.archivedAt || currentForm.archivedAt,
@@ -629,7 +514,7 @@ export default function AdminLocalDesignForm() {
       });
       const localDesign = data.data?.localDesign || data.localDesign || data;
 
-      setForm(toFormState(localDesign));
+      setForm(toAdminLocalDesignFormState(localDesign));
       setSuccessMessage("Library curation settings updated.");
     } catch (err) {
       setError(err.message);
@@ -664,7 +549,7 @@ export default function AdminLocalDesignForm() {
 
   return (
     <PageShell size="xl">
-      <div className="space-y-6">
+      <div className="unifab-admin-page unifab-admin-detail-page unifab-admin-form-page unifab-admin-page--lab-design-form space-y-6">
         <PageHeader
           title={
             isEditing
@@ -1064,7 +949,7 @@ export default function AdminLocalDesignForm() {
             </div>
 
             <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-              <Panel className="p-4 sm:p-4">
+              <Panel className="unifab-admin-panel p-4 sm:p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -1131,7 +1016,7 @@ export default function AdminLocalDesignForm() {
               </Panel>
 
               {isEditing && !persistedIsActive && !form.archivedAt && (
-                <Panel className="border-red-200 bg-red-50 p-4 sm:p-4">
+                <Panel className="unifab-admin-danger-panel border-red-200 bg-red-50 p-4 sm:p-4">
                   <h2 className="text-sm font-semibold text-red-900">
                     Archive design
                   </h2>
@@ -1153,7 +1038,7 @@ export default function AdminLocalDesignForm() {
               )}
 
               {isEditing && !persistedIsActive && form.archivedAt && (
-                <Panel className="border-red-200 bg-red-50 p-4 sm:p-4">
+                <Panel className="unifab-admin-danger-panel border-red-200 bg-red-50 p-4 sm:p-4">
                   <h2 className="text-sm font-semibold text-red-900">
                     Permanent delete
                   </h2>

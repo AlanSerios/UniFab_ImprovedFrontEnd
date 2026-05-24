@@ -66,7 +66,7 @@ export function ModelSnapshotPreview({
           url={descriptor.modelUrl}
           fileName={descriptor.fileName}
           extension={descriptor.extension}
-          className={viewerClassName}
+          className={`unifab-model-viewer--modal ${viewerClassName}`}
         />
       </ModelPreviewModal>
     </>

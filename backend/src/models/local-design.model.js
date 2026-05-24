@@ -332,23 +332,6 @@ async function hydrateLocalDesignRows(rows, connection = null) {
   return attachFilesAndImagesToLocalDesigns(rowsWithTags, connection);
 }
 
-async function getActiveLocalDesigns() {
-  const sql = `
-    SELECT
-      ${LOCAL_DESIGN_SELECT}
-    FROM local_designs ld
-    LEFT JOIN design_categories dc ON dc.id = ld.category_id
-    WHERE ld.is_active = TRUE
-      AND ld.archived_at IS NULL
-      AND ld.deleted_at IS NULL
-      AND ld.is_library_hidden = FALSE
-      AND ${PUBLIC_LIBRARY_MODERATION_CONDITION}
-    ORDER BY ld.created_at DESC
-  `;
-
-  return getLocalDesignRows(sql);
-}
-
 async function getAllLocalDesignsForAdmin({
   archived = false,
   sourceKind = null,
@@ -1199,22 +1182,6 @@ async function updateLocalDesignModerationState(
   return getLocalDesignByIdForAdmin(designId, connection);
 }
 
-async function deactivateLocalDesignById(designId) {
-  const sql = `
-    UPDATE local_designs
-    SET is_active = FALSE
-    WHERE id = ?
-  `;
-
-  const [result] = await pool.query(sql, [designId]);
-
-  if (result.affectedRows === 0) {
-    return null;
-  }
-
-  return getLocalDesignByIdForAdmin(designId);
-}
-
 async function archiveLocalDesignById(designId, archivedBy) {
   const sql = `
     UPDATE local_designs
@@ -2037,7 +2004,6 @@ async function unsaveDesignForUser({ userId, localDesignId }) {
 }
 
 export {
-  getActiveLocalDesigns,
   getAllLocalDesignsForAdmin,
   getLocalDesignsByOwner,
   getLocalDesignById,
@@ -2065,7 +2031,6 @@ export {
   reorderLocalDesignImages,
   updateLocalDesignModerationState,
   syncLocalDesignPrintReadySummary,
-  deactivateLocalDesignById,
   archiveLocalDesignById,
   countLocalDesignReferences,
   deleteLocalDesignById,

@@ -12,7 +12,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   createMyDesignDraft,
   deleteMyDesign,
@@ -21,9 +21,20 @@ import {
   publishMyDesign,
   updateMyDesign,
 } from "../api/designs";
-import { API_BASE_URL } from "../api/client";
 import { ModelSnapshotPreview } from "../components/ui/ModelSnapshotPreview";
 import { TextArea, TextInput } from "../components/ui/Form";
+import {
+  APPROVED_STATUSES,
+  PUBLISHABLE_STATUSES,
+  activeFiles,
+  activeImages,
+  assetUrl,
+  buildMyDesignFormData,
+  formatFileSize,
+  getOrderIndex,
+  toAssetState,
+  toFormState,
+} from "../utils/my-design-form";
 import {
   getModerationStatusLabel,
   getOwnerModerationMessage,
@@ -31,113 +42,17 @@ import {
   getSaveResultMessage,
 } from "../utils/moderation-display";
 
-const PUBLISHABLE_STATUSES = new Set([
-  "draft",
-  "auto_rejected",
-  "admin_rejected",
-]);
-const APPROVED_STATUSES = new Set(["auto_approved", "admin_approved"]);
-const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
-
-function assetUrl(path) {
-  if (!path) return "";
-  if (/^https?:\/\//i.test(path)) return path;
-  return `${API_ORIGIN}${path}`;
-}
-
-function buildFormData({ form, designFiles, thumbnailImages, assetState }) {
-  const fd = new FormData();
-  fd.append("title", form.title);
-  fd.append("description", form.description);
-  fd.append("categoryId", form.categoryId);
-  fd.append("tagIds", form.tagIds.join(","));
-  fd.append("licenseType", form.licenseType);
-  fd.append("ownershipConfirmed", String(form.ownershipConfirmed));
-  fd.append("policyAcknowledged", String(form.policyAcknowledged));
-  fd.append("removeFileIds", assetState.removeFileIds.join(","));
-  fd.append("removeImageIds", assetState.removeImageIds.join(","));
-  fd.append("fileOrder", JSON.stringify(assetState.fileOrder));
-  fd.append("imageOrder", JSON.stringify(assetState.imageOrder));
-  if (assetState.primaryFileId)
-    fd.append("primaryFileId", String(assetState.primaryFileId));
-  if (assetState.primaryImageId)
-    fd.append("primaryImageId", String(assetState.primaryImageId));
-  if (assetState.replaceFileId && assetState.replacementFile) {
-    fd.append("replaceFileId", String(assetState.replaceFileId));
-    fd.append("designFiles", assetState.replacementFile);
-  }
-  if (assetState.replaceImageId && assetState.replacementImage) {
-    fd.append("replaceImageId", String(assetState.replaceImageId));
-    fd.append("thumbnailImages", assetState.replacementImage);
-  }
-  for (const f of designFiles) fd.append("designFiles", f);
-  for (const f of thumbnailImages) fd.append("thumbnailImages", f);
-  return fd;
-}
-
-function activeFiles(design) {
-  return (design?.files || []).filter(
-    (f) =>
-      (f.status || "active") === "active" &&
-      (f.storageStatus || "present") === "present",
-  );
-}
-function activeImages(design) {
-  return (design?.images || []).filter(
-    (i) =>
-      (i.status || "active") === "active" &&
-      (i.storageStatus || "present") === "present",
-  );
-}
-function toAssetState(design) {
-  const files = activeFiles(design);
-  const images = activeImages(design);
-  return {
-    removeFileIds: [],
-    removeImageIds: [],
-    replaceFileId: "",
-    replaceImageId: "",
-    replacementFile: null,
-    replacementImage: null,
-    primaryFileId: files.find((f) => f.isPrimary)?.id || files[0]?.id || "",
-    primaryImageId: images.find((i) => i.isPrimary)?.id || images[0]?.id || "",
-    fileOrder: files.map((f) => Number(f.id)).filter(Boolean),
-    imageOrder: images.map((i) => Number(i.id)).filter(Boolean),
-  };
-}
-function toFormState(design) {
-  return {
-    title: design?.title === "Untitled draft" ? "" : design?.title || "",
-    description: design?.description || "",
-    categoryId: design?.category?.id ? String(design.category.id) : "",
-    tagIds: (design?.tags || []).map((t) => String(t.id)),
-    licenseType: design?.licenseType || "",
-    ownershipConfirmed: Boolean(design?.ownershipConfirmed),
-    policyAcknowledged: Boolean(design?.policyAcknowledged),
-  };
-}
-function formatFileSize(bytes) {
-  const v = Number(bytes);
-  if (!v || Number.isNaN(v)) return "";
-  if (v < 1024 * 1024) return `${Math.round(v / 1024)} kB`;
-  return `${(v / 1024 / 1024).toFixed(1)} MB`;
-}
-function getOrderIndex(order, id, fallbackIndex) {
-  const i = order.findIndex((x) => Number(x) === Number(id));
-  return i < 0 ? fallbackIndex + 1000 : i;
-}
-
 const T = {
-  bg: "#f8fafc",
+  bg: "#f4f7fb",
   panel: "#ffffff",
-  border: "#e2e8f0",
-  borderSub: "#f1f5f9",
-  accent: "#0f172a",
-  accentHov: "#1e293b",
-  text: "#020617",
-  textMid: "#475569",
-  textDim: "#64748b",
-  danger: "#dc2626",
+  border: "#c9d3df",
+  borderSub: "#e0e7f0",
+  accent: "#255f9e",
+  accentHov: "#1f4f86",
+  text: "#0b1c30",
+  textMid: "#4d5867",
+  textDim: "#657184",
+  danger: "#b94b45",
   green: "#047857",
   inputBg: "#ffffff",
   infoBg: "#eff6ff",
@@ -174,10 +89,11 @@ const labelStyle = {
 function Section({ title, children }) {
   return (
     <div
+      className="unifab-design-form unifab-design-form__section"
       style={{
         background: T.panel,
         border: `1px solid ${T.border}`,
-        borderRadius: 8,
+        borderRadius: 16,
         overflow: "hidden",
         boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
       }}
@@ -355,7 +271,6 @@ function AssetRow({
         borderRadius: 6,
       }}
     >
-      {/* Thumb */}
       <div
         style={{
           width: 54,
@@ -392,7 +307,6 @@ function AssetRow({
         )}
       </div>
 
-      {/* Info */}
       <div style={{ minWidth: 0 }}>
         {(isPrimary || isPrintReady) && (
           <div style={{ display: "flex", gap: 5, marginBottom: 4 }}>
@@ -468,7 +382,6 @@ function AssetRow({
         )}
       </div>
 
-      {/* Actions */}
       <div
         style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}
       >
@@ -927,7 +840,7 @@ export default function MyDesignForm() {
   };
 
   const saveDesign = async () => {
-    const fd = buildFormData({
+    const fd = buildMyDesignFormData({
       form,
       designFiles,
       thumbnailImages,
@@ -1020,19 +933,21 @@ export default function MyDesignForm() {
 
   return (
     <div
+      className="unifab-design-form unifab-design-form-page"
       style={{
         minHeight: "100vh",
         background: T.bg,
         color: T.text,
-        fontFamily: "'DM Sans', 'Helvetica Neue', Arial, sans-serif",
+        fontFamily: "var(--unifab-body)",
         fontSize: 14,
       }}
     >
       <div
+        className="unifab-design-form-page__shell"
         style={{ maxWidth: 1000, margin: "0 auto", padding: "24px 20px 60px" }}
       >
-        {/* Page title */}
         <div
+          className="unifab-design-form-page__header"
           style={{
             display: "flex",
             alignItems: "flex-start",
@@ -1060,8 +975,8 @@ export default function MyDesignForm() {
               Fill in each section, save as a draft, then publish for review.
             </p>
           </div>
-          <a
-            href="/my-designs"
+          <Link
+            to="/my-designs"
             style={{
               fontSize: 11,
               fontWeight: 600,
@@ -1076,10 +991,9 @@ export default function MyDesignForm() {
             }}
           >
             Back to My Designs
-          </a>
+          </Link>
         </div>
 
-        {/* Alerts */}
         {isLoading && (
           <p style={{ color: T.textDim, fontSize: 13, marginBottom: 14 }}>
             Loading...
@@ -1148,9 +1062,9 @@ export default function MyDesignForm() {
             </div>
           )}
 
-        {/* Two-column form */}
         {!isLoading && (
           <form
+            className="unifab-design-form-page__layout"
             onSubmit={handleSave}
             style={{
               display: "grid",
@@ -1160,7 +1074,6 @@ export default function MyDesignForm() {
             }}
           >
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {/* Basic information */}
               <Section title="Basic information">
                 <div
                   style={{ display: "flex", flexDirection: "column", gap: 14 }}
@@ -1216,7 +1129,6 @@ export default function MyDesignForm() {
                     </FormField>
                   </div>
 
-                  {/* Model origin */}
                   <div>
                     <p style={{ ...labelStyle, marginBottom: 2 }}>
                       Model origin - this is a...
@@ -1253,7 +1165,6 @@ export default function MyDesignForm() {
                     />
                   </div>
 
-                  {/* Checkboxes */}
                   <div
                     style={{
                       borderTop: `1px solid ${T.border}`,
@@ -1278,7 +1189,6 @@ export default function MyDesignForm() {
                 </div>
               </Section>
 
-              {/* Description */}
               <Section title="Description">
                 <TextArea
                   rows={8}
@@ -1293,7 +1203,6 @@ export default function MyDesignForm() {
                 />
               </Section>
 
-              {/* Add files */}
               <Section title="Add files">
                 <div
                   style={{
@@ -1327,7 +1236,6 @@ export default function MyDesignForm() {
                 </div>
               </Section>
 
-              {/* Photos */}
               <Section title="Photos">
                 {visiblePreviewImages.length > 0 ? (
                   <div
@@ -1375,7 +1283,6 @@ export default function MyDesignForm() {
                 )}
               </Section>
 
-              {/* Model Files */}
               <Section title="Model Files">
                 {visibleModelFiles.length > 0 ? (
                   <div
@@ -1447,6 +1354,7 @@ export default function MyDesignForm() {
             </div>
 
             <aside
+              className="unifab-design-form-page__aside"
               style={{
                 position: "sticky",
                 top: 16,
@@ -1455,7 +1363,6 @@ export default function MyDesignForm() {
                 gap: 12,
               }}
             >
-              {/* Status + actions */}
               <div
                 style={{
                   background: T.panel,
@@ -1464,7 +1371,6 @@ export default function MyDesignForm() {
                   overflow: "hidden",
                 }}
               >
-                {/* Header */}
                 <div
                   style={{
                     display: "flex",
@@ -1524,7 +1430,6 @@ export default function MyDesignForm() {
                     </div>
                   )}
 
-                {/* Buttons */}
                 <div
                   style={{
                     padding: "12px 14px",
@@ -1567,7 +1472,6 @@ export default function MyDesignForm() {
                 </div>
               </div>
 
-              {/* Delete */}
               {isEditing && currentDesign && (
                 <div
                   style={{

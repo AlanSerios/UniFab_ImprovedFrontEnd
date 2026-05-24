@@ -112,13 +112,13 @@ export default function AdminUsers() {
 
   return (
     <PageShell size="xl">
-      <Panel>
+      <Panel className="unifab-admin-page unifab-admin-panel unifab-admin-list-page unifab-admin-page--users">
         <PageHeader
           title="Admin users"
           description="Review account verification and grant or remove admin access with audit history."
         />
 
-        <div className="mt-6 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_12rem_12rem_8rem]">
+        <div className="unifab-admin-filterbar mt-6 grid gap-3 rounded-lg p-4 md:grid-cols-[1fr_12rem_12rem_8rem]">
           <Field label="Search">
             <TextInput
               type="search"
@@ -188,7 +188,7 @@ export default function AdminUsers() {
         )}
 
         {users.length > 0 && (
-          <div className="mt-6 overflow-hidden rounded-lg border border-slate-200">
+          <div className="unifab-admin-table-wrap mt-6 overflow-hidden rounded-lg">
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>

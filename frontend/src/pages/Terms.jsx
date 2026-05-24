@@ -26,7 +26,7 @@ const TERMS = [
 export default function Terms() {
   return (
     <PageShell size="lg">
-      <Panel>
+      <Panel className="unifab-support unifab-support--terms unifab-support-document">
         <PageHeader
           title="Terms and Conditions"
           description="These terms apply when a quote is submitted as a UniFab print request."
@@ -36,7 +36,7 @@ export default function Terms() {
           {TERMS.map((item) => (
             <section
               key={item.title}
-              className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+              className="unifab-support__term rounded-lg border border-slate-200 bg-slate-50 p-4"
             >
               <h2 className="font-semibold text-slate-950">{item.title}</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">

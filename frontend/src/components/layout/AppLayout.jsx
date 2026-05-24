@@ -264,14 +264,20 @@ export default function AppLayout() {
               </span>
             </Link>
             <p>
-              University fabrication support for quote previews, Design Library
-              discovery, print request submission, and status tracking.
+              UniFab supports the USTP-CDO Fabrication Laboratory with
+              slicer-backed quote previews, library discovery, print request
+              submission, and clear request tracking.
             </p>
+            <div className="unifab-app__footer-meta">
+              <span>USTP-CDO campus fabrication laboratory</span>
+              <span>Service schedule: confirm current lab hours before visiting</span>
+              <span>Payment: backend slip with in-person receipt verification</span>
+            </div>
           </section>
 
           <nav className="unifab-app__footer-grid" aria-label="Footer navigation">
             <section>
-              <h2>Workflow</h2>
+              <h2>Start</h2>
               <FooterLink to="/quote">Start quote</FooterLink>
               <FooterLink to="/designs">Design Library</FooterLink>
               <FooterLink to="/cart">Quote cart</FooterLink>
@@ -283,8 +289,14 @@ export default function AppLayout() {
               <FooterLink to="/about">About Us</FooterLink>
               <FooterLink to="/printers">Printer information</FooterLink>
               <FooterLink to="/terms">Terms and Conditions</FooterLink>
-              <p>Slicer profiles and pricing are managed by lab admins.</p>
-              <p>Payment verification uses physical receipt checking.</p>
+              <p>Admin-managed materials, pricing, colors, and slicer profiles.</p>
+            </section>
+
+            <section>
+              <h2>Support</h2>
+              <p>Guests can preview quotes before signing in.</p>
+              <p>Verified email is required for cart and request submission.</p>
+              <p>Print Ready files require FabLab review before instant quote.</p>
             </section>
 
             <section>
@@ -305,7 +317,6 @@ export default function AppLayout() {
                 <>
                   <FooterLink to="/login">Log in</FooterLink>
                   <FooterLink to="/register">Create account</FooterLink>
-                  <p>Guests can view quotes before signing in.</p>
                 </>
               )}
             </section>

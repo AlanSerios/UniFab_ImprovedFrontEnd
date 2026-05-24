@@ -29,7 +29,7 @@ export default function Printers() {
 
   return (
     <PageShell size="xl">
-      <Panel>
+      <Panel className="unifab-support unifab-support--printers">
         <PageHeader
           title="Lab printers"
           description="Printer information is provided for visibility. Quote generation still uses backend-managed slicer profiles."
@@ -50,11 +50,11 @@ export default function Printers() {
         )}
 
         {printers.length > 0 && (
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="unifab-printers__grid mt-6 grid gap-4 md:grid-cols-2">
             {printers.map((printer) => (
               <article
                 key={printer.id}
-                className="rounded-lg border border-slate-200 bg-white p-5"
+                className="unifab-support__card unifab-printers__card rounded-lg border border-slate-200 bg-white p-5"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -64,7 +64,7 @@ export default function Printers() {
                     <p className="mt-1 text-sm text-slate-500">
                       {[printer.model, printer.technology]
                         .filter(Boolean)
-                        .join(" · ")}
+                        .join(" / ")}
                     </p>
                   </div>
                   <StatusBadge
@@ -74,7 +74,7 @@ export default function Printers() {
                   </StatusBadge>
                 </div>
 
-                <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                <dl className="unifab-printers__facts mt-4 grid gap-3 text-sm sm:grid-cols-2">
                   <PrinterFact label="Build volume">
                     {printer.buildVolume || "-"}
                   </PrinterFact>

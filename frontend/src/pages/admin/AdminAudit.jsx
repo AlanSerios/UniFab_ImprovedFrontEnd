@@ -80,13 +80,13 @@ export default function AdminAudit() {
 
   return (
     <PageShell size="xl">
-      <Panel>
+      <Panel className="unifab-admin-page unifab-admin-panel unifab-admin-list-page unifab-admin-page--audit">
         <PageHeader
           title="Admin audit log"
           description="Review admin control changes for users, site content, and future operational events."
         />
 
-        <div className="mt-6 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-[12rem_12rem_8rem]">
+        <div className="unifab-admin-filterbar mt-6 grid gap-3 rounded-lg p-4 md:grid-cols-[12rem_12rem_8rem]">
           <Field label="Entity">
             <SelectInput
               value={filters.entityType}
@@ -138,7 +138,7 @@ export default function AdminAudit() {
         )}
 
         {events.length > 0 && (
-          <div className="mt-6 overflow-hidden rounded-lg border border-slate-200">
+          <div className="unifab-admin-table-wrap mt-6 overflow-hidden rounded-lg">
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>

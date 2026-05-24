@@ -18,7 +18,7 @@ export function Alert({ children, type = "info", className = "" }) {
 
   return (
     <div
-      className={`rounded-md border px-4 py-3 text-sm ${alertStyles[type]} ${className}`}
+      className={`unifab-alert rounded-md border px-4 py-3 text-sm ${alertStyles[type]} ${className}`}
     >
       {children}
     </div>
@@ -28,7 +28,7 @@ export function Alert({ children, type = "info", className = "" }) {
 export function EmptyState({ title, description, action, className = "" }) {
   return (
     <div
-      className={`rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center ${className}`}
+      className={`unifab-empty-state rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center ${className}`}
     >
       <p className="font-medium text-slate-950">{title}</p>
       {description && (
@@ -44,7 +44,7 @@ export function EmptyState({ title, description, action, className = "" }) {
 export function StatusBadge({ children, tone = "neutral" }) {
   return (
     <span
-      className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${badgeStyles[tone]}`}
+      className={`unifab-status-badge inline-flex rounded-full px-2 py-1 text-xs font-medium ${badgeStyles[tone]}`}
     >
       {children}
     </span>

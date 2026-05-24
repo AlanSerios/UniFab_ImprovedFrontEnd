@@ -174,7 +174,7 @@ export default function AdminMaterials() {
 
   return (
     <PageShell size="xl">
-      <Panel>
+      <Panel className="unifab-admin-page unifab-admin-panel unifab-admin-config-page unifab-admin-page--materials">
         <PageHeader
           title="Materials"
           description="Manage printable materials and cost per gram for future quotes."

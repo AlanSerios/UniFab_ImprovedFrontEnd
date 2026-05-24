@@ -9,60 +9,21 @@ import {
   updateAdminPrintRequestStatus,
   undoAdminPrintRequestStatus,
 } from "../../api/requests";
-import { API_BASE_URL } from "../../api/client";
 import { ModelSnapshotPreview } from "../../components/ui/ModelSnapshotPreview";
 import { ModelViewer } from "../../components/ui/ModelViewer";
-
-const STATUS_LABELS = {
-  pending_review: "Pending Review",
-  design_in_progress: "Design in Progress",
-  approved: "Approved",
-  payment_slip_issued: "Payment Slip Issued",
-  payment_verified: "Payment Verified",
-  printing: "Printing",
-  completed: "Completed",
-  rejected: "Rejected",
-  cancelled: "Cancelled",
-};
-
-const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
-
-function assetUrl(path) {
-  if (!path) return "";
-  if (/^https?:\/\//i.test(path)) return path;
-  return `${API_ORIGIN}${path.startsWith("/") ? path : `/${path}`}`;
-}
-
-function getSnapshotCurrency(printRequest) {
-  return (
-    printRequest?.quoteSnapshot?.pricingConfigSnapshot?.currency ||
-    printRequest?.quoteSnapshot?.quote?.currency ||
-    "PHP"
-  );
-}
-
-function formatMoney(amount, currency) {
-  return `${currency} ${Number(amount || 0).toFixed(2)}`;
-}
-
-function getPathExtension(value) {
-  if (!value) return null;
-
-  const match = String(value).split(/[?#]/)[0].toLowerCase().match(/\.[^.\\/]+$/);
-  return match?.[0] || null;
-}
-
-function eventLabel(event) {
-  if (event.eventType === "correction") {
-    return `Correction: ${STATUS_LABELS[event.fromStatus] || event.fromStatus} to ${
-      STATUS_LABELS[event.toStatus] || event.toStatus
-    }`;
-  }
-
-  return `${STATUS_LABELS[event.fromStatus] || event.fromStatus || "Created"} to ${
-    STATUS_LABELS[event.toStatus] || event.toStatus
-  }`;
-}
+import {
+  EMPTY_STATUS_FORM,
+  STATUS_LABELS,
+  assetUrl,
+  buildInitialStatusForm,
+  buildResetStatusForm,
+  buildStatusUpdatePayload,
+  eventLabel,
+  extractPrintRequestDetailPayload,
+  formatMoney,
+  getPathExtension,
+  getSnapshotCurrency,
+} from "../../utils/admin-print-request-detail";
 
 export default function AdminPrintRequestDetail() {
   const { requestId } = useParams();
@@ -78,15 +39,7 @@ export default function AdminPrintRequestDetail() {
   const [modelPreviewError, setModelPreviewError] = useState("");
   const [isDownloadingModel, setIsDownloadingModel] = useState(false);
 
-  const [statusForm, setStatusForm] = useState({
-    status: "",
-    note: "",
-    rejectionReason: "",
-    confirmedCost: "",
-    itemCosts: {},
-    receiptReferenceNumber: "",
-    receiptVerificationNote: "",
-  });
+  const [statusForm, setStatusForm] = useState(EMPTY_STATUS_FORM);
   const [correctionReason, setCorrectionReason] = useState("");
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isUndoingStatus, setIsUndoingStatus] = useState(false);
@@ -115,21 +68,13 @@ export default function AdminPrintRequestDetail() {
         setError("");
 
         const data = await getPrintRequestById(requestId);
-        const loadedPrintRequest =
-          data.data?.printRequest || data.printRequest || data.request || data;
+        const detail = extractPrintRequestDetailPayload(data);
 
-        setPrintRequest(loadedPrintRequest);
-        setStatusHistory(data.data?.statusHistory || data.statusHistory || []);
-        setEvents(data.data?.events || data.events || []);
-        setItems(data.data?.items || data.items || []);
-        setStatusForm((current) => ({
-          ...current,
-          status: "",
-          confirmedCost:
-            loadedPrintRequest?.confirmedCost ||
-            loadedPrintRequest?.estimatedCost ||
-            "",
-        }));
+        setPrintRequest(detail.printRequest);
+        setStatusHistory(detail.statusHistory);
+        setEvents(detail.events);
+        setItems(detail.items);
+        setStatusForm(buildInitialStatusForm(detail.printRequest));
       } catch (err) {
         setError(err.message);
         setPrintRequest(null);
@@ -199,51 +144,16 @@ export default function AdminPrintRequestDetail() {
       setError("");
       setSuccessMessage("");
 
-      const payload = {
-        status: statusForm.status,
-        note: statusForm.note,
-      };
-
-      if (statusForm.status === "rejected") {
-        payload.rejectionReason = statusForm.rejectionReason;
-      }
-
-      if (statusForm.confirmedCost !== "") {
-        payload.confirmedCost = statusForm.confirmedCost;
-      }
-
-      if (statusForm.status === "payment_slip_issued" && items.length > 0) {
-        payload.items = items.map((item) => ({
-          itemId: item.id,
-          confirmedCost:
-            statusForm.itemCosts[item.id] ??
-            item.confirmedCost ??
-            item.estimatedCost,
-        }));
-      }
-
-      if (statusForm.status === "payment_verified") {
-        payload.receiptReferenceNumber = statusForm.receiptReferenceNumber;
-        payload.receiptVerificationNote = statusForm.receiptVerificationNote;
-      }
+      const payload = buildStatusUpdatePayload({ statusForm, items });
 
       const data = await updateAdminPrintRequestStatus(requestId, payload);
+      const detail = extractPrintRequestDetailPayload(data);
 
-      setPrintRequest(
-        data.data?.printRequest || data.printRequest || data.request || data,
-      );
-      setStatusHistory(data.data?.statusHistory || data.statusHistory || []);
-      setEvents(data.data?.events || data.events || []);
-      setItems(data.data?.items || data.items || []);
-      setStatusForm({
-        status: "",
-        note: "",
-        rejectionReason: "",
-        confirmedCost: data.data?.printRequest?.confirmedCost || "",
-        itemCosts: {},
-        receiptReferenceNumber: "",
-        receiptVerificationNote: "",
-      });
+      setPrintRequest(detail.printRequest);
+      setStatusHistory(detail.statusHistory);
+      setEvents(detail.events);
+      setItems(detail.items);
+      setStatusForm(buildResetStatusForm(detail.printRequest));
       setSuccessMessage("Print request status updated.");
     } catch (err) {
       setError(err.message);
@@ -274,12 +184,11 @@ export default function AdminPrintRequestDetail() {
       const data = await undoAdminPrintRequestStatus(requestId, {
         correctionReason,
       });
+      const detail = extractPrintRequestDetailPayload(data);
 
-      setPrintRequest(
-        data.data?.printRequest || data.printRequest || data.request || data,
-      );
-      setStatusHistory(data.data?.statusHistory || data.statusHistory || []);
-      setEvents(data.data?.events || data.events || []);
+      setPrintRequest(detail.printRequest);
+      setStatusHistory(detail.statusHistory);
+      setEvents(detail.events);
       setCorrectionReason("");
       setSuccessMessage("Latest status transition corrected.");
     } catch (err) {
@@ -356,11 +265,10 @@ export default function AdminPrintRequestDetail() {
       setSuccessMessage("");
 
       const data = await archiveAdminPrintRequest(requestId);
+      const detail = extractPrintRequestDetailPayload(data);
 
-      setPrintRequest(
-        data.data?.printRequest || data.printRequest || data.request || data,
-      );
-      setStatusHistory(data.data?.statusHistory || data.statusHistory || []);
+      setPrintRequest(detail.printRequest);
+      setStatusHistory(detail.statusHistory);
       setSuccessMessage("Print request archived.");
     } catch (err) {
       setError(err.message);
@@ -393,16 +301,18 @@ export default function AdminPrintRequestDetail() {
   };
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
-      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+    <main className="unifab-admin-page unifab-admin-detail-page unifab-admin-detail unifab-admin-page--print-request-detail mx-auto w-full max-w-[92rem] px-4 py-8 sm:px-6 xl:px-8">
+      <div className="unifab-admin-detail__surface rounded-lg p-6">
         <Link
           to="/admin/print-requests"
-          className="text-sm font-semibold text-slate-700 underline"
+          className="text-sm font-semibold text-[#2b67ad] underline-offset-4 hover:text-[#173760] hover:underline"
         >
           Back to print requests
         </Link>
 
-        <h1 className="mt-4 text-3xl font-bold">Admin Print Request Detail</h1>
+        <h1 className="mt-4 text-3xl font-bold tracking-tight text-[#173760]">
+          Admin Print Request Detail
+        </h1>
 
         {isLoading && (
           <p className="mt-6 text-slate-600">Loading print request...</p>
@@ -416,7 +326,7 @@ export default function AdminPrintRequestDetail() {
 
         {printRequest && (
           <div className="mt-6 space-y-6">
-            <section className="grid gap-4 rounded-lg border border-slate-200 p-4 sm:grid-cols-2">
+            <section className="unifab-admin-detail-grid grid gap-4 rounded-lg p-4 sm:grid-cols-2">
               <div>
                 <p className="text-sm font-medium text-slate-500">Reference</p>
                 <p className="font-semibold text-slate-950">
@@ -486,7 +396,7 @@ export default function AdminPrintRequestDetail() {
               </div>
             </section>
 
-            <section className="rounded-lg border border-slate-200 p-4">
+            <section className="unifab-admin-section rounded-lg p-4">
               <h2 className="text-lg font-semibold">Quote Snapshot</h2>
 
               <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -528,7 +438,7 @@ export default function AdminPrintRequestDetail() {
               </div>
             </section>
 
-            <section className="rounded-lg border border-slate-200 p-4">
+            <section className="unifab-admin-section rounded-lg p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold">Model Inspection</h2>
@@ -578,7 +488,7 @@ export default function AdminPrintRequestDetail() {
             </section>
 
             {items.length > 0 && (
-              <section className="rounded-lg border border-slate-200 p-4">
+            <section className="unifab-admin-section rounded-lg p-4">
                 <h2 className="text-lg font-semibold">Request Items</h2>
                 <div className="mt-4 grid gap-4">
                   {items.map((item) => (
@@ -632,7 +542,7 @@ export default function AdminPrintRequestDetail() {
               </section>
             )}
 
-            <section className="rounded-lg border border-slate-200 p-4">
+            <section className="unifab-admin-section rounded-lg p-4">
               <h2 className="text-lg font-semibold">Payment Verification</h2>
 
               <p className="mt-3 text-sm text-slate-600">
@@ -684,7 +594,7 @@ export default function AdminPrintRequestDetail() {
               )}
             </section>
 
-            <section className="rounded-lg border border-slate-200 p-4">
+              <section className="unifab-admin-section rounded-lg p-4">
               <h2 className="text-lg font-semibold">Admin Actions</h2>
 
               {successMessage && (
@@ -935,7 +845,7 @@ export default function AdminPrintRequestDetail() {
                       <button
                         type="submit"
                         disabled={isUpdatingStatus || isUndoingStatus}
-                        className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                        className="rounded-md bg-[#2b67ad] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1f4f86] disabled:cursor-not-allowed disabled:bg-slate-400"
                       >
                         {isUpdatingStatus ? "Updating..." : "Update Status"}
                       </button>
@@ -974,7 +884,7 @@ export default function AdminPrintRequestDetail() {
               )}
             </section>
 
-            <section className="rounded-lg border border-slate-200 p-4">
+            <section className="unifab-admin-section rounded-lg p-4">
               <h2 className="text-lg font-semibold">Audit Events</h2>
 
               {events.length > 0 && (

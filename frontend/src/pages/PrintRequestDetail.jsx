@@ -1,38 +1,25 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
+
 import { cancelPrintRequest, getPrintRequestById } from "../api/requests";
 import { ModelSnapshotPreview } from "../components/ui/ModelSnapshotPreview";
-import { Stepper } from "../components/ui/Stepper";
-import { assetUrl } from "../utils/model-preview";
-
-function getSnapshotCurrency(printRequest) {
-  return (
-    printRequest?.quoteSnapshot?.pricingConfigSnapshot?.currency ||
-    printRequest?.quoteSnapshot?.quote?.currency ||
-    "PHP"
-  );
-}
-
-function formatMoney(amount, currency) {
-  return `${currency} ${Number(amount || 0).toFixed(2)}`;
-}
+import {
+  PRINT_REQUEST_STEPS,
+  buildRequestItemPreviewSource,
+  canClientCancelPrintRequest,
+  extractCancelledPrintRequest,
+  extractPrintRequestDetail,
+  formatDateTime,
+  formatMoney,
+  getPaymentSlipUrl,
+  getPrintRequestStepperStatus,
+  getRequestItemTitle,
+  getSnapshotCurrency,
+  hasVerifiedPayment,
+} from "../utils/print-request-detail";
 
 export default function PrintRequestDetail() {
   const { requestId } = useParams();
-
-  const PRINT_STEPS = [
-    { id: "pending_review", name: "Submitted" },
-    { id: "payment_slip_issued", name: "Awaiting Payment" },
-    { id: "payment_verified", name: "Payment Verified" },
-    { id: "printing", name: "Printing" },
-    { id: "completed", name: "Completed" },
-    { id: "cancelled", name: "Cancelled" },
-  ];
-
-  const getMappedStatus = (status) => {
-    if (status === "approved") return "pending_review";
-    return status;
-  };
 
   const [printRequest, setPrintRequest] = useState(null);
   const [statusHistory, setStatusHistory] = useState([]);
@@ -45,7 +32,12 @@ export default function PrintRequestDetail() {
   const quoteSnapshot = printRequest?.quoteSnapshot;
   const quoteMetrics = quoteSnapshot?.quote || quoteSnapshot;
   const currency = getSnapshotCurrency(printRequest);
-  const paymentSlipUrl = assetUrl(printRequest?.paymentSlipUrl);
+  const paymentSlipUrl = getPaymentSlipUrl(printRequest);
+  const requestReference =
+    printRequest?.referenceNumber || (printRequest ? `#${printRequest.id}` : "");
+  const currentStepIndex = PRINT_REQUEST_STEPS.findIndex(
+    (step) => step.id === getPrintRequestStepperStatus(printRequest?.status),
+  );
 
   useEffect(() => {
     async function loadPrintRequest() {
@@ -54,12 +46,11 @@ export default function PrintRequestDetail() {
         setError("");
 
         const data = await getPrintRequestById(requestId);
+        const detail = extractPrintRequestDetail(data);
 
-        setPrintRequest(
-          data.data?.printRequest || data.printRequest || data.request || data,
-        );
-        setStatusHistory(data.data?.statusHistory || data.statusHistory || []);
-        setItems(data.data?.items || data.items || []);
+        setPrintRequest(detail.printRequest);
+        setStatusHistory(detail.statusHistory);
+        setItems(detail.items);
       } catch (err) {
         setError(err.message);
         setPrintRequest(null);
@@ -85,9 +76,10 @@ export default function PrintRequestDetail() {
       const data = await cancelPrintRequest(requestId, {
         cancellationReason: cancelReason,
       });
-      setPrintRequest(data.data?.printRequest || data.printRequest);
-      setItems(data.data?.items || data.items || []);
-      setStatusHistory(data.data?.statusHistory || data.statusHistory || []);
+      const detail = extractCancelledPrintRequest(data);
+      setPrintRequest(detail.printRequest);
+      setItems(detail.items);
+      setStatusHistory(detail.statusHistory);
       setCancelReason("");
     } catch (err) {
       setError(err.message);
@@ -97,307 +89,293 @@ export default function PrintRequestDetail() {
   }
 
   return (
-    <>
-      <main className="mx-auto max-w-4xl p-8 print:hidden">
-        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <h1 className="text-3xl font-bold">Print Request Detail</h1>
+    <main className="unifab-client unifab-request-detail print:hidden">
+      <div className="unifab-request-detail__shell">
+        <Link to="/requests" className="unifab-request-detail__back">
+          Back to requests
+        </Link>
 
-          {isLoading && (
-            <p className="mt-6 text-slate-600">Loading print request...</p>
-          )}
-
-          {error && (
-            <div className="mt-6 rounded-md border border-red-200 bg-red-50 p-4 text-red-700">
-              {error}
-            </div>
-          )}
+        <section className="unifab-request-detail__hero">
+          <div>
+            <p className="unifab-request-detail__eyebrow">Print request</p>
+            <h1>{requestReference || "Request detail"}</h1>
+          </div>
 
           {printRequest && (
-            <div className="mt-6 space-y-6">
-              <div className="py-4">
-                <Stepper
-                  steps={PRINT_STEPS}
-                  currentStatus={
-                    printRequest.status === "rejected"
-                      ? "rejected"
-                      : printRequest.status === "cancelled"
-                        ? "cancelled"
-                      : getMappedStatus(printRequest.status)
-                  }
-                />
-              </div>
+            <div className="unifab-request-detail__hero-total">
+              <span>Estimated total</span>
+              <strong>
+                {formatMoney(printRequest.estimatedCost, currency)}
+              </strong>
+              <em>{printRequest.status}</em>
+            </div>
+          )}
+        </section>
 
-              <section className="grid gap-4 rounded-lg border border-slate-200 p-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-sm font-medium text-slate-500">
-                    Reference number
-                  </p>
-                  <p className="font-semibold text-slate-950">
-                    {printRequest.referenceNumber || `#${printRequest.id}`}
-                  </p>
+        {isLoading && (
+          <div className="unifab-request-detail__panel">
+            <p className="unifab-request-detail__muted">
+              Loading print request...
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <div className="unifab-request-detail__alert" role="alert">
+            {error}
+          </div>
+        )}
+
+        {printRequest && (
+          <div className="unifab-request-detail__content is-relaxed">
+            <section className="unifab-request-detail__panel unifab-request-detail__timeline">
+              <ol aria-label="Progress">
+                {PRINT_REQUEST_STEPS.map((step, index) => {
+                  const isCurrent = index === currentStepIndex;
+                  const isComplete = index < currentStepIndex;
+
+                  return (
+                    <li
+                      key={step.id}
+                      className={
+                        isCurrent
+                          ? "is-current"
+                          : isComplete
+                            ? "is-complete"
+                            : ""
+                      }
+                    >
+                      <span>{index + 1}</span>
+                      <p>{step.name}</p>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+
+            <section className="unifab-request-detail__main">
+              <section className="unifab-request-detail__panel">
+                <div className="unifab-request-detail__section-head">
+                  <p className="unifab-request-detail__eyebrow">Payment</p>
+                  <h2>Payment and receipt</h2>
                 </div>
 
-                <div>
-                  <p className="text-sm font-medium text-slate-500">Status</p>
-                  <p className="font-semibold text-slate-950">
-                    {printRequest.status}
+                {printRequest.status === "payment_slip_issued" ? (
+                  <div className="unifab-request-detail__payment-state is-warning">
+                    <h3>Payment slip issued</h3>
+                    <p>Pay through the University Cashier, then bring the physical receipt to the FabLab.</p>
+                  </div>
+                ) : hasVerifiedPayment(printRequest.status) ? (
+                  <div className="unifab-request-detail__payment-state is-success">
+                    <h3>Payment verified</h3>
+                    <p>Your physical receipt was verified by FabLab staff.</p>
+                    {printRequest.receiptReferenceNumber && (
+                      <p>
+                        Receipt/reference no.:{" "}
+                        <strong>
+                          {printRequest.receiptReferenceNumber}
+                        </strong>
+                      </p>
+                    )}
+                    {printRequest.receiptVerifiedAt && (
+                      <p>
+                        Verified on{" "}
+                        {formatDateTime(printRequest.receiptVerifiedAt)}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="unifab-request-detail__muted">
+                    Payment instructions will appear after lab review and
+                    approval.
                   </p>
-                </div>
+                )}
 
-                <div>
-                  <p className="text-sm font-medium text-slate-500">File</p>
-                  <p className="font-semibold text-slate-950">
-                    {printRequest.fileOriginalName || "Model file"}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm font-medium text-slate-500">Material</p>
-                  <p className="font-semibold text-slate-950">
-                    {printRequest.material}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm font-medium text-slate-500">Color</p>
-                  <p className="font-semibold text-slate-950">
-                    {printRequest.materialColorName || "Not specified"}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm font-medium text-slate-500">Quality</p>
-                  <p className="font-semibold text-slate-950">
-                    {printRequest.printQuality}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm font-medium text-slate-500">Quantity</p>
-                  <p className="font-semibold text-slate-950">
-                    {printRequest.quantity}
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => window.open(paymentSlipUrl, "_blank")}
+                  disabled={!paymentSlipUrl}
+                  className="unifab-request-detail__slip-button is-inline"
+                >
+                  Open payment slip
+                </button>
               </section>
 
-              <section className="rounded-lg border border-slate-200 p-4">
-                <h2 className="text-lg font-semibold">Quote snapshot</h2>
+              <section className="unifab-request-detail__panel">
+                <div className="unifab-request-detail__section-head">
+                  <p className="unifab-request-detail__eyebrow">
+                    Request snapshot
+                  </p>
+                  <h2>Submitted details</h2>
+                </div>
 
-                <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                <dl className="unifab-request-detail__facts">
                   <div>
-                    <p className="text-sm font-medium text-slate-500">
-                      Estimated cost
-                    </p>
-                    <p className="font-semibold text-slate-950">
+                    <dt>Reference number</dt>
+                    <dd>{requestReference}</dd>
+                  </div>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>{printRequest.status}</dd>
+                  </div>
+                  <div>
+                    <dt>File</dt>
+                    <dd>{printRequest.fileOriginalName || "Model file"}</dd>
+                  </div>
+                  <div>
+                    <dt>Material</dt>
+                    <dd>{printRequest.material || "Not specified"}</dd>
+                  </div>
+                  <div>
+                    <dt>Color</dt>
+                    <dd>{printRequest.materialColorName || "Not specified"}</dd>
+                  </div>
+                  <div>
+                    <dt>Quality</dt>
+                    <dd>{printRequest.printQuality || "Not specified"}</dd>
+                  </div>
+                  <div>
+                    <dt>Quantity</dt>
+                    <dd>{printRequest.quantity}</dd>
+                  </div>
+                </dl>
+              </section>
+
+              <section className="unifab-request-detail__panel">
+                <div className="unifab-request-detail__section-head">
+                  <p className="unifab-request-detail__eyebrow">
+                    Quote snapshot
+                  </p>
+                  <h2>Slicer metrics</h2>
+                </div>
+
+                <div className="unifab-request-detail__metrics">
+                  <div>
+                    <span>Estimated cost</span>
+                    <strong>
                       {formatMoney(printRequest.estimatedCost, currency)}
-                    </p>
+                    </strong>
                   </div>
-
                   <div>
-                    <p className="text-sm font-medium text-slate-500">
-                      Print time
-                    </p>
-                    <p className="font-semibold text-slate-950">
-                      {Math.round(quoteMetrics?.estimatedPrintTimeMinutes || 0)}{" "}
-                      minutes
-                    </p>
+                    <span>Print time</span>
+                    <strong>
+                      {Math.round(
+                        quoteMetrics?.estimatedPrintTimeMinutes || 0,
+                      )}{" "}
+                      min
+                    </strong>
                   </div>
-
                   <div>
-                    <p className="text-sm font-medium text-slate-500">
-                      Filament
-                    </p>
-                    <p className="font-semibold text-slate-950">
+                    <span>Filament</span>
+                    <strong>
                       {Number(quoteMetrics?.filamentWeightGrams || 0).toFixed(
                         2,
                       )}{" "}
                       g
-                    </p>
+                    </strong>
                   </div>
                 </div>
               </section>
 
               {items.length > 0 && (
-                <section className="rounded-lg border border-slate-200 p-4">
-                  <h2 className="text-lg font-semibold">Request items</h2>
-                  <div className="mt-4 grid gap-4">
+                <section className="unifab-request-detail__panel">
+                  <div className="unifab-request-detail__section-head">
+                    <p className="unifab-request-detail__eyebrow">
+                      Request items
+                    </p>
+                    <h2>Models in this request</h2>
+                  </div>
+
+                  <div className="unifab-request-detail__items">
                     {items.map((item) => (
-                      <div
+                      <article
                         key={item.id}
-                        className="flex gap-4 rounded-md bg-slate-50 p-3 text-sm"
+                        className="unifab-request-detail__item"
                       >
                         <ModelSnapshotPreview
-                          source={{
-                            ...item,
-                            snapshotUrl: item.thumbnailUrl,
-                            fileName:
-                              item.fileOriginalName ||
-                              item.originalFileName ||
-                              item.designSnapshot?.title ||
-                              "Model item",
-                          }}
-                          className="h-20 w-20 shrink-0 rounded border border-slate-200 bg-white"
-                          fallbackClassName="flex h-full w-full items-center justify-center px-1 text-center text-xs text-slate-500"
+                          source={buildRequestItemPreviewSource(item)}
+                          className="unifab-request-detail__preview"
+                          fallbackClassName="unifab-request-detail__preview-fallback"
                           fallbackLabel="Preview"
                           viewerClassName="h-80"
                         />
+
                         <div>
-                          <p className="font-semibold text-slate-950">
-                            {item.fileOriginalName ||
-                              item.designSnapshot?.title ||
-                              "Model item"}
-                          </p>
-                          <p className="mt-1 text-slate-600">
+                          <h3>{getRequestItemTitle(item)}</h3>
+                          <p>
                             {[item.material, item.materialColorName]
                               .filter(Boolean)
                               .join(" / ")}{" "}
-                            · {item.printQuality} · {item.infill}% · Qty{" "}
+                            / {item.printQuality} / {item.infill}% / Qty{" "}
                             {item.quantity}
                           </p>
-                          <p className="mt-1 font-semibold tabular-nums text-slate-950">
+                          <strong>
                             {formatMoney(item.estimatedCost, currency)}
-                          </p>
+                          </strong>
                         </div>
-                      </div>
+                      </article>
                     ))}
                   </div>
                 </section>
               )}
 
-              {["pending_review", "design_in_progress"].includes(
-                printRequest.status,
-              ) && (
-                <section className="rounded-lg border border-slate-200 p-4">
-                  <h2 className="text-lg font-semibold">Cancel request</h2>
+              <section className="unifab-request-detail__panel">
+                <div className="unifab-request-detail__section-head">
+                  <p className="unifab-request-detail__eyebrow">Audit trail</p>
+                  <h2>Status history</h2>
+                </div>
+
+                {statusHistory.length === 0 ? (
+                  <p className="unifab-request-detail__muted">
+                    No status history yet.
+                  </p>
+                ) : (
+                  <div className="unifab-request-detail__history">
+                    {statusHistory.map((item) => (
+                      <article
+                        key={item.id}
+                        className="unifab-request-detail__history-item"
+                      >
+                        <strong>{item.status}</strong>
+                        {item.note && <p>{item.note}</p>}
+                        {item.createdAt && (
+                          <span>{formatDateTime(item.createdAt)}</span>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </section>
+
+            <aside className="unifab-request-detail__side">
+              {canClientCancelPrintRequest(printRequest.status) && (
+                <section className="unifab-request-detail__side-card">
+                  <p className="unifab-request-detail__eyebrow">
+                    Client action
+                  </p>
+                  <h2>Cancel request</h2>
                   <textarea
                     value={cancelReason}
                     onChange={(event) => setCancelReason(event.target.value)}
-                    rows={3}
-                    className="mt-3 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                    rows={4}
+                    className="unifab-request-detail__textarea"
                     placeholder="Reason for cancellation"
                   />
                   <button
                     type="button"
                     onClick={handleCancelRequest}
                     disabled={isCancelling}
-                    className="mt-3 rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                    className="unifab-request-detail__cancel-button"
                   >
                     {isCancelling ? "Cancelling..." : "Cancel request"}
                   </button>
                 </section>
               )}
-
-              <section className="rounded-lg border border-slate-200 p-4">
-                <h2 className="text-lg font-semibold">Payment Instructions</h2>
-
-                {printRequest.status === "payment_slip_issued" ? (
-                  <div className="mt-4 space-y-4">
-                    <div className="rounded-md border border-amber-200 bg-amber-50 p-4">
-                      <h3 className="font-semibold text-amber-800">
-                        Action Required: Pay at Cashier
-                      </h3>
-                      <p className="mt-2 text-sm text-amber-700">
-                        Your print request has been approved. Please follow
-                        these steps to proceed:
-                      </p>
-                      <ol className="mt-2 list-decimal pl-5 text-sm text-amber-700 space-y-1">
-                        <li>
-                          Open and print the payment slip generated by the
-                          FabLab admin.
-                        </li>
-                        <li>
-                          Proceed to the University Cashier (Building A, Room
-                          102) to make the payment.
-                        </li>
-                        <li>
-                          Bring the official physical receipt back to the FabLab
-                          for in-person verification during service hours.
-                        </li>
-                      </ol>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => window.open(paymentSlipUrl, "_blank")}
-                      disabled={!paymentSlipUrl}
-                      className="inline-flex items-center justify-center rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-                    >
-                      Open Payment Slip
-                    </button>
-                    </div>
-                    ) : ["payment_verified", "printing", "completed"].includes(printRequest.status) ? (
-                    <div className="mt-4 space-y-4">
-                    <div className="rounded-md border border-green-200 bg-green-50 p-4">
-                      <p className="text-sm font-semibold text-green-800">Payment Verified</p>
-                      <p className="mt-1 text-sm text-green-700">
-                        Your physical receipt was verified by the FabLab staff.
-                      </p>
-                      {printRequest.receiptReferenceNumber && (
-                        <p className="mt-2 text-sm text-green-700">
-                          Receipt/reference no.:{" "}
-                          <strong>{printRequest.receiptReferenceNumber}</strong>
-                        </p>
-                      )}
-                      {printRequest.receiptVerifiedAt && (
-                        <p className="mt-1 text-sm text-green-700">
-                          Verified on{" "}
-                          {new Date(
-                            printRequest.receiptVerifiedAt,
-                          ).toLocaleString()}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => window.open(paymentSlipUrl, "_blank")}
-                      disabled={!paymentSlipUrl}
-                      className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                    >
-                      Open Payment Slip
-                    </button>
-                    </div>
-                    ) : (
-                    <p className="mt-3 text-sm text-slate-500">
-                    Payment instructions will be available here once a lab admin reviews and approves your request.
-                    </p>
-                    )}
-              </section>
-
-              <section className="rounded-lg border border-slate-200 p-4">
-                <h2 className="text-lg font-semibold">Status history</h2>
-
-                {statusHistory.length === 0 ? (
-                  <p className="mt-3 text-sm text-slate-500">
-                    No status history yet.
-                  </p>
-                ) : (
-                  <div className="mt-4 space-y-3">
-                    {statusHistory.map((item) => (
-                      <div
-                        key={item.id}
-                        className="rounded-md bg-slate-50 p-3 text-sm"
-                      >
-                        <p className="font-semibold text-slate-950">
-                          {item.status}
-                        </p>
-                        {item.note && (
-                          <p className="mt-1 text-slate-600">{item.note}</p>
-                        )}
-                        {item.createdAt && (
-                          <p className="mt-1 text-xs text-slate-500">
-                            {new Date(item.createdAt).toLocaleString()}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-            </div>
-          )}
-        </div>
-      </main>
-
-    </>
+            </aside>
+          </div>
+        )}
+      </div>
+    </main>
   );
 }

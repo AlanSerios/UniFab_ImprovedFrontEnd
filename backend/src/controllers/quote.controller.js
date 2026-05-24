@@ -43,17 +43,22 @@ import {
 import { getManagedLocalDesignAbsolutePath } from "../utils/local-design-storage.util.js";
 import { getManagedMmfPrintReadyFileAbsolutePath } from "../utils/mmf-print-ready-storage.util.js";
 import { cleanupExpiredUnusedQuotes } from "../services/quote-cleanup.service.js";
-import { getSlicerProfileFilePath } from "../utils/slicer-profile-path.util.js";
 import { generateStoredQuoteSnapshot } from "../utils/model-snapshot.util.js";
 import {
+  applyUploadQuoteTokenDownloadUrls,
+  buildInlineDownloadUrlWithQuoteToken,
+  buildLocalDesignSnapshot,
+  buildMmfObjectSnapshot,
+  normalizeQuoteRecord,
+} from "../utils/quote-response.util.js";
+import { buildQuoteReadinessPayload } from "../utils/quote-readiness-response.util.js";
+import {
   attachManagedFileReference,
-  buildDownloadUrl,
   registerManagedFile,
   registerManagedPublicPath,
 } from "../services/file-storage.service.js";
 
 const QUOTE_TTL_HOURS = Number(process.env.QUOTE_TTL_HOURS || 168);
-const QUOTE_QUALITIES = ["draft", "standard", "fine"];
 
 function buildQuoteExpiresAt() {
   const normalizedHours =
@@ -62,63 +67,6 @@ function buildQuoteExpiresAt() {
       : 168;
 
   return new Date(Date.now() + normalizedHours * 60 * 60 * 1000);
-}
-
-function parseJsonSafely(value) {
-  if (!value) {
-    return null;
-  }
-
-  if (typeof value === "object") {
-    return value;
-  }
-
-  try {
-    return JSON.parse(value);
-  } catch {
-    return null;
-  }
-}
-
-function normalizeQuoteRecord(quoteRecord) {
-  if (!quoteRecord) {
-    return null;
-  }
-
-  return {
-    id: quoteRecord.id,
-    quoteAssetId: quoteRecord.quote_asset_id,
-    sourceType: quoteRecord.source_type,
-    designId: quoteRecord.design_id,
-    fileObjectId: quoteRecord.file_object_id,
-    fileUrl: quoteRecord.file_object_id
-      ? buildDownloadUrl(quoteRecord.file_object_id, { inline: true })
-      : quoteRecord.file_url,
-    fileOriginalName: quoteRecord.file_original_name,
-    fileMimeType: quoteRecord.file_mime_type,
-    fileSize: quoteRecord.file_size,
-    thumbnailFileObjectId: quoteRecord.thumbnail_file_object_id,
-    thumbnailUrl: quoteRecord.thumbnail_file_object_id
-      ? buildDownloadUrl(quoteRecord.thumbnail_file_object_id, { inline: true })
-      : quoteRecord.thumbnail_url,
-    material: quoteRecord.material,
-    materialColorId: quoteRecord.material_color_id,
-    materialColorName: quoteRecord.material_color_name,
-    materialColorHex: quoteRecord.material_color_hex,
-    printQuality: quoteRecord.print_quality,
-    infill: Number(quoteRecord.infill),
-    quantity: Number(quoteRecord.quantity),
-    estimatedCost:
-      quoteRecord.estimated_cost === null
-        ? null
-        : Number(quoteRecord.estimated_cost),
-    designSnapshot: parseJsonSafely(quoteRecord.design_snapshot),
-    quoteSnapshot: parseJsonSafely(quoteRecord.quote_snapshot),
-    pricingConfigSnapshot: parseJsonSafely(quoteRecord.pricing_config_snapshot),
-    materialSnapshot: parseJsonSafely(quoteRecord.material_snapshot),
-    expiresAt: quoteRecord.expires_at,
-    createdAt: quoteRecord.created_at,
-  };
 }
 
 async function recordQuoteAttemptSafely(payload) {
@@ -194,80 +142,6 @@ async function resolveMaterialColor({ materialRow, materialColorId }) {
     id: color.id,
     name: color.color_name,
     hexCode: color.hex_code,
-  };
-}
-
-function buildLocalDesignSnapshot(localDesign, selectedDesignFile = null) {
-  return {
-    source: "local",
-    id: localDesign.id,
-    title: localDesign.title,
-    description: localDesign.description,
-    thumbnailUrl:
-      selectedDesignFile?.modelSnapshotUrl || localDesign.thumbnail_url,
-    fileUrl: selectedDesignFile?.fileUrl || localDesign.file_url,
-    designFileId: selectedDesignFile?.id || null,
-    fileOriginalName: selectedDesignFile?.originalFileName || null,
-    modelSnapshotUrl: selectedDesignFile?.modelSnapshotUrl || null,
-    material: localDesign.material,
-    dimensions: localDesign.dimensions,
-    licenseType: localDesign.license_type,
-    capturedAt: new Date().toISOString(),
-  };
-}
-
-function buildMmfPrintReadyFileSnapshot(printReadyFile) {
-  if (!printReadyFile) {
-    return null;
-  }
-
-  return {
-    id: printReadyFile.id,
-    mmfObjectId: printReadyFile.mmf_object_id,
-    mmfFileId: printReadyFile.mmf_file_id,
-    archiveEntryPath: printReadyFile.archive_entry_path,
-    archiveEntryName: printReadyFile.archive_entry_name,
-    cachedFileUrl: printReadyFile.file_object_id
-      ? buildDownloadUrl(printReadyFile.file_object_id, { inline: true })
-      : printReadyFile.cached_file_url,
-    fileObjectId: printReadyFile.file_object_id || null,
-    modelSnapshotUrl: printReadyFile.model_snapshot_file_object_id
-      ? buildDownloadUrl(printReadyFile.model_snapshot_file_object_id, {
-          inline: true,
-        })
-      : printReadyFile.model_snapshot_url,
-    modelSnapshotFileObjectId:
-      printReadyFile.model_snapshot_file_object_id || null,
-    originalFileName: printReadyFile.original_file_name,
-    extension: printReadyFile.extension,
-    fileSize: printReadyFile.file_size,
-    checksumSha256: printReadyFile.checksum_sha256,
-    status: printReadyFile.status,
-    verifiedAt: printReadyFile.verified_at,
-  };
-}
-
-function buildMmfObjectSnapshot(mmfObject, override, printReadyFile) {
-  return {
-    source: "myminifactory",
-    id: mmfObject.id,
-    name: mmfObject.name,
-    url: mmfObject.url,
-    description: mmfObject.description,
-    dimensions: mmfObject.dimensions,
-    materialQuantity: mmfObject.materialQuantity,
-    license: mmfObject.license,
-    designer: mmfObject.designer,
-    tags: mmfObject.tags || [],
-    categories: mmfObject.categories || [],
-    override: {
-      id: override.id,
-      isPrintReady: Boolean(override.is_print_ready),
-      clientNote: override.client_note,
-      printReadyFileId: printReadyFile?.id || null,
-    },
-    printReadyFile: buildMmfPrintReadyFileSnapshot(printReadyFile),
-    capturedAt: new Date().toISOString(),
   };
 }
 
@@ -445,9 +319,10 @@ const calculateQuote = asyncHandler(async (req, res) => {
           fileObjectId: modelFileObject?.id || null,
           thumbnailFileObjectId: thumbnailFileObject?.id || null,
           thumbnailUrl: thumbnailFileObject?.id
-            ? `${buildDownloadUrl(thumbnailFileObject.id, { inline: true })}&quoteToken=${encodeURIComponent(
+            ? buildInlineDownloadUrlWithQuoteToken(
+                thumbnailFileObject.id,
                 quoteToken,
-              )}`
+              )
             : thumbnailUrl,
         },
         "Quote calculated successfully",
@@ -482,22 +357,7 @@ const getQuoteByToken = asyncHandler(async (req, res) => {
 
   const normalizedQuote = normalizeQuoteRecord(quoteRecord);
 
-  if (
-    normalizedQuote?.fileObjectId &&
-    normalizedQuote.sourceType === "upload"
-  ) {
-    normalizedQuote.fileUrl = `${buildDownloadUrl(
-      normalizedQuote.fileObjectId,
-      { inline: true },
-    )}&quoteToken=${encodeURIComponent(req.params.quoteToken)}`;
-
-    if (normalizedQuote.thumbnailFileObjectId) {
-      normalizedQuote.thumbnailUrl = `${buildDownloadUrl(
-        normalizedQuote.thumbnailFileObjectId,
-        { inline: true },
-      )}&quoteToken=${encodeURIComponent(req.params.quoteToken)}`;
-    }
-  }
+  applyUploadQuoteTokenDownloadUrls(normalizedQuote, req.params.quoteToken);
 
   return res.status(200).json(
     new ApiResponse(
@@ -671,9 +531,10 @@ const recalculateUploadQuote = asyncHandler(async (req, res) => {
           fileObjectId: sourceQuoteRecord.file_object_id,
           thumbnailFileObjectId: sourceQuoteRecord.thumbnail_file_object_id,
           thumbnailUrl: sourceQuoteRecord.thumbnail_file_object_id
-            ? `${buildDownloadUrl(sourceQuoteRecord.thumbnail_file_object_id, {
-                inline: true,
-              })}&quoteToken=${encodeURIComponent(quoteToken)}`
+            ? buildInlineDownloadUrlWithQuoteToken(
+                sourceQuoteRecord.thumbnail_file_object_id,
+                quoteToken,
+              )
             : sourceQuoteRecord.thumbnail_url,
         },
         "Quote recalculated successfully",
@@ -1083,90 +944,15 @@ const getAdminQuoteReadiness = asyncHandler(async (req, res) => {
       listRecentSlicerProfileValidationEvents({ limit: 20 }),
     ]);
 
-  const activeProfileByMaterialQuality = new Map();
-
-  for (const profile of profiles) {
-    if (!profile.is_active) {
-      continue;
-    }
-
-    const key = `${profile.material_key}:${profile.quality}`;
-    const existingProfile = activeProfileByMaterialQuality.get(key);
-
-    if (
-      !existingProfile ||
-      Number(profile.version_number) > Number(existingProfile.version_number)
-    ) {
-      activeProfileByMaterialQuality.set(key, profile);
-    }
-  }
-
-  const readinessMaterials = materials.map((material) => {
-    const qualities = QUOTE_QUALITIES.map((quality) => {
-      const profile = activeProfileByMaterialQuality.get(
-        `${material.material_key}:${quality}`,
-      );
-      const profileFilePath = profile?.profile_filename
-        ? getSlicerProfileFilePath(profile.profile_filename)
-        : null;
-      const profileFileExists = profileFilePath
-        ? fs.existsSync(profileFilePath)
-        : false;
-      const validationStatus = profile?.validation_status || "not_run";
-      const isReady = Boolean(
-        material.is_active &&
-          pricingConfig &&
-          profile &&
-          profileFileExists &&
-          validationStatus !== "failed",
-      );
-
-      return {
-        quality,
-        isReady,
-        reasons: getReadinessReasons({
-          material,
-          pricingConfig,
-          profile,
-          profileFileExists,
-          validationStatus,
-        }),
-        profile: profile
-          ? {
-              id: profile.id,
-              printerName: profile.printer_name,
-              nozzle: profile.nozzle,
-              supportRule: profile.support_rule,
-              orientationRule: profile.orientation_rule,
-              profileFilename: profile.profile_filename,
-              versionNumber: profile.version_number,
-              validationStatus,
-              validationMessage: profile.validation_message,
-              validatedAt: profile.validated_at,
-              createdAt: profile.created_at,
-            }
-          : null,
-      };
-    });
-
-    return {
-      id: material.id,
-      materialKey: material.material_key,
-      displayName: material.display_name,
-      isActive: Boolean(material.is_active),
-      qualities,
-    };
-  });
-
   return res.status(200).json(
     new ApiResponse(
       200,
-      {
-        pricingConfigReady: Boolean(pricingConfig),
+      buildQuoteReadinessPayload({
+        materials,
+        profiles,
         pricingConfig,
-        materials: readinessMaterials,
         validationEvents,
-      },
+      }),
       "Quote readiness fetched successfully",
     ),
   );
@@ -1197,42 +983,6 @@ const listAdminQuoteDiagnostics = asyncHandler(async (req, res) => {
     ),
   );
 });
-
-function getReadinessReasons({
-  material,
-  pricingConfig,
-  profile,
-  profileFileExists,
-  validationStatus,
-}) {
-  const reasons = [];
-
-  if (!material.is_active) {
-    reasons.push("Material is inactive.");
-  }
-
-  if (!pricingConfig) {
-    reasons.push("Pricing config is missing.");
-  }
-
-  if (!profile) {
-    reasons.push("No active slicer profile.");
-  }
-
-  if (profile && !profileFileExists) {
-    reasons.push("Active slicer profile file is missing.");
-  }
-
-  if (validationStatus === "failed") {
-    reasons.push("Active slicer profile failed dry-run validation.");
-  }
-
-  if (validationStatus === "not_run") {
-    reasons.push("Active slicer profile has not been dry-run validated yet.");
-  }
-
-  return reasons;
-}
 
 export {
   calculateQuote,

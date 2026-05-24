@@ -11,14 +11,27 @@ import {
   runAdminFileRegistryCleanup,
   runAdminRetentionCleanup,
 } from "../../api/adminFiles";
-import { API_BASE_URL } from "../../api/client";
 import { cleanupExpiredQuotes } from "../../api/quotes";
 import { Button } from "../../components/ui/Button";
 import { Alert } from "../../components/ui/Feedback";
 import { Field, SelectInput, TextArea, TextInput } from "../../components/ui/Form";
 import { PageHeader, PageShell, Panel } from "../../components/ui/Page";
-
-const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
+import {
+  DEFAULT_DESIGN_CLEANUP_SETTINGS,
+  DEFAULT_REGISTRY_CLEANUP_SETTINGS,
+  DEFAULT_REGISTRY_FILTERS,
+  DEFAULT_RETENTION_CLEANUP_SETTINGS,
+  buildDesignFileCleanupPayload,
+  buildFileDownloadUrl,
+  buildRegistryCleanupPayload,
+  buildRetentionCleanupPayload,
+  extractCleanupResponse,
+  extractExpiredQuoteCleanupResult,
+  extractFileRegistryResponse,
+  formatBytes,
+  formatMetricLabel,
+  getCleanupSummaryEntries,
+} from "../../utils/admin-maintenance";
 
 export default function AdminMaintenance() {
   const [limit, setLimit] = useState(100);
@@ -30,41 +43,24 @@ export default function AdminMaintenance() {
   const [registryPagination, setRegistryPagination] = useState(null);
   const [registryDetail, setRegistryDetail] = useState(null);
   const [registryCleanupResult, setRegistryCleanupResult] = useState(null);
-  const [registryFilters, setRegistryFilters] = useState({
-    storageStatus: "",
-    visibility: "",
-    referenceType: "",
-    search: "",
-    page: 1,
-    limit: 10,
-  });
-  const [registryCleanupSettings, setRegistryCleanupSettings] = useState({
-    limit: 250,
-    reason: "",
-    quoteDays: 7,
-    designDays: 180,
-    requestDays: 365,
-  });
+  const [registryFilters, setRegistryFilters] = useState(
+    DEFAULT_REGISTRY_FILTERS,
+  );
+  const [registryCleanupSettings, setRegistryCleanupSettings] = useState(
+    DEFAULT_REGISTRY_CLEANUP_SETTINGS,
+  );
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [registryMessage, setRegistryMessage] = useState("");
   const [registryError, setRegistryError] = useState("");
-  const [designCleanupSettings, setDesignCleanupSettings] = useState({
-    limit: 250,
-    reason: "",
-    retentionDays: 180,
-    mmfRetentionDays: 180,
-  });
+  const [designCleanupSettings, setDesignCleanupSettings] = useState(
+    DEFAULT_DESIGN_CLEANUP_SETTINGS,
+  );
   const [designCleanupResult, setDesignCleanupResult] = useState(null);
   const [isCleaningDesignFiles, setIsCleaningDesignFiles] = useState(false);
-  const [retentionCleanupSettings, setRetentionCleanupSettings] = useState({
-    limit: 5000,
-    reason: "",
-    fileAccessEventRetentionDays: 180,
-    moderationRetentionDays: 180,
-    designAuditRetentionDays: 365,
-    printRequestEventRetentionDays: 365,
-  });
+  const [retentionCleanupSettings, setRetentionCleanupSettings] = useState(
+    DEFAULT_RETENTION_CLEANUP_SETTINGS,
+  );
   const [retentionCleanupResult, setRetentionCleanupResult] = useState(null);
   const [isCleaningRetention, setIsCleaningRetention] = useState(false);
 
@@ -77,18 +73,7 @@ export default function AdminMaintenance() {
 
     try {
       const response = await cleanupExpiredQuotes(limit);
-      const cleanupResult =
-        response.data?.cleanup || response.data?.result || response.result;
-      const cleanedCount =
-        cleanupResult?.deletedCount ??
-        cleanupResult?.deletedQuotes ??
-        cleanupResult?.count;
-
-      setMessage(
-        cleanedCount !== undefined
-          ? `Expired quote cleanup completed. Removed ${cleanedCount} records.`
-          : response.message || "Expired quote cleanup completed.",
-      );
+      setMessage(extractExpiredQuoteCleanupResult(response).message);
     } catch (err) {
       setError(err.message || "Expired quote cleanup failed.");
     } finally {
@@ -105,13 +90,13 @@ export default function AdminMaintenance() {
         getAdminFileRegistrySummary(),
         getAdminFileObjects(registryFilters),
       ]);
-      setRegistrySummary(summaryResponse.data?.summary || summaryResponse.summary);
-      setRegistryObjects(
-        objectsResponse.data?.fileObjects || objectsResponse.fileObjects || [],
-      );
-      setRegistryPagination(
-        objectsResponse.data?.pagination || objectsResponse.pagination || null,
-      );
+      const registryData = extractFileRegistryResponse({
+        summaryResponse,
+        objectsResponse,
+      });
+      setRegistrySummary(registryData.summary);
+      setRegistryObjects(registryData.fileObjects);
+      setRegistryPagination(registryData.pagination);
     } catch (err) {
       setRegistryError(err.message || "Failed to load file registry.");
     } finally {
@@ -133,19 +118,13 @@ export default function AdminMaintenance() {
         ]);
 
         if (!ignore) {
-          setRegistrySummary(
-            summaryResponse.data?.summary || summaryResponse.summary,
-          );
-          setRegistryObjects(
-            objectsResponse.data?.fileObjects ||
-              objectsResponse.fileObjects ||
-              [],
-          );
-          setRegistryPagination(
-            objectsResponse.data?.pagination ||
-              objectsResponse.pagination ||
-              null,
-          );
+          const registryData = extractFileRegistryResponse({
+            summaryResponse,
+            objectsResponse,
+          });
+          setRegistrySummary(registryData.summary);
+          setRegistryObjects(registryData.fileObjects);
+          setRegistryPagination(registryData.pagination);
         }
       } catch (err) {
         if (!ignore) {
@@ -176,18 +155,6 @@ export default function AdminMaintenance() {
     }
   }
 
-  function buildRegistryCleanupPayload() {
-    return {
-      limit: registryCleanupSettings.limit,
-      retentionPolicy: {
-        quoteDays: registryCleanupSettings.quoteDays,
-        designDays: registryCleanupSettings.designDays,
-        requestDays: registryCleanupSettings.requestDays,
-      },
-      reason: registryCleanupSettings.reason,
-    };
-  }
-
   async function handleRegistryCleanup({ dryRun }) {
     setIsCleaningRegistry(true);
     setRegistryMessage("");
@@ -201,8 +168,10 @@ export default function AdminMaintenance() {
       const action = dryRun
         ? dryRunAdminFileRegistryCleanup
         : runAdminFileRegistryCleanup;
-      const response = await action(buildRegistryCleanupPayload());
-      const cleanup = response.data?.cleanup || response.cleanup;
+      const response = await action(
+        buildRegistryCleanupPayload(registryCleanupSettings),
+      );
+      const cleanup = extractCleanupResponse(response);
 
       setRegistryCleanupResult(cleanup);
       setRegistryMessage(
@@ -231,14 +200,11 @@ export default function AdminMaintenance() {
       const action = dryRun
         ? dryRunAdminDesignFileCleanup
         : runAdminDesignFileCleanup;
-      const response = await action({
-        limit: designCleanupSettings.limit,
-        reason: designCleanupSettings.reason,
-        retentionDays: designCleanupSettings.retentionDays,
-        mmfRetentionDays: designCleanupSettings.mmfRetentionDays,
-      });
+      const response = await action(
+        buildDesignFileCleanupPayload(designCleanupSettings),
+      );
 
-      setDesignCleanupResult(response.data?.cleanup || response.cleanup);
+      setDesignCleanupResult(extractCleanupResponse(response));
       setRegistryMessage(
         dryRun
           ? "Design file cleanup dry run completed."
@@ -265,20 +231,11 @@ export default function AdminMaintenance() {
       const action = dryRun
         ? dryRunAdminRetentionCleanup
         : runAdminRetentionCleanup;
-      const response = await action({
-        limit: retentionCleanupSettings.limit,
-        reason: retentionCleanupSettings.reason,
-        fileAccessEventRetentionDays:
-          retentionCleanupSettings.fileAccessEventRetentionDays,
-        moderationRetentionDays:
-          retentionCleanupSettings.moderationRetentionDays,
-        designAuditRetentionDays:
-          retentionCleanupSettings.designAuditRetentionDays,
-        printRequestEventRetentionDays:
-          retentionCleanupSettings.printRequestEventRetentionDays,
-      });
+      const response = await action(
+        buildRetentionCleanupPayload(retentionCleanupSettings),
+      );
 
-      setRetentionCleanupResult(response.data?.cleanup || response.cleanup);
+      setRetentionCleanupResult(extractCleanupResponse(response));
       setRegistryMessage(
         dryRun
           ? "Database retention cleanup dry run completed."
@@ -293,7 +250,7 @@ export default function AdminMaintenance() {
 
   return (
     <PageShell size="lg">
-      <Panel>
+      <Panel className="unifab-admin-page unifab-admin-panel unifab-admin-config-page unifab-admin-page--maintenance">
         <PageHeader
           title="Admin maintenance"
           description="Run safe maintenance tasks for backend-managed operational data."
@@ -916,9 +873,7 @@ function RegistryMetric({ label, value, detail }) {
 
 function FileDetailPanel({ detail, onClose }) {
   const fileObject = detail.fileObject;
-  const downloadUrl = fileObject?.downloadUrl
-    ? `${API_ORIGIN}${fileObject.downloadUrl}`
-    : "";
+  const downloadUrl = buildFileDownloadUrl(fileObject?.downloadUrl);
 
   return (
     <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
@@ -1033,11 +988,7 @@ function ResultMetric({ label, value }) {
 function CleanupSummary({ result }) {
   if (!result) return null;
 
-  const entries = Object.entries(result).filter(
-    ([key, value]) =>
-      typeof value === "number" &&
-      !["limit", "retentionDays", "mmfRetentionDays"].includes(key),
-  );
+  const entries = getCleanupSummaryEntries(result);
 
   if (entries.length === 0) return null;
 
@@ -1051,22 +1002,4 @@ function CleanupSummary({ result }) {
       </div>
     </div>
   );
-}
-
-function formatMetricLabel(value) {
-  return String(value)
-    .replace(/([A-Z])/g, " $1")
-    .replaceAll("_", " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function formatBytes(value) {
-  const bytes = Number(value || 0);
-
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) {
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }

@@ -176,7 +176,7 @@ export default function AdminDesignTaxonomy() {
 
   return (
     <PageShell size="xl">
-      <Panel>
+      <Panel className="unifab-admin-page unifab-admin-panel unifab-admin-config-page unifab-admin-page--taxonomy">
         <PageHeader
           title="Design Taxonomy"
           description="Manage the approved categories and tags used by the Design Library."

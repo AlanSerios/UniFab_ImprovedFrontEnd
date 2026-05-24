@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { API_BASE_URL } from "../api/client";
 import { getMyDesigns, publishMyDesign } from "../api/designs";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { Alert, EmptyState, StatusBadge } from "../components/ui/Feedback";
@@ -8,41 +7,19 @@ import { PageHeader, PageShell, Panel } from "../components/ui/Page";
 import {
   getModerationStatusLabel,
   getModerationStatusTone,
-  getOwnerModerationMessage,
 } from "../utils/moderation-display";
-
-const FILTERS = [
-  { label: "All", value: "" },
-  { label: "Drafts", value: "draft" },
-  { label: "Needs Review", value: "needs_admin_review" },
-  { label: "Rejected", value: "rejected" },
-  { label: "Approved", value: "approved" },
-  { label: "Hidden", value: "hidden" },
-];
-
-const REJECTED_STATUSES = new Set(["auto_rejected", "admin_rejected"]);
-const APPROVED_STATUSES = new Set(["auto_approved", "admin_approved"]);
-const PUBLISHABLE_STATUSES = new Set([
-  "draft",
-  "auto_rejected",
-  "admin_rejected",
-]);
-const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
-
-function assetUrl(path) {
-  if (!path) return "";
-  if (/^https?:\/\//i.test(path)) return path;
-  return `${API_ORIGIN}${path}`;
-}
-
-function matchesFilter(design, filter) {
-  if (!filter) return true;
-  if (filter === "rejected")
-    return REJECTED_STATUSES.has(design.moderationStatus);
-  if (filter === "approved")
-    return APPROVED_STATUSES.has(design.moderationStatus);
-  return design.moderationStatus === filter;
-}
+import {
+  DESIGN_FILTERS,
+  canPublishDesign,
+  extractMyDesigns,
+  getDesignDetailPath,
+  getDesignEditPath,
+  getDesignSummary,
+  getDesignThumbnailUrl,
+  getDesignTitle,
+  getDesignUpdatedDate,
+  matchesDesignFilter,
+} from "../utils/my-designs";
 
 export default function MyDesigns() {
   const [designs, setDesigns] = useState([]);
@@ -57,9 +34,8 @@ export default function MyDesigns() {
       setError("");
 
       const data = await getMyDesigns();
-      const payload = data.data || data;
 
-      setDesigns(payload.localDesigns || []);
+      setDesigns(extractMyDesigns(data));
     } catch (err) {
       setError(err.message);
       setDesigns([]);
@@ -74,10 +50,9 @@ export default function MyDesigns() {
     async function loadInitialDesigns() {
       try {
         const data = await getMyDesigns();
-        const payload = data.data || data;
 
         if (isMounted) {
-          setDesigns(payload.localDesigns || []);
+          setDesigns(extractMyDesigns(data));
         }
       } catch (err) {
         if (isMounted) {
@@ -99,7 +74,7 @@ export default function MyDesigns() {
   }, []);
 
   const visibleDesigns = useMemo(
-    () => designs.filter((design) => matchesFilter(design, activeFilter)),
+    () => designs.filter((design) => matchesDesignFilter(design, activeFilter)),
     [designs, activeFilter],
   );
 
@@ -119,15 +94,15 @@ export default function MyDesigns() {
 
   return (
     <PageShell size="xl">
-      <Panel>
+      <Panel className="unifab-design-workspace unifab-design-workspace--mine">
         <PageHeader
           title="My Designs"
           description="Manage drafts, review status, feedback, and published community designs."
           action={<ButtonLink to="/my-designs/new">New Design</ButtonLink>}
         />
 
-        <div className="mt-6 flex flex-wrap gap-2">
-          {FILTERS.map((filter) => (
+        <div className="unifab-design-workspace__filters mt-6 flex flex-wrap gap-2">
+          {DESIGN_FILTERS.map((filter) => (
             <Button
               key={filter.value || "all"}
               type="button"
@@ -160,28 +135,28 @@ export default function MyDesigns() {
             {visibleDesigns.map((design) => (
               <article
                 key={design.id}
-                className="group flex h-full min-h-[360px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+                className="unifab-design-card unifab-design-workspace__card group"
               >
                 <Link
-                  to={`/designs/local/${design.id}?returnTo=${encodeURIComponent("/my-designs")}`}
-                  className="block"
+                  to={getDesignDetailPath(design)}
+                  className="unifab-design-card__link"
                 >
-                  <div className="relative flex h-36 items-center justify-center overflow-hidden border-b border-slate-200 bg-slate-100">
+                  <div className="unifab-design-card__media unifab-design-workspace__thumb">
                     {design.thumbnailUrl ? (
                       <img
-                        src={assetUrl(design.thumbnailUrl)}
-                        alt={design.title || "Design thumbnail"}
-                        className="h-full w-full object-contain p-2 transition duration-200 group-hover:scale-[1.03]"
+                        src={getDesignThumbnailUrl(design)}
+                        alt={getDesignTitle(design)}
+                        className="transition duration-300 group-hover:scale-[1.025]"
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-slate-500">
+                      <div className="unifab-design-card__empty-thumb">
                         No thumbnail
                       </div>
                     )}
                   </div>
 
-                  <div className="p-4 pb-0">
-                    <div className="mb-2 flex flex-wrap gap-2">
+                  <div className="unifab-design-card__body">
+                    <div className="unifab-design-card__meta">
                       <StatusBadge>Community</StatusBadge>
                       <StatusBadge
                         tone={getModerationStatusTone(
@@ -192,44 +167,39 @@ export default function MyDesigns() {
                       </StatusBadge>
                     </div>
 
-                    <h2 className="line-clamp-2 font-semibold text-slate-950">
-                      {design.title || "Untitled design"}
+                    <h2 className="unifab-design-card__title line-clamp-2">
+                      {getDesignTitle(design)}
                     </h2>
 
-                    <p className="mt-2 text-xs text-slate-500">
-                      Updated{" "}
-                      {design.updatedAt
-                        ? new Date(design.updatedAt).toLocaleDateString()
-                        : "-"}
+                    <p className="unifab-design-card__date">
+                      Updated {getDesignUpdatedDate(design)}
                     </p>
 
-                    <p className="mt-2 line-clamp-2 min-h-[3rem] text-sm leading-6 text-slate-600">
-                      {getOwnerModerationMessage(design) ||
-                        design.description ||
-                        "No description provided."}
+                    <p className="unifab-design-card__description line-clamp-2">
+                      {getDesignSummary(design)}
                     </p>
                   </div>
                 </Link>
 
-                <div className="mt-auto border-t border-slate-200 p-4">
+                <div className="unifab-design-card__footer">
                   <ButtonLink
-                    to={`/designs/local/${design.id}?returnTo=${encodeURIComponent("/my-designs")}`}
+                    to={getDesignDetailPath(design)}
                     variant="secondary"
                     className="w-full"
                   >
                     View Details
                   </ButtonLink>
 
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div className="unifab-design-card__split-actions">
                     <ButtonLink
-                      to={`/my-designs/${design.id}`}
+                      to={getDesignEditPath(design)}
                       variant="secondary"
                       className="w-full"
                     >
                       Edit
                     </ButtonLink>
 
-                    {PUBLISHABLE_STATUSES.has(design.moderationStatus) ? (
+                    {canPublishDesign(design) ? (
                       <Button
                         type="button"
                         onClick={() => handlePublish(design.id)}

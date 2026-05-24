@@ -2,7 +2,6 @@ import express from "express";
 import {
   searchDesignLibrary,
   getMmfDesignDetail,
-  listLocalDesigns,
   getDesignTaxonomyForAdmin,
   createDesignCategoryForAdmin,
   updateDesignCategoryForAdmin,
@@ -17,7 +16,6 @@ import {
   unsaveLocalDesign,
   createLocalDesign,
   updateLocalDesign,
-  deactivateLocalDesign,
   archiveLocalDesign,
   deleteLocalDesign,
   getDesignTaxonomy,
@@ -55,7 +53,6 @@ import {
   localDesignIdValidator,
   createLocalDesignValidator,
   updateLocalDesignValidator,
-  deactivateLocalDesignValidator,
   overrideIdValidator,
   createDesignOverrideValidator,
   updateDesignOverrideValidator,
@@ -95,8 +92,6 @@ router
     validate,
     getMmfDesignDetail,
   );
-
-router.route("/local").get(publicReadRateLimiter, listLocalDesigns);
 
 router.route("/taxonomy").get(publicReadRateLimiter, getDesignTaxonomy);
 
@@ -349,18 +344,6 @@ router
     createLocalDesignValidator(),
     validate,
     createLocalDesign,
-  );
-
-router
-  .route("/local/:designId/deactivate")
-  .patch(
-    writeRateLimiter,
-    verifyJWT,
-    verifyEmailVerified,
-    verifyAdmin,
-    deactivateLocalDesignValidator(),
-    validate,
-    deactivateLocalDesign,
   );
 
 router

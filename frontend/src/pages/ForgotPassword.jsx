@@ -35,37 +35,42 @@ export default function ForgotPassword() {
 
   return (
     <PageShell size="sm">
-      <Panel>
-        <PageHeader
-          title="Forgot password"
-          description="Enter your account email and we will send password reset instructions."
-        />
+      <div className="unifab-auth unifab-auth--utility">
+        <Panel className="unifab-auth__panel">
+          <PageHeader
+            title="Forgot password"
+            description="Enter your account email and we will send password reset instructions."
+          />
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-          <Field label="Email">
-            <TextInput
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-            />
-          </Field>
+          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+            <Field label="Email">
+              <TextInput
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </Field>
 
-          <Alert type="success">{message}</Alert>
-          <Alert type="error">{error}</Alert>
+            <Alert type="success">{message}</Alert>
+            <Alert type="error">{error}</Alert>
 
-          <Button type="submit" disabled={isSubmitting} className="w-full">
-            {isSubmitting ? "Sending..." : "Send reset link"}
-          </Button>
-        </form>
+            <Button type="submit" disabled={isSubmitting} className="w-full">
+              {isSubmitting ? "Sending..." : "Send reset link"}
+            </Button>
+          </form>
 
-        <p className="mt-6 text-center text-sm text-slate-500">
-          Remembered your password?{" "}
-          <Link to="/login" className="font-semibold text-slate-950 underline">
-            Back to login
-          </Link>
-        </p>
-      </Panel>
+          <p className="mt-6 text-center text-sm text-slate-500">
+            Remembered your password?{" "}
+            <Link
+              to="/login"
+              className="font-semibold text-slate-950 underline"
+            >
+              Back to login
+            </Link>
+          </p>
+        </Panel>
+      </div>
     </PageShell>
   );
 }

@@ -132,7 +132,7 @@ export default function AdminSlicerProfiles() {
 
   return (
     <PageShell size="xl">
-      <Panel>
+      <Panel className="unifab-admin-page unifab-admin-panel unifab-admin-config-page unifab-admin-page--slicer-profiles">
         <PageHeader
           title="Slicer profiles"
           description="Upload PrusaSlicer .ini profiles. Each profile must pass a dry-run slice before it becomes active."

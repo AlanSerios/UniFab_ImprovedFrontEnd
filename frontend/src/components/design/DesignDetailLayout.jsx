@@ -6,8 +6,13 @@ export function ModelDetailShell({
   children,
 }) {
   return (
-    <div className="space-y-6">
-      <ButtonLink to={backTo} variant="secondary" size="sm">
+    <div className="unifab-design-detail__shell space-y-6">
+      <ButtonLink
+        to={backTo}
+        variant="secondary"
+        size="sm"
+        className="unifab-design-detail__back-link"
+      >
         {backLabel}
       </ButtonLink>
       {children}
@@ -18,17 +23,23 @@ export function ModelDetailShell({
 export function ModelDetailHero({ media, summary, joined = false }) {
   if (joined) {
     return (
-      <div className="grid overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm lg:grid-cols-[minmax(0,760px)_360px] lg:items-stretch">
-        <div className="min-w-0 lg:border-r lg:border-slate-200">{media}</div>
-        <aside className="min-w-0">{summary}</aside>
+      <div className="unifab-design-detail__hero grid overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm lg:items-stretch">
+        <div className="unifab-design-detail__hero-media min-w-0 lg:border-r lg:border-slate-200">
+          {media}
+        </div>
+        <aside className="unifab-design-detail__hero-summary min-w-0">
+          {summary}
+        </aside>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,760px)_360px] lg:items-start">
-      <div className="min-w-0">{media}</div>
-      <aside className="min-w-0 lg:sticky lg:top-24">{summary}</aside>
+    <div className="unifab-design-detail__hero grid gap-6 lg:items-start">
+      <div className="unifab-design-detail__hero-media min-w-0">{media}</div>
+      <aside className="unifab-design-detail__hero-summary min-w-0 lg:sticky lg:top-24">
+        {summary}
+      </aside>
     </div>
   );
 }
@@ -88,29 +99,35 @@ export function SummaryPanel({
 }) {
   return (
     <section
-      className={
+      className={`unifab-design-detail__summary ${
         embedded
           ? "h-full bg-white p-5 sm:p-6"
           : "rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
-      }
+      }`}
     >
       {eyebrow && (
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+        <p className="unifab-design-detail__summary-eyebrow text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
           {eyebrow}
         </p>
       )}
-      <h1 className="mt-2 text-2xl font-semibold leading-tight tracking-tight text-slate-950">
+      <h1 className="unifab-design-detail__title mt-2 text-2xl font-semibold leading-tight tracking-tight text-slate-950">
         {title}
       </h1>
-      {badges && <div className="mt-4 flex flex-wrap gap-2">{badges}</div>}
-      <div className="mt-5 space-y-4">{children}</div>
+      {badges && (
+        <div className="unifab-design-detail__badge-row mt-4 flex flex-wrap gap-2">
+          {badges}
+        </div>
+      )}
+      <div className="unifab-design-detail__summary-body mt-5 space-y-4">
+        {children}
+      </div>
     </section>
   );
 }
 
 export function DetailColumn({ children }) {
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,760px)_360px]">
+    <div className="unifab-design-detail__detail-column grid gap-6">
       <div className="min-w-0 rounded-lg border border-slate-200 bg-white px-5 shadow-sm sm:px-6">
         {children}
       </div>
@@ -121,16 +138,16 @@ export function DetailColumn({ children }) {
 
 export function DetailTabs({ tabs, activeTab, onChange }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="flex border-b border-slate-200 bg-slate-50">
+    <div className="unifab-design-detail__tabs overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="unifab-design-detail__tab-list flex border-b border-slate-200 bg-slate-50">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => onChange(tab.id)}
-            className={`min-h-14 flex-1 border-b-2 px-4 text-sm font-semibold transition ${
+            className={`unifab-design-detail__tab min-h-14 flex-1 border-b-2 px-4 text-sm font-semibold transition ${
               activeTab === tab.id
-                ? "border-slate-950 bg-white text-slate-950"
+                ? "is-active border-slate-950 bg-white text-slate-950"
                 : "border-transparent text-slate-500 hover:bg-white hover:text-slate-800"
             }`}
           >
@@ -144,7 +161,7 @@ export function DetailTabs({ tabs, activeTab, onChange }) {
         ))}
       </div>
 
-      <div className="px-6 sm:px-8 lg:px-10">
+      <div className="unifab-design-detail__tab-content px-6 sm:px-8 lg:px-10">
         {tabs.find((tab) => tab.id === activeTab)?.content}
       </div>
     </div>
@@ -153,8 +170,8 @@ export function DetailTabs({ tabs, activeTab, onChange }) {
 
 export function DetailSection({ title, description, children }) {
   return (
-    <section className="border-b border-slate-200 py-8 last:border-b-0">
-      <h2 className="text-xl font-semibold tracking-tight text-slate-950">
+    <section className="unifab-design-detail__section border-b border-slate-200 py-8 last:border-b-0">
+      <h2 className="unifab-design-detail__section-title text-xl font-semibold tracking-tight text-slate-950">
         {title}
       </h2>
       {description && (
@@ -167,7 +184,7 @@ export function DetailSection({ title, description, children }) {
 
 export function MetadataGrid({ items }) {
   return (
-    <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
+    <dl className="unifab-design-detail__metadata grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
       {items.map((item) => (
         <div key={item.label}>
           <dt className="font-medium text-slate-500">{item.label}</dt>

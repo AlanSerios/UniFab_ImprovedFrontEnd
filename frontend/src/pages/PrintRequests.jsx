@@ -10,14 +10,14 @@ import {
   TableHead,
   TableWrap,
 } from "../components/ui/Table";
-
-function getRequestCurrency(request) {
-  return (
-    request?.quoteSnapshot?.pricingConfigSnapshot?.currency ||
-    request?.quoteSnapshot?.quote?.currency ||
-    "PHP"
-  );
-}
+import {
+  extractPrintRequests,
+  formatRequestCost,
+  getRequestFileName,
+  getRequestItemCount,
+  getRequestMaterialLabel,
+  getRequestReference,
+} from "../utils/print-requests";
 
 export default function PrintRequests() {
   const [printRequests, setPrintRequests] = useState([]);
@@ -31,7 +31,7 @@ export default function PrintRequests() {
         setError("");
 
         const data = await getMyPrintRequests();
-        setPrintRequests(data.data?.printRequests || data.printRequests || []);
+        setPrintRequests(extractPrintRequests(data));
       } catch (err) {
         setError(err.message);
         setPrintRequests([]);
@@ -45,7 +45,7 @@ export default function PrintRequests() {
 
   return (
     <PageShell size="lg">
-      <Panel>
+      <Panel className="unifab-client unifab-client__panel unifab-client__requests unifab-client-list">
         <PageHeader
           title="My print requests"
           description="Track submitted print requests and review their current status."
@@ -70,7 +70,7 @@ export default function PrintRequests() {
         )}
 
         {printRequests.length > 0 && (
-          <div className="mt-6">
+          <div className="unifab-client__table unifab-client-list__table mt-6">
             <TableWrap>
               <DataTable>
                 <TableHead>
@@ -89,30 +89,29 @@ export default function PrintRequests() {
                 {printRequests.map((request) => (
                   <tr key={request.id}>
                     <td className="px-4 py-3 font-medium text-slate-950">
-                      {request.referenceNumber || `#${request.id}`}
+                      {getRequestReference(request)}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {request.fileOriginalName || "Model file"}
+                      {getRequestFileName(request)}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {request.itemCount || 1}
+                      {getRequestItemCount(request)}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {[request.material, request.materialColorName]
-                        .filter(Boolean)
-                        .join(" / ")}
+                      {getRequestMaterialLabel(request)}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {request.status}
+                      <span className="unifab-client__status-badge">
+                        {request.status}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-slate-600 tabular-nums">
-                      {getRequestCurrency(request)}{" "}
-                      {Number(request.estimatedCost || 0).toFixed(2)}
+                      {formatRequestCost(request)}
                     </td>
                     <td className="px-4 py-3">
                       <Link
                         to={`/requests/${request.id}`}
-                        className="font-semibold text-slate-950 underline"
+                        className="unifab-client__text-link font-semibold text-slate-950 underline"
                       >
                         View
                       </Link>

@@ -80,7 +80,7 @@ export default function SystemStatus() {
 
   return (
     <PageShell size="xl">
-      <Panel>
+      <Panel className="unifab-support unifab-status-page unifab-support--status">
         <PageHeader
           title="System status"
           description="Current API, database, quote, cleanup, and file-reference health for UniFab."
@@ -103,7 +103,7 @@ export default function SystemStatus() {
         {isLoading && <p className="mt-6 text-slate-600">Checking system...</p>}
 
         {health && (
-          <div className="mt-6 grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="unifab-status-page__strip mt-6 grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-5">
             <StatusItem label="API">
               <StatusBadge tone={health.status === "ok" ? "success" : "danger"}>
                 {health.status || "unknown"}
@@ -128,7 +128,7 @@ export default function SystemStatus() {
 
         {databaseMetrics && (
           <>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="unifab-status-page__metrics mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <MetricCard
                 label="Database size"
                 value={formatBytes(databaseMetrics.databaseSize?.totalBytes)}
@@ -191,7 +191,7 @@ export default function SystemStatus() {
             </div>
 
             <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_18rem]">
-              <div className="overflow-hidden rounded-lg border border-slate-200">
+              <div className="unifab-status-page__table overflow-hidden rounded-lg border border-slate-200">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-slate-50 text-slate-600">
                     <tr>
@@ -222,7 +222,7 @@ export default function SystemStatus() {
                 </table>
               </div>
 
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="unifab-status-page__gates rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <h2 className="font-semibold text-slate-950">
                   Production gates
                 </h2>
@@ -289,7 +289,7 @@ function StatusItem({ label, children }) {
 
 function MetricCard({ label, value, detail, tone = "neutral" }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+    <div className="unifab-status-page__metric rounded-lg border border-slate-200 bg-slate-50 p-4">
       <p className="text-sm font-medium text-slate-500">{label}</p>
       <div className="mt-2">
         <StatusBadge tone={tone}>{value}</StatusBadge>

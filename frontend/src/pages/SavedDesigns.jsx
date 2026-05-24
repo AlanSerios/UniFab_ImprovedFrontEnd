@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { API_BASE_URL } from "../api/client";
 import {
   getMmfDesignByObjectId,
   getSavedDesigns,
@@ -9,59 +8,23 @@ import {
 import { Button, ButtonLink } from "../components/ui/Button";
 import { Alert, EmptyState, StatusBadge } from "../components/ui/Feedback";
 import { PageHeader, PageShell, Panel } from "../components/ui/Page";
-
-const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
-const SAVED_MMF_STORAGE_KEY = "unifab.savedMmfDesignIds";
-
-function assetUrl(path) {
-  if (!path) return "";
-  if (/^https?:\/\//i.test(path)) return path;
-  return `${API_ORIGIN}${path}`;
-}
-
-function sourceLabel(sourceKind) {
-  return sourceKind === "community" ? "Community" : "Official Lab";
-}
-
-function getStoredSavedMmfDesignIds() {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  try {
-    const storedIds = JSON.parse(
-      window.localStorage.getItem(SAVED_MMF_STORAGE_KEY) || "[]",
-    );
-
-    return Array.isArray(storedIds)
-      ? storedIds.map(Number).filter(Number.isFinite)
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function setStoredSavedMmfDesignIds(ids) {
-  window.localStorage.setItem(
-    SAVED_MMF_STORAGE_KEY,
-    JSON.stringify([...new Set(ids.map(Number).filter(Number.isFinite))]),
-  );
-}
-
-function getMmfThumbnailUrl(item) {
-  const primaryImage = item.images?.find((image) => image.isPrimary);
-  const fallbackImage = item.images?.[0];
-
-  return (
-    primaryImage?.standardUrl ||
-    primaryImage?.thumbnailUrl ||
-    primaryImage?.originalUrl ||
-    fallbackImage?.standardUrl ||
-    fallbackImage?.thumbnailUrl ||
-    fallbackImage?.originalUrl ||
-    ""
-  );
-}
+import {
+  extractMmfObject,
+  extractSavedDesigns,
+  getDesignDescription,
+  getLocalDesignPath,
+  getLocalDesignThumbnailUrl,
+  getLocalDesignTitle,
+  getLocalPrintReadyLabel,
+  getMmfDesignPath,
+  getMmfDesignTitle,
+  getMmfPrintReadyLabel,
+  getMmfSavedThumbnailUrl,
+  getPrintReadyTone,
+  getStoredSavedMmfDesignIdList,
+  removeStoredSavedMmfDesignId,
+  sourceLabel,
+} from "../utils/saved-designs";
 
 export default function SavedDesigns() {
   const [designs, setDesigns] = useState([]);
@@ -77,24 +40,20 @@ export default function SavedDesigns() {
         setIsLoading(true);
         setError("");
 
-        const savedMmfIds = getStoredSavedMmfDesignIds();
+        const savedMmfIds = getStoredSavedMmfDesignIdList();
         const [data, mmfResults] = await Promise.all([
           getSavedDesigns(),
           Promise.allSettled(
             savedMmfIds.map((objectId) => getMmfDesignByObjectId(objectId)),
           ),
         ]);
-        const payload = data.data || data;
         const mmfObjects = mmfResults
           .filter((result) => result.status === "fulfilled")
-          .map((result) => {
-            const resultPayload = result.value.data || result.value;
-            return resultPayload.mmfObject || resultPayload;
-          })
+          .map((result) => extractMmfObject(result.value))
           .filter((item) => item?.id);
 
         if (isMounted) {
-          setDesigns(payload.savedDesigns || []);
+          setDesigns(extractSavedDesigns(data));
           setMmfDesigns(mmfObjects);
         }
       } catch (err) {
@@ -132,12 +91,8 @@ export default function SavedDesigns() {
   };
 
   const handleRemoveMmf = (objectId) => {
-    const normalizedId = Number(objectId);
-    const nextIds = getStoredSavedMmfDesignIds().filter(
-      (savedId) => Number(savedId) !== normalizedId,
-    );
+    const normalizedId = removeStoredSavedMmfDesignId(objectId);
 
-    setStoredSavedMmfDesignIds(nextIds);
     setMmfDesigns((currentDesigns) =>
       currentDesigns.filter((design) => Number(design.id) !== normalizedId),
     );
@@ -147,7 +102,7 @@ export default function SavedDesigns() {
 
   return (
     <PageShell size="xl">
-      <Panel>
+      <Panel className="unifab-design-workspace unifab-design-workspace--saved">
         <PageHeader
           title="Saved Designs"
           description="Private bookmarks for UniFab-hosted designs you may want to download or request later."
@@ -172,9 +127,9 @@ export default function SavedDesigns() {
         )}
 
         {hasSavedDesigns && (
-          <div className="mt-6 space-y-10">
+          <div className="unifab-design-workspace__sections mt-6 space-y-10">
             {designs.length > 0 && (
-              <section>
+              <section className="unifab-design-workspace__section">
                 <h2 className="text-xl font-semibold text-slate-950">
                   UniFab Designs
                 </h2>
@@ -186,47 +141,52 @@ export default function SavedDesigns() {
                   {designs.map((design) => (
                     <article
                       key={design.id}
-                      className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+                      className="unifab-design-card unifab-design-workspace__card group"
                     >
-                      <Link to={`/designs/local/${design.id}`}>
-                        <div className="h-44 bg-slate-100">
+                      <Link
+                        to={getLocalDesignPath(design)}
+                        className="unifab-design-card__link"
+                      >
+                        <div className="unifab-design-card__media unifab-design-workspace__thumb">
                           {design.thumbnailUrl ? (
                             <img
-                              src={assetUrl(design.thumbnailUrl)}
-                              alt={design.title || "Design thumbnail"}
-                              className="h-full w-full object-contain p-2"
+                              src={getLocalDesignThumbnailUrl(design)}
+                              alt={getLocalDesignTitle(design)}
+                              className="transition duration-300 group-hover:scale-[1.025]"
                             />
                           ) : (
-                            <div className="flex h-full items-center justify-center text-sm text-slate-500">
+                            <div className="unifab-design-card__empty-thumb">
                               No thumbnail
                             </div>
                           )}
                         </div>
-                      </Link>
 
-                      <div className="p-4">
-                        <div className="flex flex-wrap gap-2">
+                        <div className="unifab-design-card__body">
+                          <div className="unifab-design-card__meta">
                           <StatusBadge>
                             {sourceLabel(design.sourceKind)}
                           </StatusBadge>
                           <StatusBadge
-                            tone={design.isPrintReady ? "success" : "warning"}
+                            tone={getPrintReadyTone(design.isPrintReady)}
                           >
-                            {design.isPrintReady ? "Print Ready" : "Review Only"}
+                            {getLocalPrintReadyLabel(design)}
                           </StatusBadge>
                         </div>
 
-                        <h2 className="mt-3 line-clamp-2 font-semibold text-slate-950">
-                          {design.title || "Untitled design"}
+                          <h2 className="unifab-design-card__title line-clamp-2">
+                          {getLocalDesignTitle(design)}
                         </h2>
 
-                        <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
-                          {design.description || "No description provided."}
+                          <p className="unifab-design-card__description line-clamp-2">
+                          {getDesignDescription(design)}
                         </p>
+                        </div>
+                      </Link>
 
-                        <div className="mt-4 flex flex-wrap gap-2">
+                      <div className="unifab-design-card__footer">
+                        <div className="unifab-design-card__split-actions">
                           <ButtonLink
-                            to={`/designs/local/${design.id}`}
+                            to={getLocalDesignPath(design)}
                             variant="secondary"
                           >
                             View Details
@@ -247,7 +207,7 @@ export default function SavedDesigns() {
             )}
 
             {mmfDesigns.length > 0 && (
-              <section>
+              <section className="unifab-design-workspace__section">
                 <h2 className="text-xl font-semibold text-slate-950">
                   MyMiniFactory Bookmarks
                 </h2>
@@ -258,58 +218,58 @@ export default function SavedDesigns() {
 
                 <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {mmfDesigns.map((design) => {
-                    const title =
-                      design.name || design.title || `Object ${design.id}`;
-                    const thumbnailUrl = getMmfThumbnailUrl(design);
+                    const title = getMmfDesignTitle(design);
+                    const thumbnailUrl = getMmfSavedThumbnailUrl(design);
 
                     return (
                       <article
                         key={`mmf-${design.id}`}
-                        className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+                        className="unifab-design-card unifab-design-workspace__card group"
                       >
-                        <Link to={`/designs/mmf/${design.id}`}>
-                          <div className="h-44 bg-slate-100">
+                        <Link
+                          to={getMmfDesignPath(design)}
+                          className="unifab-design-card__link"
+                        >
+                          <div className="unifab-design-card__media unifab-design-workspace__thumb">
                             {thumbnailUrl ? (
                               <img
                                 src={thumbnailUrl}
                                 alt={title}
-                                className="h-full w-full object-contain p-2"
+                                className="transition duration-300 group-hover:scale-[1.025]"
                               />
                             ) : (
-                              <div className="flex h-full items-center justify-center text-sm text-slate-500">
+                              <div className="unifab-design-card__empty-thumb">
                                 No thumbnail
                               </div>
                             )}
                           </div>
-                        </Link>
 
-                        <div className="p-4">
-                          <div className="flex flex-wrap gap-2">
+                          <div className="unifab-design-card__body">
+                            <div className="unifab-design-card__meta">
                             <StatusBadge>MyMiniFactory</StatusBadge>
                             <StatusBadge
                               tone={
-                                design.override?.isPrintReady
-                                  ? "success"
-                                  : "warning"
+                                getPrintReadyTone(design.override?.isPrintReady)
                               }
                             >
-                              {design.override?.isPrintReady
-                                ? "Print Ready"
-                                : "Needs Review"}
+                              {getMmfPrintReadyLabel(design)}
                             </StatusBadge>
                           </div>
 
-                          <h2 className="mt-3 line-clamp-2 font-semibold text-slate-950">
+                            <h2 className="unifab-design-card__title line-clamp-2">
                             {title}
                           </h2>
 
-                          <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
-                            {design.description || "No description provided."}
+                            <p className="unifab-design-card__description line-clamp-2">
+                            {getDesignDescription(design)}
                           </p>
+                          </div>
+                        </Link>
 
-                          <div className="mt-4 flex flex-wrap gap-2">
+                        <div className="unifab-design-card__footer">
+                          <div className="unifab-design-card__split-actions">
                             <ButtonLink
-                              to={`/designs/mmf/${design.id}`}
+                              to={getMmfDesignPath(design)}
                               variant="secondary"
                             >
                               View Details

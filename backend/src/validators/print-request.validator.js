@@ -43,7 +43,7 @@ function rejectForbiddenClientFields(req) {
   }
 }
 
-const submitPrintRequestValidator = ({ allowCartItemIds = true } = {}) => {
+const requestSubmissionBodyValidator = ({ allowCartItemIds = true } = {}) => {
   return [
     body("notes")
       .optional()
@@ -172,34 +172,8 @@ const previewRequestDraftValidator = () => requestDraftTokenValidator();
 
 const submitRequestDraftValidator = () => [
   ...requestDraftTokenValidator(),
-  ...submitPrintRequestValidator({ allowCartItemIds: false }),
+  ...requestSubmissionBodyValidator({ allowCartItemIds: false }),
 ];
-
-const previewPrintRequestSubmissionValidator = () => {
-  return [
-    body("cartItemIds")
-      .optional()
-      .isArray({ min: 1, max: 50 })
-      .withMessage("Cart item selection must be a non-empty array"),
-
-    body("cartItemIds.*")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("Cart item ID must be a positive integer"),
-
-    body().custom((_, { req }) => {
-      const allowedFields = new Set(["cartItemIds"]);
-
-      for (const field of Object.keys(req.body || {})) {
-        if (!allowedFields.has(field)) {
-          throw new Error(`${field} is not allowed for submission preview`);
-        }
-      }
-
-      return true;
-    }),
-  ];
-};
 
 const printRequestIdValidator = () => {
   return [
@@ -412,9 +386,7 @@ const correctPrintRequestStatusValidator = () => {
 export {
   createRequestDraftValidator,
   previewRequestDraftValidator,
-  previewPrintRequestSubmissionValidator,
   submitRequestDraftValidator,
-  submitPrintRequestValidator,
   printRequestIdValidator,
   listMyPrintRequestsQueryValidator,
   listAllPrintRequestsQueryValidator,

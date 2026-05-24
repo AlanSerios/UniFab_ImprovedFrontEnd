@@ -5,14 +5,19 @@ import {
   getAdminDesignOverrides,
   updateAdminDesignOverride,
 } from "../../api/designs";
-
-const FILTERS = [
-  { key: "all", label: "All" },
-  { key: "print_ready", label: "Print Ready" },
-  { key: "hidden", label: "Hidden" },
-  { key: "pinned", label: "Pinned" },
-  { key: "needs_file", label: "Needs Cached File" },
-];
+import {
+  EMPTY_OVERRIDE_EDIT_FORM,
+  FILTERS,
+  applyOverrideFilterParams,
+  buildOverrideUpdatePayload,
+  extractOverridesPayload,
+  extractUpdatedOverride,
+  getClientNotePreview,
+  getFilterCount,
+  getFiltersFromSearchParams,
+  hasMeaningfulOverride,
+  overrideToEditForm,
+} from "../../utils/admin-mmf-overrides";
 
 function StatusBadge({ label, tone = "neutral" }) {
   const toneClasses = {
@@ -31,15 +36,6 @@ function StatusBadge({ label, tone = "neutral" }) {
   );
 }
 
-function getClientNotePreview(note) {
-  if (!note) return "-";
-
-  const normalizedNote = String(note).trim();
-  if (normalizedNote.length <= 80) return normalizedNote;
-
-  return `${normalizedNote.slice(0, 77)}...`;
-}
-
 export default function AdminMmfOverrides() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [overrides, setOverrides] = useState([]);
@@ -50,43 +46,17 @@ export default function AdminMmfOverrides() {
   const [successMessage, setSuccessMessage] = useState("");
 
   const [editingOverrideId, setEditingOverrideId] = useState(null);
-  const [editForm, setEditForm] = useState({
-    isHidden: false,
-    isPinned: false,
-    isPrintReady: false,
-    clientNote: "",
-    verificationConfirmed: false,
-    verificationNote: "",
-  });
+  const [editForm, setEditForm] = useState(EMPTY_OVERRIDE_EDIT_FORM);
   const [isUpdating, setIsUpdating] = useState(false);
 
   const [deletingOverrideId, setDeletingOverrideId] = useState(null);
   const filters = useMemo(
-    () => ({
-      filter: searchParams.get("filter") || "all",
-      search: searchParams.get("search") || "",
-      page: Number(searchParams.get("page") || 1),
-      limit: Number(searchParams.get("limit") || 20),
-    }),
+    () => getFiltersFromSearchParams(searchParams),
     [searchParams],
   );
 
   function updateFilters(nextValues) {
-    const next = new URLSearchParams(searchParams);
-
-    Object.entries(nextValues).forEach(([key, value]) => {
-      if (value === undefined || value === null || value === "" || value === "all") {
-        next.delete(key);
-      } else {
-        next.set(key, String(value));
-      }
-    });
-
-    if (!("page" in nextValues)) {
-      next.set("page", "1");
-    }
-
-    setSearchParams(next);
+    applyOverrideFilterParams({ searchParams, nextValues, setSearchParams });
   }
 
   useEffect(() => {
@@ -101,13 +71,11 @@ export default function AdminMmfOverrides() {
           page: filters.page,
           limit: filters.limit,
         });
-        const payload = data.data || data;
-        const loadedOverrides =
-          payload.designOverrides || [];
+        const payload = extractOverridesPayload(data);
 
-        setOverrides(loadedOverrides);
-        setCounts(payload.counts || null);
-        setPagination(payload.pagination || null);
+        setOverrides(payload.designOverrides);
+        setCounts(payload.counts);
+        setPagination(payload.pagination);
       } catch (err) {
         setError(err.message);
         setOverrides([]);
@@ -123,40 +91,20 @@ export default function AdminMmfOverrides() {
 
   const startEditingOverride = (override) => {
     setEditingOverrideId(override.id);
-    setEditForm({
-      isHidden: Boolean(override.isHidden),
-      isPinned: Boolean(override.isPinned),
-      isPrintReady: Boolean(override.isPrintReady),
-      clientNote: override.clientNote || "",
-      verificationConfirmed: false,
-      verificationNote: "",
-    });
+    setEditForm(overrideToEditForm(override));
     setError("");
     setSuccessMessage("");
   };
 
   const cancelEditingOverride = () => {
     setEditingOverrideId(null);
-    setEditForm({
-      isHidden: false,
-      isPinned: false,
-      isPrintReady: false,
-      clientNote: "",
-      verificationConfirmed: false,
-      verificationNote: "",
-    });
+    setEditForm(EMPTY_OVERRIDE_EDIT_FORM);
     setError("");
     setSuccessMessage("");
   };
 
   const handleUpdateOverride = async (override) => {
-    const hasMeaningfulOverride =
-      editForm.isHidden ||
-      editForm.isPinned ||
-      editForm.isPrintReady ||
-      editForm.clientNote.trim() !== "";
-
-    if (!hasMeaningfulOverride) {
+    if (!hasMeaningfulOverride(editForm)) {
       const confirmed = window.confirm(
         "Remove this MMF override? Cached Print Ready files will be archived and disabled for new quotes.",
       );
@@ -212,24 +160,11 @@ export default function AdminMmfOverrides() {
       setError("");
       setSuccessMessage("");
 
-      const data = await updateAdminDesignOverride(override.id, {
-        isHidden: editForm.isHidden,
-        isPinned: editForm.isPinned,
-        isPrintReady: editForm.isPrintReady,
-        clientNote: editForm.clientNote.trim(),
-        verificationConfirmed:
-          editForm.isPrintReady && !override.isPrintReady ? true : undefined,
-        verificationNote:
-          editForm.isPrintReady && !override.isPrintReady
-            ? editForm.verificationNote
-            : undefined,
-      });
-
-      const updatedOverride =
-        data.data?.designOverride ||
-        data.designOverride ||
-        data.override ||
-        data;
+      const data = await updateAdminDesignOverride(
+        override.id,
+        buildOverrideUpdatePayload({ editForm, override }),
+      );
+      const updatedOverride = extractUpdatedOverride(data);
 
       setOverrides((currentOverrides) =>
         currentOverrides.map((override) =>
@@ -238,14 +173,7 @@ export default function AdminMmfOverrides() {
       );
 
       setEditingOverrideId(null);
-      setEditForm({
-        isHidden: false,
-        isPinned: false,
-        isPrintReady: false,
-        clientNote: "",
-        verificationConfirmed: false,
-        verificationNote: "",
-      });
+      setEditForm(EMPTY_OVERRIDE_EDIT_FORM);
 
       setSuccessMessage("MMF override updated.");
     } catch (err) {
@@ -288,8 +216,8 @@ export default function AdminMmfOverrides() {
   };
 
   return (
-    <main className="mx-auto max-w-6xl p-8">
-      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+    <main className="unifab-admin-page unifab-admin-list-page unifab-admin-page--mmf-overrides mx-auto w-full max-w-[92rem] px-4 py-8 sm:px-6 xl:px-8">
+      <div className="unifab-admin-panel rounded-lg border border-slate-200 bg-white p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold">MMF Readiness Controls</h1>
@@ -323,7 +251,7 @@ export default function AdminMmfOverrides() {
           </div>
         )}
 
-        <div className="mt-6 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_8rem]">
+        <div className="unifab-admin-filterbar mt-6 grid gap-3 rounded-lg p-4 md:grid-cols-[1fr_8rem]">
           <input
             type="search"
             value={filters.search}
@@ -355,7 +283,7 @@ export default function AdminMmfOverrides() {
                   onClick={() => updateFilters({ filter: filter.key })}
                   className={`rounded-md border px-3 py-2 text-sm font-semibold transition ${
                     isActive
-                      ? "border-slate-950 bg-slate-950 text-white"
+                      ? "border-[#2b67ad] bg-[#2b67ad] text-white"
                       : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
                   }`}
                 >
@@ -389,9 +317,9 @@ export default function AdminMmfOverrides() {
         )}
 
         {overrides.length > 0 && (
-          <div className="mt-6 overflow-hidden rounded-lg border border-slate-200">
+          <div className="unifab-admin-table-wrap mt-6 overflow-hidden rounded-lg">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-slate-600">
+              <thead>
                 <tr>
                   <th className="px-4 py-3 font-medium">MMF Object ID</th>
                   <th className="px-4 py-3 font-medium">Print Ready</th>
@@ -637,7 +565,7 @@ export default function AdminMmfOverrides() {
         )}
 
         {pagination && (
-          <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
+          <div className="mt-4 flex items-center justify-between gap-3 text-sm text-slate-500 max-sm:flex-col max-sm:items-start">
             <span>
               Page {pagination.page} of {pagination.totalPages} (
               {pagination.totalCount || 0} overrides)
@@ -672,14 +600,4 @@ export default function AdminMmfOverrides() {
       </div>
     </main>
   );
-}
-
-function getFilterCount(counts, key) {
-  if (!counts) return null;
-  if (key === "all") return counts.total ?? null;
-  if (key === "print_ready") return counts.printReady ?? null;
-  if (key === "hidden") return counts.hidden ?? null;
-  if (key === "pinned") return counts.pinned ?? null;
-  if (key === "needs_file") return counts.needsFile ?? null;
-  return null;
 }

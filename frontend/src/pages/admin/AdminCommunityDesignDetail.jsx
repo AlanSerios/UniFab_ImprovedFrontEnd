@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { API_BASE_URL } from "../../api/client";
 import {
   getAdminLocalDesignById,
   moderateAdminLocalDesign,
@@ -27,35 +26,16 @@ import {
   getModerationFlagDescription,
   getModerationFlagLabel,
 } from "../../utils/moderation-display";
-
-const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
-const APPROVED_STATUSES = new Set(["auto_approved", "admin_approved"]);
-
-function assetUrl(path) {
-  if (!path) {
-    return "";
-  }
-
-  if (/^https?:\/\//i.test(path)) {
-    return path;
-  }
-
-  return `${API_ORIGIN}${path}`;
-}
-
-function downloadUrl(path) {
-  const url = assetUrl(path);
-
-  if (!url || !url.includes("/api/v1/files/")) {
-    return url;
-  }
-
-  return `${url}${url.includes("?") ? "&" : "?"}download=1`;
-}
-
-function formatDate(value) {
-  return value ? new Date(value).toLocaleString() : "-";
-}
+import {
+  APPROVED_STATUSES,
+  assetUrl,
+  buildCurationForm,
+  buildCurationPayload,
+  downloadUrl,
+  extractCommunityDesignDetail,
+  extractLocalDesignFromResponse,
+  formatDate,
+} from "../../utils/admin-community-design-detail";
 
 export default function AdminCommunityDesignDetail() {
   const { designId } = useParams();
@@ -68,12 +48,9 @@ export default function AdminCommunityDesignDetail() {
   const [feedback, setFeedback] = useState("");
   const [printReadyConfirmed, setPrintReadyConfirmed] = useState(false);
   const [printReadyNote, setPrintReadyNote] = useState("");
-  const [curationForm, setCurationForm] = useState({
-    isFeatured: "false",
-    featuredRank: "0",
-    isLibraryHidden: "false",
-    libraryNote: "",
-  });
+  const [curationForm, setCurationForm] = useState(() =>
+    buildCurationForm(null),
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingCuration, setIsSavingCuration] = useState(false);
 
@@ -92,28 +69,12 @@ export default function AdminCommunityDesignDetail() {
 
   const loadDesignDetail = useCallback(async () => {
     const data = await getAdminLocalDesignById(designId);
-    const payload = data.data || data;
-    const localDesign = payload.localDesign || payload.design;
-
-    if (localDesign?.sourceKind !== "community") {
-      throw new Error("This page only reviews community-submitted designs.");
-    }
-
-    return {
-      localDesign,
-      auditEvents: payload.auditEvents || [],
-      moderationRuns: payload.moderationRuns || [],
-    };
+    return extractCommunityDesignDetail(data);
   }, [designId]);
 
   const applyDesignDetail = ({ localDesign, auditEvents, moderationRuns }) => {
     setDesign(localDesign);
-    setCurationForm({
-      isFeatured: localDesign?.isFeatured ? "true" : "false",
-      featuredRank: String(localDesign?.featuredRank || 0),
-      isLibraryHidden: localDesign?.isLibraryHidden ? "true" : "false",
-      libraryNote: localDesign?.libraryNote || "",
-    });
+    setCurationForm(buildCurationForm(localDesign));
     setAuditEvents(auditEvents);
     setModerationRuns(moderationRuns || []);
     setError("");
@@ -166,9 +127,8 @@ export default function AdminCommunityDesignDetail() {
         action,
         feedback,
       });
-      const payload = data.data || data;
 
-      setDesign(payload.localDesign || payload.design);
+      setDesign(extractLocalDesignFromResponse(data));
       applyDesignDetail(await loadDesignDetail());
       setAction("");
       setFeedback("");
@@ -200,9 +160,8 @@ export default function AdminCommunityDesignDetail() {
         verificationConfirmed: nextPrintReady ? true : undefined,
         verificationNote: nextPrintReady ? printReadyNote : undefined,
       });
-      const payload = data.data || data;
 
-      setDesign(payload.localDesign || payload.design);
+      setDesign(extractLocalDesignFromResponse(data));
       applyDesignDetail(await loadDesignDetail());
       setPrintReadyConfirmed(false);
       setPrintReadyNote("");
@@ -221,9 +180,8 @@ export default function AdminCommunityDesignDetail() {
       setError("");
 
       const data = await recheckAdminLocalDesign(designId);
-      const payload = data.data || data;
 
-      setDesign(payload.localDesign || payload.design);
+      setDesign(extractLocalDesignFromResponse(data));
       applyDesignDetail(await loadDesignDetail());
       setPrintReadyConfirmed(false);
       setPrintReadyNote("");
@@ -248,12 +206,10 @@ export default function AdminCommunityDesignDetail() {
       setMessage("");
       setError("");
 
-      await updateAdminLocalDesignCuration(designId, {
-        isFeatured: curationForm.isFeatured === "true",
-        featuredRank: Number(curationForm.featuredRank) || 0,
-        isLibraryHidden: curationForm.isLibraryHidden === "true",
-        libraryNote: curationForm.libraryNote,
-      });
+      await updateAdminLocalDesignCuration(
+        designId,
+        buildCurationPayload(curationForm),
+      );
       applyDesignDetail(await loadDesignDetail());
       setMessage("Library curation settings updated.");
     } catch (err) {
@@ -265,7 +221,7 @@ export default function AdminCommunityDesignDetail() {
 
   return (
     <PageShell size="xl">
-      <Panel>
+      <Panel className="unifab-admin-page unifab-admin-panel unifab-admin-detail-page unifab-admin-page--community-design-detail">
         <PageHeader
           title={design?.title || "Community Design Review"}
           description="Review user-submitted design metadata, moderation results, public visibility, and separate Print Ready status."
@@ -298,9 +254,9 @@ export default function AdminCommunityDesignDetail() {
         </Alert>
 
         {!isLoading && design && (
-          <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="space-y-6">
-              <Panel className="bg-slate-50 shadow-none">
+          <div className="unifab-admin-detail-layout mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="unifab-admin-detail-stack space-y-6">
+              <Panel className="unifab-admin-section bg-slate-50 shadow-none">
                 <h2 className="text-lg font-semibold text-slate-950">
                   Submission
                 </h2>
@@ -359,7 +315,7 @@ export default function AdminCommunityDesignDetail() {
                 )}
               </Panel>
 
-              <Panel className="bg-slate-50 shadow-none">
+              <Panel className="unifab-admin-section bg-slate-50 shadow-none">
                 <h2 className="text-lg font-semibold text-slate-950">
                   Moderation Record
                 </h2>
@@ -499,7 +455,7 @@ export default function AdminCommunityDesignDetail() {
                 )}
               </Panel>
 
-              <Panel className="bg-slate-50 shadow-none">
+              <Panel className="unifab-admin-section bg-slate-50 shadow-none">
                 <h2 className="text-lg font-semibold text-slate-950">
                   History
                 </h2>
@@ -541,8 +497,8 @@ export default function AdminCommunityDesignDetail() {
               </Panel>
             </div>
 
-            <div className="space-y-6">
-              <Panel className="bg-slate-50 shadow-none">
+            <div className="unifab-admin-detail-stack space-y-6">
+              <Panel className="unifab-admin-section bg-slate-50 shadow-none">
                 <h2 className="text-lg font-semibold text-slate-950">
                   Admin Action
                 </h2>
@@ -603,7 +559,7 @@ export default function AdminCommunityDesignDetail() {
                 </div>
               </Panel>
 
-              <Panel className="bg-slate-50 shadow-none">
+              <Panel className="unifab-admin-section bg-slate-50 shadow-none">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-lg font-semibold text-slate-950">
@@ -682,7 +638,7 @@ export default function AdminCommunityDesignDetail() {
                 )}
               </Panel>
 
-              <Panel className="bg-slate-50 shadow-none">
+              <Panel className="unifab-admin-section bg-slate-50 shadow-none">
                 <h2 className="text-lg font-semibold text-slate-950">
                   Library Curation
                 </h2>

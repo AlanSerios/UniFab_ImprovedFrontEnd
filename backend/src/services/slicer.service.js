@@ -13,7 +13,6 @@ const PRUSA_SLICER_EXECUTABLE =
   "C:\\Program Files\\Prusa3D\\PrusaSlicer\\prusa-slicer-console.exe";
 const PROFILE_DRY_RUN_MODEL_PATH = path.resolve(
   process.cwd(),
-  "postman",
   "fixtures",
   "sample-cube.stl",
 );

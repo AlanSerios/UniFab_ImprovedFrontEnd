@@ -8,9 +8,9 @@ import {
   Share2,
 } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { API_BASE_URL } from "../api/client";
 import {
   createAdminDesignOverride,
+  disconnectAdminMmfOAuth,
   getAdminMmfOAuthStatus,
   getMmfDesignByObjectId,
   inspectAdminMmfFiles,
@@ -33,243 +33,31 @@ import { ModelViewer } from "../components/ui/ModelViewer";
 import { ModelPreviewModal } from "../components/ui/ModelPreviewModal";
 import { PageShell, Panel } from "../components/ui/Page";
 import { useAuth } from "../context/AuthContext";
+import {
+  EMPTY_OVERRIDE_FORM,
+  assetUrl,
+  buildMmfCandidateRows,
+  buildMmfSelectionKey,
+  dedupeGalleryItems,
+  formatDimensions,
+  formatFileSize,
+  formatLicense,
+  formatList,
+  formatStatus,
+  getDesignerName,
+  getFileExtension,
+  getMmfImageUrl,
+  getMmfPreviewImage,
+  getPathExtension,
+  getSafeReturnTo,
+  overrideToForm,
+  parseMmfSelectionKey,
+} from "../utils/mmf-design-detail";
 import { normalizeModelPreview } from "../utils/model-preview";
-
-const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
-const EMPTY_OVERRIDE_FORM = {
-  isPinned: false,
-  isHidden: false,
-  isPrintReady: false,
-  clientNote: "",
-  verificationConfirmed: false,
-  verificationNote: "",
-  selectedMmfFileId: "",
-  selectedArchiveEntryPath: "",
-};
-
-function buildMmfSelectionKey(fileId, archiveEntryPath = "") {
-  return `${fileId}::${archiveEntryPath || ""}`;
-}
-
-function parseMmfSelectionKey(key) {
-  const [fileId, archiveEntryPath = ""] = String(key).split("::");
-
-  return {
-    fileId: Number(fileId),
-    archiveEntryPath: archiveEntryPath || undefined,
-  };
-}
-
-function formatFileSize(value) {
-  const size = Number(value || 0);
-
-  if (!size) {
-    return "-";
-  }
-
-  if (size < 1024 * 1024) {
-    return `${Math.round(size / 1024)} kB`;
-  }
-
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function getPathExtension(value) {
-  if (!value) return null;
-
-  const match = String(value).split(/[?#]/)[0].toLowerCase().match(/\.[^.\\/]+$/);
-  return match?.[0] || null;
-}
-
-function buildMmfCandidateRows(files = []) {
-  return files.flatMap((file) => {
-    if (file.type === "zip") {
-      return (file.archiveEntries || []).map((entry) => ({
-        key: buildMmfSelectionKey(file.id, entry.path),
-        fileId: file.id,
-        archiveEntryPath: entry.path,
-        name: entry.name || entry.path,
-        parentName: file.name,
-        extension: entry.extension || file.extension,
-        size: entry.size,
-        supported: file.supported,
-        type: "zip-entry",
-      }));
-    }
-
-    return [
-      {
-        key: buildMmfSelectionKey(file.id),
-        fileId: file.id,
-        archiveEntryPath: "",
-        name: file.name,
-        parentName: "",
-        extension: file.extension,
-        size: file.size,
-        supported: file.supported,
-        type: "file",
-      },
-    ];
-  });
-}
-
-function assetUrl(path) {
-  if (!path) return "";
-
-  if (/^https?:\/\//i.test(path)) {
-    return path;
-  }
-
-  return `${API_ORIGIN}${path}`;
-}
-
-function overrideToForm(override) {
-  if (!override) {
-    return EMPTY_OVERRIDE_FORM;
-  }
-
-  return {
-    isPinned: Boolean(override.isPinned),
-    isHidden: Boolean(override.isHidden),
-    isPrintReady: Boolean(override.isPrintReady),
-    clientNote: override.clientNote || "",
-    verificationConfirmed: false,
-    verificationNote: "",
-    selectedMmfFileId:
-      override.mappingMetadata?.selectedFile?.id ||
-      override.mappingMetadata?.selectedMmfFileId ||
-      "",
-    selectedArchiveEntryPath:
-      override.mappingMetadata?.selectedArchiveEntry?.path || "",
-  };
-}
-
-function getSafeReturnTo(searchParams) {
-  const returnTo = searchParams.get("returnTo");
-
-  if (!returnTo) {
-    return "/designs";
-  }
-
-  if (returnTo === "/designs" || returnTo.startsWith("/designs?")) {
-    return returnTo;
-  }
-
-  return "/designs";
-}
-
-function getMmfPreviewImage(design) {
-  const primaryImage = design?.images?.find((image) => image.isPrimary);
-  const fallbackImage = design?.images?.[0];
-
-  return (
-    primaryImage?.standardUrl ||
-    primaryImage?.thumbnailUrl ||
-    primaryImage?.originalUrl ||
-    fallbackImage?.standardUrl ||
-    fallbackImage?.thumbnailUrl ||
-    fallbackImage?.originalUrl ||
-    ""
-  );
-}
-
-function getMmfImageUrl(image) {
-  return (
-    image?.standardUrl ||
-    image?.thumbnailUrl ||
-    image?.originalUrl ||
-    ""
-  );
-}
-
-function normalizeGalleryUrl(value) {
-  if (!value) {
-    return "";
-  }
-
-  try {
-    const parsedUrl = new URL(value, window.location.origin);
-    return parsedUrl.pathname.replace(/\/{2,}/g, "/").toLowerCase();
-  } catch {
-    return String(value).split(/[?#]/)[0].replace(/\/{2,}/g, "/").toLowerCase();
-  }
-}
-
-function dedupeGalleryItems(items) {
-  const seen = new Set();
-
-  return items.filter((item) => {
-    const identity = item.type === "model" ? item.fileUrl || item.url : item.url;
-    const key = `${item.type}:${normalizeGalleryUrl(identity) || item.key}`;
-
-    if (seen.has(key)) {
-      return false;
-    }
-
-    seen.add(key);
-    return true;
-  });
-}
-
-function getDesignerName(designer) {
-  return designer?.name || designer?.username || null;
-}
-
-function formatList(items, key = "name") {
-  if (!Array.isArray(items) || items.length === 0) {
-    return "-";
-  }
-
-  return items
-    .map((item) => {
-      if (typeof item === "string") return item;
-      return item?.[key] || item?.name || item?.slug || "";
-    })
-    .filter(Boolean)
-    .join(", ");
-}
-
-function formatLicense(design) {
-  if (design?.license) {
-    return design.license;
-  }
-
-  const activeLicenses = (design?.licenses || [])
-    .filter((license) => license.value === true && license.type)
-    .map((license) => license.type);
-
-  return activeLicenses.length > 0 ? activeLicenses.join(", ") : "-";
-}
-
-function formatDimensions(dimensions) {
-  if (!dimensions) return "-";
-  if (typeof dimensions === "string") return dimensions;
-
-  const axisValues = ["x", "y", "z"]
-    .map((axis) => dimensions[axis] || dimensions[axis.toUpperCase()])
-    .filter(Boolean);
-
-  return axisValues.length > 0
-    ? axisValues.join(" x ")
-    : JSON.stringify(dimensions);
-}
-
-function formatStatus(status) {
-  return (status || "not_requested")
-    .replaceAll("_", " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function getFileExtension(fileName) {
-  const cleanName = String(fileName || "").split(/[?#]/)[0];
-  const match = cleanName.match(/\.([a-z0-9]+)$/i);
-
-  return match ? match[1].toUpperCase() : "MODEL";
-}
 
 function ExternalFileLink({ href, children, primary = false, className = "" }) {
   const base =
-    "inline-flex min-h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-semibold transition";
+    "unifab-design-detail__action-link inline-flex min-h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-semibold transition";
   const tone = primary
     ? "bg-slate-950 text-white hover:bg-slate-800"
     : "border border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:bg-slate-50";
@@ -288,7 +76,7 @@ function ExternalFileLink({ href, children, primary = false, className = "" }) {
 
 function SummaryRow({ label, value }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-2 text-sm">
+    <div className="unifab-design-detail__summary-row flex items-start justify-between gap-4 py-2 text-sm">
       <span className="text-slate-500">{label}</span>
       <span className="max-w-44 text-right font-semibold text-slate-950">
         {value}
@@ -331,15 +119,15 @@ function MmfPreviewGallery({
   };
 
   return (
-    <section className="h-full bg-white">
-      <div className="relative bg-slate-100">
+    <section className="unifab-design-detail__gallery h-full bg-white">
+      <div className="unifab-design-detail__gallery-stage relative bg-slate-100">
         <button
           type="button"
           onClick={
             currentItem?.type === "model" ? () => onOpenModel(currentItem) : undefined
           }
           disabled={currentItem?.type !== "model"}
-          className={`group flex aspect-[4/3] min-h-80 w-full items-center justify-center ${
+          className={`unifab-design-detail__gallery-main group flex aspect-[4/3] min-h-80 w-full items-center justify-center ${
             currentItem?.type === "model"
               ? "cursor-zoom-in"
               : "cursor-default"
@@ -354,17 +142,17 @@ function MmfPreviewGallery({
             <img
               src={currentItem.url}
               alt={title || mainLabel}
-              className="h-full w-full object-contain"
+              className="unifab-design-detail__gallery-image h-full w-full object-contain"
             />
           ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center text-sm text-slate-500">
+            <div className="unifab-design-detail__gallery-empty flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center text-sm text-slate-500">
               <Box className="h-12 w-12 text-slate-400" aria-hidden="true" />
               3D model preview
             </div>
           )}
 
           {currentItem?.type === "model" && (
-            <span className="absolute bottom-4 right-4 rounded-md bg-slate-950/90 px-3 py-2 text-xs font-semibold text-white opacity-0 shadow-sm transition group-hover:opacity-100 group-focus-visible:opacity-100">
+            <span className="unifab-design-detail__preview-hint absolute bottom-4 right-4 rounded-md bg-slate-950/90 px-3 py-2 text-xs font-semibold text-white opacity-0 shadow-sm transition group-hover:opacity-100 group-focus-visible:opacity-100">
               Open 3D preview
             </span>
           )}
@@ -375,7 +163,7 @@ function MmfPreviewGallery({
             <button
               type="button"
               onClick={showPrevious}
-              className="absolute left-4 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+              className="unifab-design-detail__gallery-nav absolute left-4 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
               aria-label="Previous preview"
             >
               <ChevronLeft className="h-5 w-5" aria-hidden="true" />
@@ -383,7 +171,7 @@ function MmfPreviewGallery({
             <button
               type="button"
               onClick={showNext}
-              className="absolute right-4 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+              className="unifab-design-detail__gallery-nav absolute right-4 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
               aria-label="Next preview"
             >
               <ChevronRight className="h-5 w-5" aria-hidden="true" />
@@ -392,7 +180,7 @@ function MmfPreviewGallery({
         )}
       </div>
 
-      <div className="border-t border-slate-200 bg-white p-3">
+      <div className="unifab-design-detail__thumb-strip border-t border-slate-200 bg-white p-3">
         <div className="flex gap-2 overflow-x-auto">
           {previewItems.length > 0 ? (
             previewItems.map((item, index) => (
@@ -400,7 +188,7 @@ function MmfPreviewGallery({
                 key={item.key}
                 type="button"
                 onClick={() => onChange(item.key)}
-                className={`shrink-0 rounded-md border p-1 transition ${
+                className={`unifab-design-detail__thumb-button shrink-0 rounded-md border p-1 transition ${
                   currentItem?.key === item.key
                     ? "border-slate-950 bg-white"
                     : "border-slate-200 hover:border-slate-400"
@@ -445,9 +233,9 @@ function MmfPreviewGallery({
 
 function MmfFileRow({ title, description, status, action }) {
   return (
-    <div className="grid gap-4 border-t border-slate-200 py-6 md:grid-cols-[minmax(0,1fr)_190px] md:items-center">
+    <div className="unifab-design-detail__file-row grid gap-4 border-t border-slate-200 py-6 md:grid-cols-[minmax(0,1fr)_190px] md:items-center">
       <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="unifab-design-detail__file-meta flex flex-wrap items-center gap-2">
           <p className="font-semibold text-slate-950">{title}</p>
           {status}
         </div>
@@ -470,12 +258,12 @@ function MmfModelFileListRow({
   onQuote,
 }) {
   return (
-    <div className="grid gap-5 border-t border-slate-200 py-6 lg:grid-cols-[112px_minmax(0,1fr)_190px] lg:items-center">
+    <div className="unifab-design-detail__file-row grid gap-5 border-t border-slate-200 py-6 lg:grid-cols-[112px_minmax(0,1fr)_190px] lg:items-center">
       <button
         type="button"
         onClick={onPreview}
         disabled={!canPreview}
-        className="group h-24 w-24 rounded-md border border-slate-200 bg-slate-100 p-2 transition disabled:cursor-not-allowed disabled:opacity-60 enabled:hover:border-slate-400 enabled:focus-visible:outline-none enabled:focus-visible:ring-2 enabled:focus-visible:ring-slate-500"
+        className="unifab-design-detail__file-thumb group h-24 w-24 rounded-md border border-slate-200 bg-slate-100 p-2 transition disabled:cursor-not-allowed disabled:opacity-60 enabled:hover:border-slate-400 enabled:focus-visible:outline-none enabled:focus-visible:ring-2 enabled:focus-visible:ring-slate-500"
         aria-label="Open 3D model preview"
       >
         {modelSnapshotUrl ? (
@@ -492,7 +280,7 @@ function MmfModelFileListRow({
       </button>
 
       <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="unifab-design-detail__file-meta flex flex-wrap items-center gap-2">
           <p className="break-all text-sm font-semibold text-slate-950">
             {fileName}
           </p>
@@ -566,6 +354,8 @@ export default function MmfDesignDetail() {
   const [isRemovingPrintReadyFile, setIsRemovingPrintReadyFile] =
     useState(false);
   const [mmfOAuthStatus, setMmfOAuthStatus] = useState(null);
+  const [isDisconnectingMmfOAuth, setIsDisconnectingMmfOAuth] =
+    useState(false);
   const [fileInspection, setFileInspection] = useState(null);
   const [selectedMmfFileKeys, setSelectedMmfFileKeys] = useState([]);
   const [isInspectingFiles, setIsInspectingFiles] = useState(false);
@@ -706,6 +496,32 @@ export default function MmfDesignDetail() {
       window.location.href = authorizationUrl;
     } catch (err) {
       setError(err.message);
+    }
+  };
+
+  const handleDisconnectMmfOAuth = async () => {
+    const confirmed = window.confirm(
+      "Disconnect the lab-owned MyMiniFactory account? Admins will not be able to inspect or cache OAuth-visible MMF files until the account is connected again.",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setIsDisconnectingMmfOAuth(true);
+      setError("");
+      setMessage("");
+
+      await disconnectAdminMmfOAuth();
+      setMmfOAuthStatus({ connected: false });
+      setFileInspection(null);
+      setSelectedMmfFileKeys([]);
+      setMessage("MyMiniFactory account disconnected successfully.");
+    } catch (err) {
+      setError(err.message || "Unable to disconnect MyMiniFactory account.");
+    } finally {
+      setIsDisconnectingMmfOAuth(false);
     }
   };
 
@@ -901,6 +717,7 @@ export default function MmfDesignDetail() {
 
   return (
     <PageShell size="xl">
+      <div className="unifab-design-detail unifab-design-detail--mmf">
       {isLoading && (
         <p className="text-sm text-slate-600">
           Loading MyMiniFactory design...
@@ -1240,7 +1057,7 @@ export default function MmfDesignDetail() {
           />
 
           {isAdmin && (
-            <Panel className="mt-6 bg-white">
+            <Panel className="unifab-design-detail__admin-panel mt-6 bg-white">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-950">
@@ -1363,6 +1180,20 @@ export default function MmfDesignDetail() {
                               onClick={handleStartMmfOAuth}
                             >
                               Connect MMF
+                            </Button>
+                          )}
+
+                          {mmfOAuthStatus?.connected && (
+                            <Button
+                              type="button"
+                              variant="danger"
+                              size="sm"
+                              onClick={handleDisconnectMmfOAuth}
+                              disabled={isDisconnectingMmfOAuth}
+                            >
+                              {isDisconnectingMmfOAuth
+                                ? "Disconnecting..."
+                                : "Disconnect MMF"}
                             </Button>
                           )}
 
@@ -1553,6 +1384,7 @@ export default function MmfDesignDetail() {
           </ModelPreviewModal>
         </ModelDetailShell>
       )}
+      </div>
     </PageShell>
   );
 }
