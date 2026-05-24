@@ -253,74 +253,108 @@ export default function AppLayout() {
 
       <footer className="unifab-app__footer print:hidden">
         <div className="unifab-app__shell unifab-app__footer-inner">
-          <section className="unifab-app__footer-brand">
-            <Link to="/" className="unifab-app__brand" aria-label="UniFab home">
-              <span className="unifab-app__brand-mark" aria-hidden="true">
-                <span />
-              </span>
-              <span>
-                <strong>UniFab</strong>
-                <small>USTP-CDO FabLab</small>
-              </span>
-            </Link>
-            <p>
-              UniFab supports the USTP-CDO Fabrication Laboratory with
-              slicer-backed quote previews, library discovery, print request
-              submission, and clear request tracking.
-            </p>
-            <div className="unifab-app__footer-meta">
-              <span>USTP-CDO campus fabrication laboratory</span>
-              <span>Service schedule: confirm current lab hours before visiting</span>
-              <span>Payment: backend slip with in-person receipt verification</span>
-            </div>
-          </section>
-
-          <nav className="unifab-app__footer-grid" aria-label="Footer navigation">
-            <section>
-              <h2>Start</h2>
-              <FooterLink to="/quote">Start quote</FooterLink>
-              <FooterLink to="/designs">Design Library</FooterLink>
-              <FooterLink to="/cart">Quote cart</FooterLink>
-              <FooterLink to="/requests">Track requests</FooterLink>
+          <div className="unifab-app__footer-main">
+            <section className="unifab-app__footer-brand">
+              <Link to="/" className="unifab-app__brand" aria-label="UniFab home">
+                <span className="unifab-app__brand-mark" aria-hidden="true">
+                  <span />
+                </span>
+                <span>
+                  <strong>UniFab</strong>
+                  <small>USTP-CDO FabLab</small>
+                </span>
+              </Link>
+              <p>
+                University fabrication support for quote previews, Design Library
+                discovery, print request submission, payment-slip guidance, and
+                request tracking.
+              </p>
+              <div className="unifab-app__footer-service">
+                <span>USTP-CDO Fabrication Laboratory</span>
+                <strong>University of Science and Technology of Southern Philippines</strong>
+                <small>Cagayan de Oro City</small>
+              </div>
             </section>
 
-            <section>
-              <h2>FabLab</h2>
-              <FooterLink to="/about">About Us</FooterLink>
-              <FooterLink to="/printers">Printer information</FooterLink>
-              <FooterLink to="/terms">Terms and Conditions</FooterLink>
-              <p>Admin-managed materials, pricing, colors, and slicer profiles.</p>
-            </section>
+            <nav className="unifab-app__footer-grid" aria-label="Footer navigation">
+              <section>
+                <h2>Start</h2>
+                <FooterLink to="/quote">Start quote</FooterLink>
+                <FooterLink to="/designs">Design Library</FooterLink>
+                <FooterLink to="/cart">Quote cart</FooterLink>
+                <FooterLink to="/requests">Track requests</FooterLink>
+              </section>
 
-            <section>
-              <h2>Support</h2>
-              <p>Guests can preview quotes before signing in.</p>
-              <p>Verified email is required for cart and request submission.</p>
-              <p>Print Ready files require FabLab review before instant quote.</p>
-            </section>
+              <section>
+                <h2>FabLab</h2>
+                <FooterLink to="/about">About Us</FooterLink>
+                <FooterLink to="/printers">Printer information</FooterLink>
+                <FooterLink to="/terms">Terms and Conditions</FooterLink>
+                <p>Materials, pricing, colors, and slicer profiles are managed by lab admins.</p>
+              </section>
 
-            <section>
-              <h2>Account</h2>
-              {isAuthenticated ? (
-                <>
-                  <FooterLink to="/dashboard">Dashboard</FooterLink>
-                  <FooterLink to="/account-settings">{accountLabel}</FooterLink>
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="unifab-app__footer-button"
-                  >
-                    Logout
-                  </button>
-                </>
-              ) : (
-                <>
-                  <FooterLink to="/login">Log in</FooterLink>
-                  <FooterLink to="/register">Create account</FooterLink>
-                </>
-              )}
-            </section>
-          </nav>
+              <section className="unifab-app__footer-contact">
+                <h2>Visit & Contact</h2>
+                <p>
+                  <span>Address</span>
+                  USTP-CDO campus fabrication laboratory
+                </p>
+                <p>
+                  <span>Operating hours</span>
+                  Admin-managed
+                </p>
+                <p>
+                  <span>Contact email</span>
+                  Admin-managed
+                </p>
+                <p>
+                  <span>Social / institutional links</span>
+                  Admin-managed
+                </p>
+              </section>
+
+              <section>
+                <h2>Account</h2>
+                {!isAuthenticated ? (
+                  <>
+                    <FooterLink to="/login">Log in</FooterLink>
+                    <FooterLink to="/register">Create account</FooterLink>
+                  </>
+                ) : !isVerifiedUser ? (
+                  <>
+                    <FooterLink to="/verify-required">Verify Email</FooterLink>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="unifab-app__footer-button"
+                    >
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {isAdmin && <FooterLink to="/admin">Admin Dashboard</FooterLink>}
+                    <FooterLink to="/dashboard">Dashboard</FooterLink>
+                    <FooterLink to="/account-settings">{accountLabel}</FooterLink>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="unifab-app__footer-button"
+                    >
+                      Logout
+                    </button>
+                  </>
+                )}
+              </section>
+            </nav>
+          </div>
+
+          <div className="unifab-app__footer-notes" aria-label="Service notes">
+            <span>Guests can preview quotes before signing in.</span>
+            <span>Verified email is required for cart and print request submission.</span>
+            <span>Print Ready files require FabLab review before instant quote.</span>
+            <span>Payment slips use in-person receipt verification.</span>
+          </div>
         </div>
       </footer>
     </div>

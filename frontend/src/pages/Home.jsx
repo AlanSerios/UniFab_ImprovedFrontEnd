@@ -19,7 +19,18 @@ import { getActiveMaterials } from "../api/materials";
 import { useAuth } from "../context/AuthContext";
 
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
-const LANDING_VIDEO_PLACEHOLDER = `${API_ORIGIN}/storage/website-content/landing/videos/black-screen-5s.mp4`;
+const LANDING_VIDEO_BASE_URL = `${API_ORIGIN}/storage/website-content/landing/videos`;
+const LANDING_VIDEO_ASSETS = {
+  instantQuote: `${LANDING_VIDEO_BASE_URL}/1-Unifab.mp4`,
+  designLibrary: `${LANDING_VIDEO_BASE_URL}/2-Unifab.mp4`,
+  requestTracking: `${LANDING_VIDEO_BASE_URL}/3-Unifab.mp4`,
+};
+const LANDING_DESIGN_BASE_URL = `${API_ORIGIN}/storage/website-content/landing/designs`;
+const LANDING_DESIGN_ASSETS = {
+  gears: `${LANDING_DESIGN_BASE_URL}/featured-gears.png`,
+  droneFrame: `${LANDING_DESIGN_BASE_URL}/featured-drone-frame.png`,
+  enclosure: `${LANDING_DESIGN_BASE_URL}/featured-enclosure.png`,
+};
 
 const WORKFLOW_STEPS = [
   {
@@ -54,7 +65,7 @@ const FEATURE_VIDEOS = [
     cta: "Start a quote",
     icon: UploadCloud,
     tone: "quote",
-    videoSrc: LANDING_VIDEO_PLACEHOLDER,
+    videoSrc: LANDING_VIDEO_ASSETS.instantQuote,
   },
   {
     title: "Design Library",
@@ -65,7 +76,7 @@ const FEATURE_VIDEOS = [
     cta: "Browse designs",
     icon: Library,
     tone: "library",
-    videoSrc: LANDING_VIDEO_PLACEHOLDER,
+    videoSrc: LANDING_VIDEO_ASSETS.designLibrary,
   },
   {
     title: "Print Request Tracking",
@@ -76,49 +87,40 @@ const FEATURE_VIDEOS = [
     cta: "Track requests",
     icon: ClipboardCheck,
     tone: "tracking",
-    videoSrc: LANDING_VIDEO_PLACEHOLDER,
+    videoSrc: LANDING_VIDEO_ASSETS.requestTracking,
   },
 ];
 
 const FEATURED_DESIGNS = [
   {
-    title: "Adjustable Phone Stand",
+    title: "Precision Gear Set",
     category: "Print Ready",
     source: "Official Lab",
-    detail: "A practical desk accessory prepared for quick classroom and office prints.",
     readiness: "Instant quote available",
-    marker: "STAND",
-    tags: ["Print Ready", "Desk", "Utility"],
     isPrintReady: true,
-    preview: "stand",
-    previewSrc: "",
-    previewAlt: "Adjustable phone stand design preview",
+    preview: "gears",
+    previewSrc: LANDING_DESIGN_ASSETS.gears,
+    previewAlt: "Precision gear set design preview",
   },
   {
-    title: "Cable Label Set",
+    title: "Drone Frame Prototype",
     category: "Featured",
     source: "Community",
-    detail: "Small utility tags for organizing lab benches, project bins, and electronics kits.",
     readiness: "View design details",
-    marker: "LABEL",
-    tags: ["Featured", "Organizer", "Community"],
     isPrintReady: false,
-    preview: "labels",
-    previewSrc: "",
-    previewAlt: "Cable label set design preview",
+    preview: "frame",
+    previewSrc: LANDING_DESIGN_ASSETS.droneFrame,
+    previewAlt: "Drone frame prototype design preview",
   },
   {
-    title: "Workshop Fixture Block",
+    title: "Electronics Enclosure",
     category: "Official Lab",
     source: "UniFab Designs",
-    detail: "A sample fixture concept for demonstrating fit checks and print orientation.",
     readiness: "Admin selected",
-    marker: "BLOCK",
-    tags: ["Official Lab", "Fixture", "Workshop"],
     isPrintReady: false,
-    preview: "fixture",
-    previewSrc: "",
-    previewAlt: "Workshop fixture block design preview",
+    preview: "enclosure",
+    previewSrc: LANDING_DESIGN_ASSETS.enclosure,
+    previewAlt: "Electronics enclosure design preview",
   },
 ];
 
@@ -414,8 +416,8 @@ export default function Home() {
             <h2>See the service path before you start</h2>
           </div>
           <p>
-            Short demo slots will showcase the core UniFab workflow. For now,
-            each panel uses the shared backend-managed placeholder video.
+            Short demo slots show the core UniFab workflow using temporary
+            backend-managed videos that can later be replaced by admins.
           </p>
         </div>
 
@@ -539,7 +541,6 @@ export default function Home() {
                       <span />
                     </div>
                   )}
-                  <span className="unifab-home__featured-marker">{card.marker}</span>
                   <span className="unifab-home__featured-type-icon">
                     {index === 0 ? <BadgeCheck /> : index === 1 ? <Boxes /> : <Library />}
                   </span>
@@ -549,12 +550,6 @@ export default function Home() {
                   <span>{card.source}</span>
                 </div>
                 <h3>{card.title}</h3>
-                <p>{card.detail}</p>
-                <div className="unifab-home__featured-tags" aria-label={`${card.title} labels`}>
-                  {card.tags.map((tag) => (
-                    <span key={tag}>{tag}</span>
-                  ))}
-                </div>
                 <div className="unifab-home__featured-footer">
                   <span>{card.readiness}</span>
                   <div>
