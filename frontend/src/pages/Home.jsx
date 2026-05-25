@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   BadgeCheck,
@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { API_BASE_URL } from "../api/client";
-import { getActiveMaterials } from "../api/materials";
 import { useAuth } from "../context/AuthContext";
 
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
@@ -124,8 +123,7 @@ const FEATURED_DESIGNS = [
   },
 ];
 
-const LAB_DIRECTIONS_URL =
-  "https://maps.app.goo.gl/FFrJ6RHdKjqijVaB7";
+const LAB_DIRECTIONS_URL = "https://maps.app.goo.gl/FFrJ6RHdKjqijVaB7";
 
 const LAB_LOCATION_IMAGE = {
   src: "",
@@ -165,55 +163,23 @@ const FAQ_ITEMS = [
   },
 ];
 
-const DEFAULT_MATERIAL_CHIPS = [
-  "Backend materials",
-  "Managed profiles",
-  "Slicer diagnostics",
-  "Quote readiness",
-];
-
 function getFirstName(name) {
-  return String(name || "").trim().split(/\s+/)[0] || "";
+  return (
+    String(name || "")
+      .trim()
+      .split(/\s+/)[0] || ""
+  );
 }
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
-  const [materials, setMaterials] = useState([]);
-  const [materialStatus, setMaterialStatus] = useState("loading");
   const [mascotState, setMascotState] = useState("happy");
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   const [activeDesignIndex, setActiveDesignIndex] = useState(0);
   const [isDesignCarouselPaused, setIsDesignCarouselPaused] = useState(false);
   const [designTouchStart, setDesignTouchStart] = useState(null);
   const [designTouchEnd, setDesignTouchEnd] = useState(null);
-  const [openFaqId, setOpenFaqId] = useState(FAQ_ITEMS[0].id);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadMaterials() {
-      try {
-        const data = await getActiveMaterials();
-        const activeMaterials = data.data?.materials || data.materials || [];
-
-        if (!isMounted) return;
-
-        setMaterials(activeMaterials);
-        setMaterialStatus("ready");
-      } catch {
-        if (!isMounted) return;
-
-        setMaterials([]);
-        setMaterialStatus("fallback");
-      }
-    }
-
-    loadMaterials();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const [openFaqId, setOpenFaqId] = useState(null);
 
   useEffect(() => {
     if (mascotState === "blank") return undefined;
@@ -229,27 +195,13 @@ export default function Home() {
     }
 
     const interval = window.setInterval(() => {
-      setActiveDesignIndex((current) => (current + 1) % FEATURED_DESIGNS.length);
+      setActiveDesignIndex(
+        (current) => (current + 1) % FEATURED_DESIGNS.length,
+      );
     }, 5000);
 
     return () => window.clearInterval(interval);
   }, [isDesignCarouselPaused]);
-
-  const materialChips = useMemo(() => {
-    if (materials.length === 0) {
-      return DEFAULT_MATERIAL_CHIPS;
-    }
-
-    return materials
-      .slice(0, 6)
-      .map(
-        (material) =>
-          material.displayName ||
-          material.name ||
-          material.materialKey ||
-          "Material",
-      );
-  }, [materials]);
 
   const firstName = getFirstName(user?.name);
   const greeting = isAuthenticated
@@ -258,7 +210,8 @@ export default function Home() {
 
   const showPreviousDesign = () => {
     setActiveDesignIndex(
-      (current) => (current - 1 + FEATURED_DESIGNS.length) % FEATURED_DESIGNS.length,
+      (current) =>
+        (current - 1 + FEATURED_DESIGNS.length) % FEATURED_DESIGNS.length,
     );
   };
 
@@ -275,7 +228,8 @@ export default function Home() {
 
     if (
       index ===
-      (activeDesignIndex - 1 + FEATURED_DESIGNS.length) % FEATURED_DESIGNS.length
+      (activeDesignIndex - 1 + FEATURED_DESIGNS.length) %
+        FEATURED_DESIGNS.length
     ) {
       return "is-previous";
     }
@@ -301,16 +255,6 @@ export default function Home() {
   return (
     <main className="unifab-home">
       <div className="unifab-home__texture" aria-hidden="true" />
-
-      <section className="unifab-home__material-bar" aria-label="Quote support">
-        <div className="unifab-home__shell unifab-home__material-inner">
-          {materialChips.map((chip) => (
-            <Link key={chip} to="/quote">
-              {chip}
-            </Link>
-          ))}
-        </div>
-      </section>
 
       <section className="unifab-home__hero">
         <div className="unifab-home__shell">
@@ -347,7 +291,7 @@ export default function Home() {
               <p className="unifab-home__eyebrow">
                 USTP-CDO Fabrication Laboratory
               </p>
-              <h2>Get a slicer-backed 3D print quote</h2>
+              <h2>Fabrication At Scale.</h2>
               <p>
                 Upload a supported model, choose material settings, and review
                 the quote before deciding whether to submit a print request.
@@ -421,7 +365,10 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="unifab-home__video-grid" aria-label="UniFab feature videos">
+        <div
+          className="unifab-home__video-grid"
+          aria-label="UniFab feature videos"
+        >
           {FEATURE_VIDEOS.map((card, index) => {
             const Icon = card.icon;
             const isActive = activeVideoIndex === index;
@@ -457,13 +404,23 @@ export default function Home() {
                       preload="metadata"
                       aria-label={`${card.title} placeholder preview`}
                     />
-                    <span className="unifab-home__video-scrim" aria-hidden="true" />
+                    <span
+                      className="unifab-home__video-scrim"
+                      aria-hidden="true"
+                    />
                     <span className="unifab-home__video-overlay">
-                      <span className="unifab-home__video-icon" aria-hidden="true">
+                      <span
+                        className="unifab-home__video-icon"
+                        aria-hidden="true"
+                      >
                         <Icon />
                       </span>
                       <span className="unifab-home__video-state">
-                        {isActive ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
+                        {isActive ? (
+                          <Pause aria-hidden="true" />
+                        ) : (
+                          <Play aria-hidden="true" />
+                        )}
                         {isActive ? "Selected preview" : "Select preview"}
                       </span>
                     </span>
@@ -503,7 +460,9 @@ export default function Home() {
             setDesignTouchStart(event.targetTouches[0].clientX);
             setDesignTouchEnd(null);
           }}
-          onTouchMove={(event) => setDesignTouchEnd(event.targetTouches[0].clientX)}
+          onTouchMove={(event) =>
+            setDesignTouchEnd(event.targetTouches[0].clientX)
+          }
           onTouchEnd={handleDesignTouchEnd}
         >
           <button
@@ -533,16 +492,29 @@ export default function Home() {
                   aria-hidden={card.previewSrc ? undefined : "true"}
                 >
                   {card.previewSrc ? (
-                    <img src={card.previewSrc} alt={card.previewAlt} loading="lazy" />
+                    <img
+                      src={card.previewSrc}
+                      alt={card.previewAlt}
+                      loading="lazy"
+                    />
                   ) : (
-                    <div className="unifab-home__design-model" aria-hidden="true">
+                    <div
+                      className="unifab-home__design-model"
+                      aria-hidden="true"
+                    >
                       <span />
                       <span />
                       <span />
                     </div>
                   )}
                   <span className="unifab-home__featured-type-icon">
-                    {index === 0 ? <BadgeCheck /> : index === 1 ? <Boxes /> : <Library />}
+                    {index === 0 ? (
+                      <BadgeCheck />
+                    ) : index === 1 ? (
+                      <Boxes />
+                    ) : (
+                      <Library />
+                    )}
                   </span>
                 </div>
                 <div className="unifab-home__featured-copy">
@@ -582,7 +554,10 @@ export default function Home() {
             <ChevronRight aria-hidden="true" />
           </button>
 
-          <div className="unifab-home__carousel-dots" aria-label="Featured design slides">
+          <div
+            className="unifab-home__carousel-dots"
+            aria-label="Featured design slides"
+          >
             {FEATURED_DESIGNS.map((card, index) => (
               <button
                 type="button"
@@ -604,11 +579,15 @@ export default function Home() {
             <h2>Start with a quote. Submit when the details are ready.</h2>
             <p>
               Preview first, compare settings, then submit only when the file,
-              material, quantity, and request details are ready for FabLab review.
+              material, quantity, and request details are ready for FabLab
+              review.
             </p>
           </div>
           <div className="unifab-home__start-actions">
-            <Link className="unifab-home__button unifab-home__button--primary" to="/quote">
+            <Link
+              className="unifab-home__button unifab-home__button--primary"
+              to="/quote"
+            >
               <UploadCloud aria-hidden="true" />
               Start a quote
             </Link>
@@ -651,13 +630,19 @@ export default function Home() {
               >
                 Get Directions
               </a>
-              <Link className="unifab-home__button unifab-home__button--secondary" to="/about">
+              <Link
+                className="unifab-home__button unifab-home__button--secondary"
+                to="/about"
+              >
                 Contact Us
               </Link>
             </div>
           </div>
 
-          <div className="unifab-home__map-panel" aria-label="USTP-CDO FabLab location image">
+          <div
+            className="unifab-home__map-panel"
+            aria-label="USTP-CDO FabLab location image"
+          >
             {LAB_LOCATION_IMAGE.src ? (
               <img
                 src={LAB_LOCATION_IMAGE.src}
@@ -675,14 +660,6 @@ export default function Home() {
                 <p>Placeholder for admin-managed landing content.</p>
               </div>
             )}
-            <div className="unifab-home__map-card">
-              <span>
-                <MapPin aria-hidden="true" />
-                USTP-CDO FabLab
-              </span>
-              <strong>Fabrication Laboratory</strong>
-              <p>3D printing and campus fabrication support.</p>
-            </div>
           </div>
         </div>
       </section>
@@ -717,14 +694,6 @@ export default function Home() {
           })}
         </div>
       </section>
-
-      <p className="sr-only" aria-live="polite">
-        {materialStatus === "loading"
-          ? "Loading active materials."
-          : materialStatus === "ready"
-            ? "Active material shortcuts loaded."
-            : "Material shortcuts are showing general quote support links."}
-      </p>
     </main>
   );
 }
