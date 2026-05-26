@@ -3,6 +3,7 @@ import { ChevronDown, Menu, ShoppingCart, UserRound, X } from "lucide-react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
+import { Logo } from "./Logo";
 
 function HeaderLink({ to, children, variant = "default", onClick }) {
   return (
@@ -218,12 +219,10 @@ export default function AppLayout() {
           </button>
 
           <Link to="/" className="unifab-app__brand" aria-label="UniFab home">
-            <span className="unifab-app__brand-mark" aria-hidden="true">
-              <span />
-            </span>
-            <span>
-              <strong>UniFab</strong>
-              <small>Campus fabrication service</small>
+            <Logo className="unifab-app__brand-mark" />
+            <span className="unifab-app__brand-text">
+              <strong>UNIFAB</strong>
+              <small>THE UNIVERSITY FABRICATION LABORATORY</small>
             </span>
           </Link>
 
@@ -427,12 +426,10 @@ export default function AppLayout() {
           <div className="unifab-app__footer-main">
             <section className="unifab-app__footer-brand">
               <Link to="/" className="unifab-app__brand" aria-label="UniFab home">
-                <span className="unifab-app__brand-mark" aria-hidden="true">
-                  <span />
-                </span>
-                <span>
-                  <strong>UniFab</strong>
-                  <small>USTP-CDO FabLab</small>
+                <Logo className="unifab-app__brand-mark" />
+                <span className="unifab-app__brand-text">
+                  <strong>UNIFAB</strong>
+                  <small>THE UNIVERSITY FABRICATION LABORATORY</small>
                 </span>
               </Link>
               <p>
