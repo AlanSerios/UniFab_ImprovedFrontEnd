@@ -1587,45 +1587,45 @@ video {
     min-width: -moz-max-content;
     min-width: max-content;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     color: var(--unifab-navy-soft);
     text-decoration: none;
   }
 .unifab-app__brand-mark {
-    display: grid;
-    width: 38px;
-    height: 38px;
-    place-items: center;
-    border: 1px solid #12365d;
-    border-radius: 9px;
-    background: #17345b;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    display: flex;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
   }
-.unifab-app__brand-mark span {
-    width: 16px;
-    height: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.55);
-    border-radius: 4px;
-    background: #8fb1dc;
+.unifab-app__brand-text {
+    display: inline-flex;
+    flex-direction: column;
   }
 .unifab-app__brand strong {
     display: block;
     color: var(--unifab-navy-soft);
-    font-family: var(--unifab-display);
-    font-size: 24px;
-    font-weight: 900;
-    letter-spacing: 0;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 38px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     line-height: 1;
   }
 .unifab-app__brand small {
     display: block;
     margin-top: 2px;
     color: #657184;
-    font-size: 11px;
-    font-weight: 800;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 7.2px;
+    font-weight: 400;
     letter-spacing: 0;
     line-height: 1;
     text-transform: uppercase;
+    text-align: justify;
+    text-align-last: justify;
+    width: 100%;
+    white-space: nowrap;
   }
 .unifab-app__nav-links {
     display: flex;
@@ -9784,21 +9784,8 @@ body.is-unifab-mobile-menu-open {
 }
 
 .unifab-app:has(.unifab-home) .unifab-app__brand-mark {
-  border-color: rgba(36, 88, 152, 0.18);
   width: 42px;
   height: 42px;
-  border-radius: 15px;
-  background:
-    radial-gradient(circle at 34% 25%, rgba(255, 255, 255, 0.22), transparent 38%),
-    linear-gradient(145deg, #245898, #337dd2);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    0 14px 28px -18px rgba(36, 88, 152, 0.72);
-}
-
-.unifab-app:has(.unifab-home) .unifab-app__brand-mark span {
-  border-color: rgba(255, 255, 255, 0.58);
-  background: #f2f2f2;
 }
 
 .unifab-app:has(.unifab-home) .unifab-app__brand strong {
@@ -9809,7 +9796,7 @@ body.is-unifab-mobile-menu-open {
 
 .unifab-app:has(.unifab-home) .unifab-app__brand small {
   color: #6b7280;
-  font-weight: 760;
+  font-weight: 400;
 }
 
 .unifab-app:has(.unifab-home) .unifab-app__nav-links {
@@ -10817,7 +10804,7 @@ body.is-unifab-mobile-menu-open {
 .unifab-app:has(.unifab-home) .unifab-app__footer .unifab-app__brand small {
   display: block;
   color: #b7d3f3;
-  font-weight: 640;
+  font-weight: 400;
 }
 
 .unifab-home__welcome h1 {
@@ -11282,12 +11269,12 @@ body.is-unifab-mobile-menu-open {
   }
 
   .unifab-app:has(.unifab-home) .unifab-app__brand strong {
-    font-size: 23px;
+    font-size: 28px;
   }
 
   .unifab-app:has(.unifab-home) .unifab-app__brand-mark {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
     border-radius: 14px;
   }
 
